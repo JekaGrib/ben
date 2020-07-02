@@ -1,0 +1,6 @@
+.stack-work/
+bot.config
+bot.log
+.vscode
+.history
+*~
