@@ -37,31 +37,31 @@ data OpenRepeat = OpenRepeat Int
 
 run :: Monad m => Handle m -> StateT [(Int , Either OpenRepeat Int)] m ()
 run h = do
-  lift $ log (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
+  lift $ logDebug (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
   json <- lift (getUpdates h)
-  lift $ log (hLog h) ("Get response: " ++ show json ++ "\n")
+  lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
   newJSON <- lift $ checkUpdates h json
   let msg = extractTextMsg $ newJSON
   let usId = extractUserId $ newJSON
-  lift $ log (hLog h) ("Update info: got message " ++ show msg ++ " from user " ++ show usId ++ "\n")
+  lift $ logDebug (hLog h) ("Update info: got message " ++ show msg ++ " from user " ++ show usId ++ "\n")
   db <- get
   case lookup usId db of 
     Just (Left (OpenRepeat oldN)) -> do
-      lift $ log (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode\n")
+      lift $ logDebug (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode\n")
       case checkButton msg of
         True -> do
           let newN = read . T.unpack $ msg
-          lift $ log (hLog h) ("Change number of repeats to " ++ show newN ++ " for user " ++ show usId ++ "\n")
+          lift $ logDebug (hLog h) ("Change number of repeats to " ++ show newN ++ " for user " ++ show usId ++ "\n")
           modify (dom usId (Right newN))
           let infoMsg = T.pack $ "Number of repeats successfully changed from " ++ show oldN ++ " to " ++ show newN ++ "\n"
-          lift $ log (hLog h) ("Send request to send message " ++ show infoMsg ++ " to userId " ++ show usId ++ "  : " ++ "https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
+          lift $ logDebug (hLog h) ("Send request to send message " ++ show infoMsg ++ " to userId " ++ show usId ++ "  : " ++ "https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
           lift $ (sendMessage h) usId infoMsg
           return ()
         False -> do
-          lift $ log (hLog h) ("User " ++ show usId ++ " press unknown button, close OpenRepeat mode, leave old number of repeats: " ++ show oldN ++ "\n")
+          lift $ logDebug (hLog h) ("User " ++ show usId ++ " press unknown button, close OpenRepeat mode, leave old number of repeats: " ++ show oldN ++ "\n")
           modify (dom usId (Right oldN))
           let infoMsg = T.pack $ "UNKNOWN NUMBER\nSsory, number of repeats didn`t change, it is still " ++ show oldN ++ "\nTo change it you may send me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n"
-          lift $ log (hLog h) ("Send request to send message " ++ show infoMsg ++ " to userId " ++ show usId ++ "  : " ++ "https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
+          lift $ logDebug (hLog h) ("Send request to send message " ++ show infoMsg ++ " to userId " ++ show usId ++ "  : " ++ "https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
           lift $ (sendMessage h) usId infoMsg
           return ()
     _   -> do
@@ -69,16 +69,16 @@ run h = do
       case msg of 
         "/help" -> do
           let helpMsg = "I`m super bot"
-          lift $ log (hLog h) ("Send request to send message " ++ show helpMsg ++ " to userId " ++ show usId ++ "  : " ++ "https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show helpMsg ++ "}\n" )
+          lift $ logDebug (hLog h) ("Send request to send message " ++ show helpMsg ++ " to userId " ++ show usId ++ "  : " ++ "https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show helpMsg ++ "}\n" )
           lift $ (sendMessage h) usId helpMsg
           return ()
         "/repeat" -> do
-          lift $ log (hLog h) "SendKeyBoard\n"
+          lift $ logDebug (hLog h) "SendKeyBoard\n"
           lift $ (sendKeybWithMsg h) usId currN " : Current number of repeats your message.\nHow many times to repeat message in the future?"
-          lift $ log (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode\n")
+          lift $ logDebug (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode\n")
           modify (dom usId ( Left $ OpenRepeat currN ) )
         _ -> do
-          lift $ mapM (log (hLog h)) . replicate currN $ ("Send request to send message " ++ show msg ++ " to userId " ++ show usId ++ "  : " ++ "https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show msg ++ "}\n" )
+          lift $ mapM (logDebug (hLog h)) . replicate currN $ ("Send request to send message " ++ show msg ++ " to userId " ++ show usId ++ "  : " ++ "https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show msg ++ "}\n" )
           lift $ mapM ((sendMessage h) usId) . replicate currN $ msg
           return () 
 
@@ -88,14 +88,14 @@ checkUpdates h json = do
   case decode json of 
     Nothing -> undefined
     Just (Answer True []) -> do
-      log (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
+      logDebug (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
       newJson <- getUpdates h
-      log (hLog h) ("Get response: " ++ show newJson ++ "\n")
+      logDebug (hLog h) ("Get response: " ++ show newJson ++ "\n")
       checkUpdates h newJson
     Just _                -> do
-      log (hLog h) ("Send request to confirmOldUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
+      logDebug (hLog h) ("Send request to confirmOldUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
       emptyJson <- (confirmUpdates h) json
-      log (hLog h) ("Get response: " ++ show emptyJson ++ "\n")
+      logDebug (hLog h) ("Get response: " ++ show emptyJson ++ "\n")
       return json
  
 

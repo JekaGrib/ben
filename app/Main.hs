@@ -22,16 +22,22 @@ pullConfig = do
 main :: IO ()
 main =  do
   conf <- pullConfig
-  startN   <- C.lookupDefault 1   conf "telegram.startN"
-  botToken <- C.lookupDefault "1" conf "telegram.botToken"
+  startN   <- C.lookupDefault 1       conf "telegram.startN"
+  botToken <- C.lookupDefault "1"     conf "telegram.botToken"
+  prio     <- parseConfPrio conf
   let config = Config startN botToken
+  let handleLog = LogHandle (LogConfig prio) (logger handleLog)
   let handle = Handle config handleLog (getUpdates' handle) (confirmUpdates' handle) (sendMessage' handle) (sendKeybWithMsg' handle)
-  evalStateT (forever $ run (handle {hConf = config} ) ) []
+  evalStateT (forever $ run handle ) []
 
 
---pullStartN :: IO Int
---pullStartN = do
-  --conf <- C.load [C.Required "./bot.config"]
-  --let key = T.pack "telegram.startN"
-  --startNn <- C.lookupDefault 1 conf key 
-  --return startNn
+parseConfPrio :: C.Config -> IO Priority
+parseConfPrio conf = do
+  str <- C.lookup  conf "telegram.logLevel" :: IO (Maybe String)
+  case str of
+    Nothing -> undefined
+    Just "DEBUG"   -> return DEBUG
+    Just "INFO"    -> return INFO
+    Just "WARNING" -> return WARNING
+    Just "ERROR"   -> return ERROR
+    Just _         -> undefined
