@@ -6,13 +6,21 @@ module Api.Response where
 import           Data.Aeson
 import           GHC.Generics
 import qualified Data.Text                      as T
+import           Control.Applicative
 
-data Answer = Answer { ok :: Bool,
-                       result :: [Update]
-                     }
+data Answer 
+    = Answer 
+        { ok :: Bool,
+          result :: [Update] }
+    | NotOkAnswer
+        { ok :: Bool}
 
-data Update = Update { update_id :: Int,
-                       message :: Message } 
+data Update
+    = Update 
+        { update_id :: Int,
+          message :: Message }
+    | UnknownUpdate 
+        { update_id :: Int }
 
 data Message = Message { message_id :: Int,
                          fromUser :: From,
@@ -33,14 +41,16 @@ data Chat = Chat { id1 :: Int,
                    typ :: T.Text }
 
 instance FromJSON Answer where
-    parseJSON = withObject "Answer" $ \v -> Answer
+    parseJSON (Object v) = (Answer
         <$> v .: "ok"
-        <*> v .: "result"
+        <*> v .: "result") <|> ( NotOkAnswer
+        <$> v .: "ok")
 
 instance FromJSON Update where
-    parseJSON = withObject "Update" $ \v -> Update
+    parseJSON (Object v) = (Update
         <$> v .: "update_id"
-        <*> v .: "message"
+        <*> v .: "message") <|> ( UnknownUpdate
+        <$> v .: "update_id")
 
 instance FromJSON Message where
     parseJSON = withObject "Message" $ \v -> Message
