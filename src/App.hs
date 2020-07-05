@@ -22,14 +22,17 @@ data Handle m = Handle
   { hConf            :: Config,
     hLog             :: LogHandle m,
     getUpdates       :: m LBS.ByteString,
+    getShortUpdates  :: m LBS.ByteString,
     confirmUpdates   :: LBS.ByteString -> m LBS.ByteString,
     sendMessage      :: Int -> T.Text -> m LBS.ByteString,
     sendKeybWithMsg  :: Int -> Int -> T.Text -> m LBS.ByteString
     }
 
 data Config = Config 
-  { cStartN :: Int,
-    cBotToken :: String
+  { cStartN   :: Int,
+    cBotToken :: String,
+    cHelpMsg  :: String,
+    cRepeatQ  :: String
     }
 
 data OpenRepeat = OpenRepeat Int
@@ -78,13 +81,13 @@ chooseAction h upd = do
           let currN = case lookup usId db of { Just (Right n) -> n ; Nothing -> cStartN (hConf h) }
           case msg of 
                 "/help" -> do
-                  let helpMsg = "I`m super bot"
-                  lift $ logDebug (hLog h) ("Send request to send message " ++ show helpMsg ++ " to userId " ++ show usId ++ "  : " ++ "https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show helpMsg ++ "}\n" )
-                  lift $ (sendMessage h) usId helpMsg
+                  let infoMsg = T.pack $ cHelpMsg (hConf h)
+                  lift $ logDebug (hLog h) ("Send request to send message " ++ show infoMsg ++ " to userId " ++ show usId ++ "  : " ++ "https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
+                  lift $ (sendMessage h) usId infoMsg
                   return ()
                 "/repeat" -> do
                   lift $ logDebug (hLog h) "SendKeyBoard\n"
-                  lift $ (sendKeybWithMsg h) usId currN " : Current number of repeats your message.\nHow many times to repeat message in the future?"
+                  lift $ (sendKeybWithMsg h) usId currN $ T.pack $ " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
                   lift $ logDebug (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode\n")
                   modify (dom usId ( Left $ OpenRepeat currN ) )
                 _ -> do
@@ -111,7 +114,7 @@ checkUpdates h json = do
  
 startApp :: (Monad m, MonadFail m) => Handle m -> m ()
 startApp h = do
-  json <- getUpdates h
+  json <- getShortUpdates h
   case decode json of
       Nothing -> fail ("Error at startApp. UNKNOWN RESPONSE to getUpdates request. Api response:" ++ show json)
       Just (NotOkAnswer {ok = False}) -> fail ("Error at startApp. Unsuccessful getUpdates request. Api response:" ++ show json)
@@ -120,6 +123,12 @@ startApp h = do
         confirmUpdates h json
         return ()
 
+
+getShortUpdates' :: Handle IO -> IO LBS.ByteString
+getShortUpdates' h = do
+  req <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
+  res <- httpLBS req
+  return (getResponseBody res)
 
 getUpdates' :: Handle IO -> IO LBS.ByteString
 getUpdates' h = do
