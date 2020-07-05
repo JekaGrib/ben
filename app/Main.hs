@@ -31,9 +31,7 @@ pullConfig = do
 
 main :: IO ()
 main =  do
-  timeUTC <- getCurrentTime
-  zone    <- getCurrentTimeZone
-  let time = utcToLocalTime zone timeUTC
+  time <- getTime
   let currLogPath = "./LogSession: " ++ show time ++ " bot.log"
   writeFile currLogPath  "Create log file\n"
   conf           <- pullConfig
@@ -47,6 +45,17 @@ main =  do
   let handle = Handle config handleLog (getUpdates' handle) (getShortUpdates' handle) (confirmUpdates' handle) (sendMessage' handle) (sendKeybWithMsg' handle) 
   startApp handle
   evalStateT (forever $ run handle ) []
+
+
+getTime :: IO String
+getTime = (getCurrentTime     >>= \timeUTC ->
+           getCurrentTimeZone >>= \zone    ->
+           return (show (utcToLocalTime zone timeUTC))) `catch` 
+             (\e -> do 
+                putStrLn $ show (e :: SomeException)
+                time <- inputLocalTime 
+                return time ) 
+
 
 
 parseConfStartN :: C.Config -> IO Int
@@ -131,4 +140,9 @@ inputHelpMsg = do
 inputRepeatQ :: IO String
 inputRepeatQ = do
   putStrLn "Can`t parse value \"/repeat Info Question\" from configuration file or command line\nPlease, enter \"/repeat Info Question\"\n Example: How many times to repeat message in the future?"
+  getLine
+
+inputLocalTime :: IO String
+inputLocalTime = do
+  putStrLn "Local time not found\nPlease, enter your local time in any form\nExample: 06.07.2020 16:21"
   getLine
