@@ -28,6 +28,7 @@ dependencies:
 - aeson
 - configurator
 - mtl
+- time
 
 library:
   source-dirs: src

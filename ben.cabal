@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bbb320ccfe9d4630bf168420d36dea2633fe295b3c88d13ef65511aef3d5d9b4
+-- hash: ca5df4eafd79b00f93b34580d3f60a163ccb2148644ffabddf399b4b3dc5422d
 
 name:           ben
 version:        0.1.0.0
@@ -44,6 +44,7 @@ library
     , lens
     , mtl
     , text
+    , time
   default-language: Haskell2010
 
 executable ben-exe
@@ -63,6 +64,7 @@ executable ben-exe
     , lens
     , mtl
     , text
+    , time
   default-language: Haskell2010
 
 test-suite ben-test
@@ -83,4 +85,5 @@ test-suite ben-test
     , lens
     , mtl
     , text
+    , time
   default-language: Haskell2010

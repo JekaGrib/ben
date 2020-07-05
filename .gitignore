@@ -1,6 +1,6 @@
 .stack-work/
 bot.config
-bot.log
+*bot.log
 .vscode
 .history
 *~

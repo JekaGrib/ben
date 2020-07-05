@@ -12,6 +12,9 @@ import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
 import           Data.Char
 import           Control.Exception
+import           System.IO
+import           Data.Time.Clock
+import           Data.Time.LocalTime
 
 
 
@@ -28,6 +31,11 @@ pullConfig = do
 
 main :: IO ()
 main =  do
+  timeUTC <- getCurrentTime
+  zone    <- getCurrentTimeZone
+  let time = utcToLocalTime zone timeUTC
+  let currLogPath = "./LogSession: " ++ show time ++ " bot.log"
+  writeFile currLogPath  "Create log file\n"
   conf           <- pullConfig
   startN         <- parseConfStartN conf
   botToken       <- parseConfBotToken conf
@@ -35,7 +43,7 @@ main =  do
   helpMsg        <- parseConfHelpMsg conf
   repeatQuestion <- parseConfRepeatQ conf
   let config = Config startN botToken helpMsg repeatQuestion
-  let handleLog = LogHandle (LogConfig prio) (logger handleLog)
+  let handleLog = LogHandle (LogConfig prio) (logger handleLog currLogPath)
   let handle = Handle config handleLog (getUpdates' handle) (getShortUpdates' handle) (confirmUpdates' handle) (sendMessage' handle) (sendKeybWithMsg' handle) 
   startApp handle
   evalStateT (forever $ run handle ) []
