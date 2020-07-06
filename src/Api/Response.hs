@@ -12,7 +12,7 @@ data Answer
     = Answer 
         { ok :: Bool,
           result :: [Update] }
-    | NotOkAnswer
+    | OkAnswer
         { ok :: Bool}
 
 data Update
@@ -43,7 +43,7 @@ data Chat = Chat { id1 :: Int,
 instance FromJSON Answer where
     parseJSON (Object v) = (Answer
         <$> v .: "ok"
-        <*> v .: "result") <|> ( NotOkAnswer
+        <*> v .: "result") <|> ( OkAnswer
         <$> v .: "ok")
 
 instance FromJSON Update where

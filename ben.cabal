@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ca5df4eafd79b00f93b34580d3f60a163ccb2148644ffabddf399b4b3dc5422d
+-- hash: f860a5e1d780a74ac942ee87f68465bc65f9d927d209b2e5e03edfc4bb58a0bc
 
 name:           ben
 version:        0.1.0.0
@@ -40,6 +40,7 @@ library
     , base >=4.7 && <5
     , bytestring
     , configurator
+    , hspec
     , http-conduit
     , lens
     , mtl
@@ -60,6 +61,7 @@ executable ben-exe
     , ben
     , bytestring
     , configurator
+    , hspec
     , http-conduit
     , lens
     , mtl
@@ -81,6 +83,7 @@ test-suite ben-test
     , ben
     , bytestring
     , configurator
+    , hspec
     , http-conduit
     , lens
     , mtl

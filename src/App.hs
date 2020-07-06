@@ -100,7 +100,7 @@ checkUpdates :: (Monad m, MonadFail m) => Handle m -> LBS.ByteString -> m LBS.By
 checkUpdates h json = do
   case decode json of
       Nothing -> fail ("UNKNOWN RESPONSE to getUpdates request. Api response:" ++ show json)
-      Just (NotOkAnswer {ok = False}) -> fail ("Unsuccessful getUpdates request. Api response:" ++ show json)     
+      Just (OkAnswer {ok = False}) -> fail ("Unsuccessful getUpdates request. Api response:" ++ show json)     
       Just (Answer True []) -> do
         logDebug (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
         newJson <- getUpdates h
@@ -117,7 +117,7 @@ startApp h = do
   json <- getShortUpdates h
   case decode json of
       Nothing -> fail ("Error at startApp. UNKNOWN RESPONSE to getUpdates request. Api response:" ++ show json)
-      Just (NotOkAnswer {ok = False}) -> fail ("Error at startApp. Unsuccessful getUpdates request. Api response:" ++ show json)
+      Just (OkAnswer {ok = False}) -> fail ("Error at startApp. Unsuccessful getUpdates request. Api response:" ++ show json)
       Just (Answer True []) -> return ()
       Just _ -> do
         confirmUpdates h json

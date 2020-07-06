@@ -29,6 +29,7 @@ dependencies:
 - configurator
 - mtl
 - time
+- hspec
 
 library:
   source-dirs: src

@@ -18,8 +18,6 @@ import           Data.Time.LocalTime
 
 
 
-
-
 pullConfig :: IO C.Config
 pullConfig = do
   C.load [C.Required "./bot.config"] `catch` 
@@ -48,13 +46,15 @@ main =  do
 
 
 getTime :: IO String
-getTime = (getCurrentTime     >>= \timeUTC ->
-           getCurrentTimeZone >>= \zone    ->
-           return (show (utcToLocalTime zone timeUTC))) `catch` 
-             (\e -> do 
-                putStrLn $ show (e :: SomeException)
-                time <- inputLocalTime 
-                return time ) 
+getTime = (do
+  timeUTC <- getCurrentTime
+  zone    <- getCurrentTimeZone
+  let time = utcToLocalTime zone timeUTC
+  return $ show time) `catch`    
+    (\e -> do 
+      putStrLn $ show (e :: SomeException)
+      time <- inputLocalTime 
+      return time ) 
 
 
 
