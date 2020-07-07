@@ -29,15 +29,15 @@ pullConfig = do
 
 main :: IO ()
 main =  do
-  time <- getTime
+  time <- getTime                          `catch` (\e -> throw $ DuringGetTimeException $ show (e :: SomeException))
   let currLogPath = "./TG.LogSession: " ++ show time ++ " bot.log"
   writeFile currLogPath  "Create log file\n"
-  conf           <- pullConfig
-  startN         <- parseConfStartN conf
-  botToken       <- parseConfBotToken conf
-  prio           <- parseConfPrio conf
-  helpMsg        <- parseConfHelpMsg conf
-  repeatQuestion <- parseConfRepeatQ conf
+  conf           <- pullConfig             `catch` (\e -> throw $ DuringPullConfigException  $ show (e :: SomeException))
+  startN         <- parseConfStartN   conf `catch` (\e -> throw $ DuringParseConfigException $ "startN\n" ++ show (e :: SomeException))
+  botToken       <- parseConfBotToken conf `catch` (\e -> throw $ DuringParseConfigException $ "botToken\n" ++ show (e :: SomeException))
+  prio           <- parseConfPrio     conf `catch` (\e -> throw $ DuringParseConfigException $ "logLevel\n" ++ show (e :: SomeException))
+  helpMsg        <- parseConfHelpMsg  conf `catch` (\e -> throw $ DuringParseConfigException $ "helpMsg\n" ++ show (e :: SomeException))
+  repeatQuestion <- parseConfRepeatQ  conf `catch` (\e -> throw $ DuringParseConfigException $ "repeatQuestion\n" ++ show (e :: SomeException))
   let config = Config startN botToken helpMsg repeatQuestion
   let handleLog = LogHandle (LogConfig prio) (logger handleLog currLogPath)
   let handle = Handle config handleLog (getUpdates' handle) (getShortUpdates' handle) (confirmUpdates' handle) (sendMessage' handle) (sendKeybWithMsg' handle) 
@@ -47,9 +47,7 @@ main =  do
 
 getTime :: IO String
 getTime = (do
-  timeUTC <- getCurrentTime
-  zone    <- getCurrentTimeZone
-  let time = utcToLocalTime zone timeUTC
+  time    <- getZonedTime
   return $ show time) `catch`    
     (\e -> do 
       putStrLn $ show (e :: SomeException)
@@ -60,7 +58,9 @@ getTime = (do
 
 parseConfStartN :: C.Config -> IO Int
 parseConfStartN conf = do
-  str <- (C.lookup conf "telegram.startN") :: IO (Maybe Int)
+  str <- ((C.lookup conf "telegram.startN") :: IO (Maybe Int))
+    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe Int) )
+    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe Int) ) 
   case str of
     Nothing -> inputStartN
     Just 1  -> return 1
@@ -72,14 +72,18 @@ parseConfStartN conf = do
 
 parseConfBotToken :: C.Config -> IO String
 parseConfBotToken conf = do
-  str <- (C.lookup conf "telegram.botToken") :: IO (Maybe String)
+  str <- ((C.lookup conf "telegram.botToken") :: IO (Maybe String))
+    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
+    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
     Nothing -> inputBotToken
     Just n  -> return n
 
 parseConfPrio :: C.Config -> IO Priority
 parseConfPrio conf = do
-  str <- C.lookup conf "telegram.logLevel" :: IO (Maybe String)
+  str <- (C.lookup conf "telegram.logLevel" :: IO (Maybe String))
+    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
+    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
     Nothing -> inputLogLevel
     Just "DEBUG"   -> return DEBUG
@@ -90,14 +94,18 @@ parseConfPrio conf = do
 
 parseConfHelpMsg :: C.Config -> IO String
 parseConfHelpMsg conf = do
-  str <- (C.lookup conf "telegram.help_Info_Msg") :: IO (Maybe String)
+  str <- ((C.lookup conf "telegram.help_Info_Msg") :: IO (Maybe String))
+    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
+    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
     Nothing -> inputHelpMsg
     Just n  -> return n
 
 parseConfRepeatQ :: C.Config -> IO String
 parseConfRepeatQ conf = do
-  str <- (C.lookup conf "telegram.repeat_Info_Question") :: IO (Maybe String)
+  str <- ((C.lookup conf "telegram.repeat_Info_Question") :: IO (Maybe String))
+    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
+    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
     Nothing -> inputRepeatQ
     Just n  -> return n

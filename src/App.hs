@@ -20,10 +20,6 @@ import qualified Control.Exception              as E
 
 data Msg           = Msg        T.Text            deriving (Eq,Show)
 data ToUserId      = ToUserId   Int               deriving (Eq,Show)
-data WithOffset    = WithOffset Int               deriving (Eq,Show)
-data ResponseJson  = ResponseJson  LBS.ByteString deriving (Eq,Show)
-data ConfirmedJson = ConfirmedJson LBS.ByteString deriving (Eq,Show)
-
 
 data TGBotException 
   = DuringGetUpdatesException String
@@ -37,7 +33,9 @@ data TGBotException
   | DuringStartAppGetUpdatesException String
   | StartAppCheckGetUpdatesResponseException String
   | DuringStartAppConfirmUpdatesException String
-  | ExtractException String
+  | DuringGetTimeException String
+  | DuringPullConfigException String
+  | DuringParseConfigException String
     deriving (Eq,Show)
 
 instance Exception TGBotException 
