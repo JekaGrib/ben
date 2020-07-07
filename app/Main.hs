@@ -20,11 +20,11 @@ import           Data.Time.LocalTime
 
 pullConfig :: IO C.Config
 pullConfig = do
-  C.load [C.Required "./bot.config"] `catch` 
-    (\e -> do 
-      putStrLn $ show (e :: SomeException) 
-      return C.empty
-      ) 
+  C.load [C.Required "./bot.config"] 
+    `catch` (\e -> putStrLn (show (e :: C.ConfigError)) >> return C.empty)
+    `catch` (\e -> putStrLn (show (e :: C.KeyError   )) >> return C.empty)
+    `catch` (\e -> putStrLn (show (e :: IOException  )) >> return C.empty)
+
 
 
 main :: IO ()
@@ -139,7 +139,7 @@ inputHelpMsg = do
 
 inputRepeatQ :: IO String
 inputRepeatQ = do
-  putStrLn "Can`t parse value \"/repeat Info Question\" from configuration file or command line\nPlease, enter \"/repeat Info Question\"\n Example: How many times to repeat message in the future?"
+  putStrLn "Can`t parse value \"/repeat Info Question\" from configuration file or command line\nPlease, enter \"/repeat Info Question\"\nExample: How many times to repeat message in the future?"
   getLine
 
 inputLocalTime :: IO String

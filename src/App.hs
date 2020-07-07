@@ -16,17 +16,18 @@ import           Prelude                        hiding (log)
 import           Data.Aeson
 import           Data.Maybe                     (fromJust)
 import           Control.Monad.Catch
+import qualified Control.Exception              as E
 
 data TGBotException 
-  = GetUpdatesException String
+  = DuringGetUpdatesException String
   | CheckGetUpdatesResponseException String
-  | ConfirmUpdatesException String
+  | DuringConfirmUpdatesException String
   | CheckConfirmUpdatesResponseException String
-  | SendMsgException String
+  | DuringSendMsgException String
   | CheckSendMsgResponseException String
-  | SendKeybException String
+  | DuringSendKeybException String
   | CheckSendKeybResponseException String
-  | StartAppGetUpdatesException String
+  | DuringStartAppGetUpdatesException String
   | StartAppCheckGetUpdatesResponseException String
   | StartAppConfirmUpdatesException String
   | ExtractException String
@@ -58,15 +59,14 @@ data OpenRepeat = OpenRepeat Int
 startApp :: (Monad m, MonadCatch m) => Handle m -> m ()
 startApp h = do
   logDebug (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
-  json <- getShortUpdates h `catch` (\e -> throwM $ StartAppGetUpdatesException $ show (e :: SomeException))
+  json <- getShortUpdates h `catch` (\e -> throwM $ DuringStartAppGetUpdatesException $ show (e :: SomeException))
   case decode json of
       Nothing -> throwM $ StartAppCheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:" ++ show json
       Just (OkAnswer {ok = False}) -> throwM $ StartAppCheckGetUpdatesResponseException $ "Unsuccessful getUpdates request. Api response:" ++ show json
+      Just (OkAnswer True) -> throwM $ StartAppCheckGetUpdatesResponseException $ "Too short response:" ++ show json
       Just (Answer True []) -> return ()
       Just _ -> do
-        nextUpdate <- return (extractNextUpdate json) `catch` (\e -> throwM $ ExtractException $ show (e :: SomeException) 
-                                                                                                 ++ "\nStartAppError.Can`t extract next update number from response: " 
-                                                                                                 ++ show json ++ " to set offset to confirm updates")
+        let nextUpdate = extractNextUpdate json 
         emptyJson <- confirmUpdates h nextUpdate `catch` (\e -> throwM $ StartAppConfirmUpdatesException $ show (e :: SomeException) ++ "\nWhen try to confirm old updates: " ++ show json ++ " with offset: " ++ show nextUpdate)
         logDebug (hLog h) ("Get response: " ++ show emptyJson ++ "\n")
         checkConfirmUpdatesResponse h nextUpdate json emptyJson
@@ -75,7 +75,7 @@ startApp h = do
 run :: (Monad m, MonadCatch m)=> Handle m -> StateT [(Int , Either OpenRepeat Int)] m ()
 run h = do
   lift $ logDebug (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
-  json <- lift $ (getUpdates h) `catch` (\e -> throwM $ GetUpdatesException $ show (e :: SomeException))
+  json <- lift $ (getUpdates h) `catch` (\e -> throwM $ DuringGetUpdatesException $ show (e :: SomeException))
   lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
   newJSON <- lift $ checkUpdates h json
   let upds = extractUpdates $ newJSON
@@ -101,8 +101,8 @@ chooseAction h upd = do
               modify (dom usId (Right newN))
               let infoMsg = T.pack $ "Number of repeats successfully changed from " ++ show oldN ++ " to " ++ show newN ++ "\n"
               lift $ logDebug (hLog h) ("Send request to send message " ++ show infoMsg ++ " to userId " ++ show usId ++ "  : " ++ "https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
-              sendMsgResponse <- lift $ (sendMessage h) usId infoMsg
-              lift $ checkSendMessageResponse h usId infoMsg sendMsgResponse
+              sendMsgResponse <- lift $ (sendMessage h) usId infoMsg 
+              lift $ checkSendMessageResponse h usId infoMsg sendMsgResponse 
               return ()
             False -> do
               lift $ logDebug (hLog h) ("User " ++ show usId ++ " press unknown button, close OpenRepeat mode, leave old number of repeats: " ++ show oldN ++ "\n")
@@ -139,6 +139,7 @@ checkUpdates h json = do
   case decode json of
       Nothing -> throwM $ CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:" ++ show json
       Just (OkAnswer {ok = False}) -> throwM $ CheckGetUpdatesResponseException $ "Unsuccessful getUpdates request. Api response:" ++ show json     
+      Just (OkAnswer True) -> throwM $ CheckGetUpdatesResponseException $ "Too short response:" ++ show json
       Just (Answer True []) -> do
         logDebug (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
         newJson <- getUpdates h
@@ -183,7 +184,7 @@ getShortUpdates' h = do
 
 getUpdates' :: Handle IO -> IO LBS.ByteString
 getUpdates' h = do
-  let toon =  JSONBodyTimeOut {timeout = 20}
+  let toon =  JSONBodyTimeOut {timeout = 25}
   initReq <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
   let req = initReq { method = "POST", requestBody = (RequestBodyLBS . encode $ toon), requestHeaders =
                     [ ("Content-Type", "application/json; charset=utf-8")
