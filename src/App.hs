@@ -23,7 +23,9 @@ data TGBotException
   | ConfirmUpdatesException String
   | CheckConfirmUpdatesResponseException String
   | SendMsgException String
-  | CheckSendMessageResponseException String
+  | CheckSendMsgResponseException String
+  | SendKeybException String
+  | CheckSendKeybResponseException String
   | StartAppGetUpdatesException String
   | StartAppCheckGetUpdatesResponseException String
   | StartAppConfirmUpdatesException String
@@ -73,7 +75,7 @@ startApp h = do
 run :: (Monad m, MonadCatch m)=> Handle m -> StateT [(Int , Either OpenRepeat Int)] m ()
 run h = do
   lift $ logDebug (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
-  json <- lift (getUpdates h)
+  json <- lift $ (getUpdates h) `catch` (\e -> throwM $ GetUpdatesException $ show (e :: SomeException))
   lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
   newJSON <- lift $ checkUpdates h json
   let upds = extractUpdates $ newJSON
@@ -121,7 +123,8 @@ chooseAction h upd = do
                   return ()
                 "/repeat" -> do
                   lift $ logDebug (hLog h) "SendKeyBoard\n"
-                  lift $ (sendKeybWithMsg h) usId currN $ T.pack $ " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
+                  sendKeybResponse <- lift $ (sendKeybWithMsg h) usId currN $ T.pack $ " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
+                  lift $ checkSendKeybResponse h usId sendKeybResponse
                   lift $ logDebug (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode\n")
                   modify (dom usId ( Left $ OpenRepeat currN ) )
                 _ -> do
@@ -154,13 +157,21 @@ checkConfirmUpdatesResponse h offset confirmedJson responseJson = do
   case decode responseJson of
       Nothing -> throwM $ CheckConfirmUpdatesResponseException $ "UNKNOWN RESPONSE:" ++ show responseJson ++ "\nUpdates: " ++ show confirmedJson ++ " PROBABLY NOT CONFIRM with offset: " ++ show offset 
       Just (OkAnswer {ok = False}) -> throwM $ CheckConfirmUpdatesResponseException $ "Updates: " ++ show confirmedJson ++ " NOT CONFIRM with offset: " ++ show offset ++ ". Api response:" ++ show responseJson
+      Just _ -> return responseJson
 
 checkSendMessageResponse :: (Monad m, MonadCatch m) => Handle m -> Int -> T.Text -> LBS.ByteString -> m LBS.ByteString
 checkSendMessageResponse h usId msg json = do
   case decode json of
-      Nothing -> throwM $ CheckSendMessageResponseException $ "UNKNOWN RESPONSE:" ++ show json ++ "\nMESSAGE: \"" ++ show msg ++ "\" PROBABLY NOT SENT to user: " ++ show usId  
-      Just (OkAnswer {ok = False}) -> throwM $ CheckSendMessageResponseException $ "MESSAGE: \"" ++ show msg ++ "\" NOT SENT to user: " ++ show usId ++ ". Api response:" ++ show json
+      Nothing -> throwM $ CheckSendMsgResponseException $ "UNKNOWN RESPONSE:" ++ show json ++ "\nMESSAGE: \"" ++ show msg ++ "\" PROBABLY NOT SENT to user: " ++ show usId  
+      Just (OkAnswer {ok = False}) -> throwM $ CheckSendMsgResponseException $ "MESSAGE: \"" ++ show msg ++ "\" NOT SENT to user: " ++ show usId ++ ". Api response:" ++ show json
+      Just _ -> return json
 
+checkSendKeybResponse :: (Monad m, MonadCatch m) => Handle m -> Int -> LBS.ByteString -> m LBS.ByteString
+checkSendKeybResponse h usId json = do
+  case decode json of
+      Nothing -> throwM $ CheckSendKeybResponseException $ "UNKNOWN RESPONSE:" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT to user: " ++ show usId  
+      Just (OkAnswer {ok = False}) -> throwM $ CheckSendKeybResponseException $ "KEYBOARD NOT SENT to user: " ++ show usId ++ ". Api response:" ++ show json
+      Just _ -> return json
 
 
 
