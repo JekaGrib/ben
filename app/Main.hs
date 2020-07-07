@@ -30,7 +30,7 @@ pullConfig = do
 main :: IO ()
 main =  do
   time <- getTime
-  let currLogPath = "./LogSession: " ++ show time ++ " bot.log"
+  let currLogPath = "./TG.LogSession: " ++ show time ++ " bot.log"
   writeFile currLogPath  "Create log file\n"
   conf           <- pullConfig
   startN         <- parseConfStartN conf
