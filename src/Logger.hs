@@ -5,9 +5,6 @@ import           System.IO        (appendFile)
 
 
 
-
-
-
 data LogHandle m = LogHandle 
    { hLogConf :: LogConfig,
      log      :: Priority -> String -> m ()}
