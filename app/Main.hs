@@ -40,7 +40,7 @@ main =  do
   repeatQuestion <- parseConfRepeatQ  conf 
   let config = Config startN botToken helpMsg repeatQuestion
   let handleLog = LogHandle (LogConfig prio) (logger handleLog currLogPath)
-  let handle = Handle config handleLog (getUpdates' handle) (getShortUpdates' handle) (confirmUpdates' handle) (sendMessage' handle) (sendKeybWithMsg' handle) 
+  let handle = Handle config handleLog (getUpdates' handle) (getShortUpdates' handle) (confirmUpdates' handle) (sendMsg' handle) (sendKeyb' handle) 
   startApp handle
   evalStateT (forever $ run handle ) []
 
