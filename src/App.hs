@@ -65,6 +65,7 @@ startApp h = do
   json <- getShortUpdates h `catch` (\e -> do
                                 logError (hLog h) $ show e ++ " GetUpdates fail at startApp"
                                 throwM $ DuringGetUpdatesException $ "Error at StartApp. " ++ show (e :: SomeException))
+  logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
   case decode json of
       Nothing                      -> do
         logError (hLog h) $ " UNKNOWN RESPONSE to getUpdates:\n"   ++ show json
@@ -97,8 +98,7 @@ run h = do
   lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
   newJSON <- lift $ checkUpdates h json
   let upds = extractUpdates $ newJSON
-  mapM (chooseAction h) upds
-  return ()
+  mapM_ (chooseAction h) upds
 
 chooseAction :: (Monad m, MonadCatch m)=> Handle m -> Update -> StateT [(Int , Either OpenRepeat Int)] m ()
 chooseAction h upd = do
@@ -118,7 +118,7 @@ chooseAction h upd = do
           case checkButton msg of
             Just newN -> do
               lift $ logInfo (hLog h) ("Change number of repeats to " ++ show newN ++ " for user " ++ show usId ++ "\n")
-              modify (dom usId (Right newN))
+              modify (changeDB usId (Right newN))
               let infoMsg = T.pack $ "Number of repeats successfully changed from " ++ show oldN ++ " to " ++ show newN ++ "\n"
               lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
               sendMsgResponse <- lift $ (sendMsg h) usId infoMsg `catch` (\e -> do
@@ -129,12 +129,12 @@ chooseAction h upd = do
               lift $ logInfo (hLog h) ("Msg " ++ show infoMsg  ++ " was sent to user " ++ show usId ++ "\n") 
             Nothing -> do
               lift $ logWarning (hLog h) ("User " ++ show usId ++ " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: " ++ show oldN ++ "\n")
-              modify (dom usId (Right oldN))
+              modify (changeDB usId (Right oldN))
               let infoMsg = T.pack $ "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++ show oldN ++ "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n"
               lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
               sendMsgResponse <- lift $ (sendMsg h) usId infoMsg `catch` (\e -> do
-                                   logError (hLog h) $ show e ++ " SendMessage fail"
-                                   throwM $ DuringSendMsgException (Msg infoMsg) (ToUserId usId) $ show (e :: SomeException))
+                                     logError (hLog h) $ show e ++ " SendMessage fail"
+                                     throwM $ DuringSendMsgException (Msg infoMsg) (ToUserId usId) $ show (e :: SomeException))
               lift $ logDebug (hLog h) ("Get response: " ++ show sendMsgResponse ++ "\n")
               lift $ checkSendMsgResponse h usId infoMsg sendMsgResponse
               lift $ logWarning (hLog h) ("Msg " ++ show infoMsg ++ " was sent to user " ++ show usId ++ "\n") 
@@ -160,7 +160,7 @@ chooseAction h upd = do
                   lift $ checkSendKeybResponse h usId keybResponse
                   lift $ logInfo (hLog h) ("Keyboard with message: " ++ show currN ++ show infoMsg ++ " was sent to user " ++ show usId ++ "\n")
                   lift $ logInfo (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode\n")
-                  modify (dom usId ( Left $ OpenRepeat currN ) )
+                  modify (changeDB usId ( Left $ OpenRepeat currN ) )
                 _ -> do
                   let logMsg = "Send request to send msg " ++ show msg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show msg ++ "}\n"
                   lift $ replicateM currN $ do
@@ -187,13 +187,8 @@ checkUpdates h json = do
         logError (hLog h) $ "Too short response to getUpdates:\n" ++ show json
         throwM $ CheckGetUpdatesResponseException $ "Too short response:\n" ++ show json
       Just (Answer True [])        -> do
-        logInfo (hLog h) ("No new updates\n" )
-        logDebug (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
-        newJson <- getUpdates h `catch` (\e -> do
-                                           logError (hLog h) $ show e ++ " GetUpdates fail"
-                                           throwM $ DuringGetUpdatesException $ show (e :: SomeException))
-        logDebug (hLog h) ("Get response: " ++ show newJson ++ "\n")
-        checkUpdates h newJson
+        logInfo (hLog h) ("No new updates\n")
+        return json
       Just _                       -> do
         logInfo (hLog h) ("There is new updates list\n" )
         let nextUpdate =  extractNextUpdate $ json
@@ -307,17 +302,14 @@ extractNextUpdate = succ . update_id . last . result . fromJust . decode
 extractUpdates :: LBS.ByteString -> [Update]
 extractUpdates = result . fromJust . decode
 
-extractNewN :: LBS.ByteString -> Int
-extractNewN = read . T.unpack . textMsg . message . last . result . fromJust . decode
-
 extractTextMsg :: Update -> T.Text
 extractTextMsg = textMsg . message 
 
 extractUserId :: Update -> Int
 extractUserId = idUser . fromUser . message 
 
-dom :: Int -> Either OpenRepeat Int -> [(Int , Either OpenRepeat Int)] -> [(Int,Either OpenRepeat Int)]
-dom usId eitherN bd = 
+changeDB :: Int -> Either OpenRepeat Int -> [(Int , Either OpenRepeat Int)] -> [(Int,Either OpenRepeat Int)]
+changeDB usId eitherN bd = 
     case lookup usId bd of
         Just eitherX -> (:) (usId,eitherN) . delete (usId, eitherX) $ bd
         Nothing -> (:) (usId,eitherN) $ bd

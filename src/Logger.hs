@@ -17,7 +17,9 @@ data Priority = DEBUG | INFO | WARNING | ERROR
 
 logger :: LogHandle IO -> String -> Priority -> String -> IO ()
 logger h logPath currP str  
-    | currP >= configP = appendFile logPath (show currP ++ ": " ++ str)
+    | currP >= configP = do
+        putStr (show currP ++ ": " ++ str)
+        appendFile logPath (show currP ++ ": " ++ str)
     | otherwise        = return ()
       where configP = cLogLevel (hLogConf h)
 

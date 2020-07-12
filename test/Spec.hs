@@ -65,6 +65,7 @@ main = hspec $ do
         [LOGMSG INFO "App started\n",
         LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n",
         GOTUPDATES,
+        LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
         LOGMSG INFO "No new updates\n"]
 
     it "return [LOGMSG DEBUG, GOTUPDATES, CONFIRMUPDATES, LOGMSG DEBUG] when given unempty update list" $ do
@@ -73,6 +74,7 @@ main = hspec $ do
         [LOGMSG INFO "App started\n",
         LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n", 
         GOTUPDATES,
+        LOGMSG DEBUG $ "Get response: " ++ show json5 ++ "\n",
         LOGMSG INFO "There is old updates list\n",
         LOGMSG DEBUG "Send request to confirmOldUpdates with offset:235800274 https://api.telegram.org/botABC123/getUpdates\n",
         CONFIRMUPDATES 235800274,
