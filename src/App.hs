@@ -100,22 +100,22 @@ chooseAction h upd = do
               modify (changeDB usId (Right newN))
               let infoMsg = T.pack $ "Number of repeats successfully changed from " ++ show oldN ++ " to " ++ show newN ++ "\n"
               lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
-              sendMsgResponse <- lift $ (sendMsg h) usId infoMsg `catch` (\e -> do
+              response <- lift $ (sendMsg h) usId infoMsg `catch` (\e -> do
                                     logError (hLog h) $ show e ++ " SendMessage fail"    
                                     throwM $ DuringSendMsgException (Msg infoMsg) (ToUserId usId) $ show (e :: SomeException))
-              lift $ logDebug (hLog h) ("Get response: " ++ show sendMsgResponse ++ "\n")
-              lift $ checkSendMsgResponse h usId infoMsg sendMsgResponse
+              lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+              lift $ checkSendMsgResponse h usId infoMsg response
               lift $ logInfo (hLog h) ("Msg " ++ show infoMsg  ++ " was sent to user " ++ show usId ++ "\n") 
             Nothing -> do
               lift $ logWarning (hLog h) ("User " ++ show usId ++ " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: " ++ show oldN ++ "\n")
               modify (changeDB usId (Right oldN))
               let infoMsg = T.pack $ "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++ show oldN ++ "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n"
               lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
-              sendMsgResponse <- lift $ (sendMsg h) usId infoMsg `catch` (\e -> do
+              response <- lift $ (sendMsg h) usId infoMsg `catch` (\e -> do
                                      logError (hLog h) $ show e ++ " SendMessage fail"
                                      throwM $ DuringSendMsgException (Msg infoMsg) (ToUserId usId) $ show (e :: SomeException))
-              lift $ logDebug (hLog h) ("Get response: " ++ show sendMsgResponse ++ "\n")
-              lift $ checkSendMsgResponse h usId infoMsg sendMsgResponse
+              lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+              lift $ checkSendMsgResponse h usId infoMsg response
               lift $ logWarning (hLog h) ("Msg " ++ show infoMsg ++ " was sent to user " ++ show usId ++ "\n") 
         _   -> do
           let currN = case lookup usId db of { Just (Right n) -> n ; Nothing -> cStartN (hConf h) }
@@ -123,11 +123,11 @@ chooseAction h upd = do
                 "/help" -> do
                   let infoMsg = T.pack $ cHelpMsg (hConf h)
                   lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
-                  sendMsgResponse <- lift $ (sendMsg h) usId infoMsg `catch` (\e -> do
+                  response <- lift $ (sendMsg h) usId infoMsg `catch` (\e -> do
                                           logError (hLog h) $ show e ++ " SendMessage fail"            
                                           throwM $ DuringSendMsgException (Msg infoMsg) (ToUserId usId) $ show (e :: SomeException))
-                  lift $ logDebug (hLog h) ("Get response: " ++ show sendMsgResponse ++ "\n")
-                  lift $ checkSendMsgResponse h usId infoMsg sendMsgResponse
+                  lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+                  lift $ checkSendMsgResponse h usId infoMsg response
                   lift $ logInfo (hLog h) ("Msg " ++ show infoMsg ++ " was sent to user " ++ show usId ++ "\n")
                 "/repeat" -> do
                   let infoMsg = T.pack $ " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
@@ -142,15 +142,14 @@ chooseAction h upd = do
                   modify (changeDB usId ( Left $ OpenRepeat currN ) )
                 _ -> do
                   let logMsg = "Send request to send msg " ++ show msg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show msg ++ "}\n"
-                  lift $ replicateM currN $ do
+                  lift $ replicateM_ currN $ do
                     logDebug (hLog h) logMsg
-                    sendMsgResponse <- sendMsg h usId msg `catch` (\e -> do
+                    response <- sendMsg h usId msg `catch` (\e -> do
                                           logError (hLog h) $ show e ++ " SendMessage fail"
                                           throwM $ DuringSendMsgException (Msg msg) (ToUserId usId) $ show (e :: SomeException))
-                    logDebug (hLog h) ("Get response: " ++ show sendMsgResponse ++ "\n")
-                    checkSendMsgResponse h usId msg sendMsgResponse
+                    logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+                    checkSendMsgResponse h usId msg response
                     logInfo (hLog h) ("Msg " ++ show msg ++ " was sent to user " ++ show usId ++ "\n")
-                  return () 
 
 
 checkUpdates :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m ()
