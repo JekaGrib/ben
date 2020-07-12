@@ -66,28 +66,7 @@ startApp h = do
                                 logError (hLog h) $ show e ++ " GetUpdates fail at startApp"
                                 throwM $ DuringGetUpdatesException $ "Error at StartApp. " ++ show (e :: SomeException))
   logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
-  case decode json of
-      Nothing                      -> do
-        logError (hLog h) $ " UNKNOWN RESPONSE to getUpdates:\n"   ++ show json
-        throwM $ CheckGetUpdatesResponseException $ "Error at StartApp. UNKNOWN RESPONSE:\n"   ++ show json
-      Just (OkAnswer {ok = False}) -> do
-        logError (hLog h) $ " NEGATIVE RESPONSE to getUpdates\n"  ++ show json
-        throwM $ CheckGetUpdatesResponseException $ "Error at StartApp. NEGATIVE RESPONSE:\n"  ++ show json
-      Just (OkAnswer True)         -> do
-        logError (hLog h) $ " Too short response to getUpdates\n"  ++ show json 
-        throwM $ CheckGetUpdatesResponseException $ "Error at StartApp. Too short response:\n" ++ show json
-      Just (Answer True [])        -> do
-        logInfo (hLog h) ("No new updates\n")
-      Just _                       -> do
-        logInfo (hLog h) ("There is old updates list\n" )
-        let nextUpdate = extractNextUpdate json
-        logDebug (hLog h) ("Send request to confirmOldUpdates with offset:" ++ show nextUpdate ++ " https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" ) 
-        emptyJson <- confirmUpdates h nextUpdate `catch` (\e -> do
-                                logError (hLog h) $ show e ++ " ConfirmUpdates fail at startApp"
-                                throwM $ DuringConfirmUpdatesException $ "Error at StartApp. " ++ show (e :: SomeException) ++ "\nWhen try to confirm old updates: " ++ show json )
-        logDebug (hLog h) ("Get response: " ++ show emptyJson ++ "\n")
-        checkConfirmUpdatesResponse h nextUpdate json emptyJson
-        logInfo (hLog h) ("Received updates confirmed\n" )
+  checkUpdates h json
 
 run :: (Monad m, MonadCatch m)=> Handle m -> StateT [(Int , Either OpenRepeat Int)] m ()
 run h = do
@@ -96,8 +75,8 @@ run h = do
                                   logError (hLog h) $ show e ++ " GetUpdates fail"
                                   throwM $ DuringGetUpdatesException $ show (e :: SomeException))
   lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
-  newJSON <- lift $ checkUpdates h json
-  let upds = extractUpdates $ newJSON
+  lift $ checkUpdates h json
+  let upds = extractUpdates $ json
   mapM_ (chooseAction h) upds
 
 chooseAction :: (Monad m, MonadCatch m)=> Handle m -> Update -> StateT [(Int , Either OpenRepeat Int)] m ()
@@ -174,7 +153,7 @@ chooseAction h upd = do
                   return () 
 
 
-checkUpdates :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m LBS.ByteString
+checkUpdates :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m ()
 checkUpdates h json = do
   case decode json of
       Nothing                      -> do
@@ -188,7 +167,6 @@ checkUpdates h json = do
         throwM $ CheckGetUpdatesResponseException $ "Too short response:\n" ++ show json
       Just (Answer True [])        -> do
         logInfo (hLog h) ("No new updates\n")
-        return json
       Just _                       -> do
         logInfo (hLog h) ("There is new updates list\n" )
         let nextUpdate =  extractNextUpdate $ json
@@ -199,7 +177,6 @@ checkUpdates h json = do
         logDebug (hLog h) ("Get response: " ++ show emptyJson ++ "\n")
         checkConfirmUpdatesResponse h nextUpdate json emptyJson
         logInfo (hLog h) ("Received updates confirmed\n" )
-        return json
 
 checkConfirmUpdatesResponse :: (Monad m, MonadCatch m) => Handle m -> Int -> LBS.ByteString -> LBS.ByteString -> m ()
 checkConfirmUpdatesResponse h offset confirmedJson responseJson = do

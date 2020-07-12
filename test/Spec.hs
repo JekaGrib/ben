@@ -75,20 +75,20 @@ main = hspec $ do
         LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n", 
         GOTUPDATES,
         LOGMSG DEBUG $ "Get response: " ++ show json5 ++ "\n",
-        LOGMSG INFO "There is old updates list\n",
+        LOGMSG INFO "There is new updates list\n",
         LOGMSG DEBUG "Send request to confirmOldUpdates with offset:235800274 https://api.telegram.org/botABC123/getUpdates\n",
         CONFIRMUPDATES 235800274,
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
         LOGMSG INFO "Received updates confirmed\n"]
     
     it "throw Exception on negative getUpdates response" $ do
-      evalStateT (startApp handle2) [] `shouldThrow` ( == (CheckGetUpdatesResponseException $ "Error at StartApp. NEGATIVE RESPONSE:\n" ++ show json2))
+      evalStateT (startApp handle2) [] `shouldThrow` ( == (CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show json2))
 
     it "throw Exception on unknown getUpdates response" $ do
-      evalStateT (startApp handle3) [] `shouldThrow` ( == (CheckGetUpdatesResponseException $ "Error at StartApp. UNKNOWN RESPONSE:\n" ++ show json3))
+      evalStateT (startApp handle3) [] `shouldThrow` ( == (CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:\n" ++ show json3))
     
     it "throw Exception on short getUpdates response" $ do
-      evalStateT (startApp handle4) [] `shouldThrow` ( == (CheckGetUpdatesResponseException $ "Error at StartApp. Too short response:\n" ++ show json4))
+      evalStateT (startApp handle4) [] `shouldThrow` ( == (CheckGetUpdatesResponseException $ "Too short response:\n" ++ show json4))
 
   describe "run" $ do
     it "work with singleton update list with text msg" $ do
