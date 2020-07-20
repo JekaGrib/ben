@@ -25,7 +25,7 @@ sendMsgTest json usId msg = StateT $ \s ->
 
 sendKeybTest :: LBS.ByteString -> Int -> Int -> T.Text-> StateT [MockAction] IO LBS.ByteString
 sendKeybTest json usId currN msg = StateT $ \s -> 
-    return ( json4 , (SENDKEYB usId currN msg) : s)
+    return ( json , (SENDKEYB usId currN msg) : s)
 
 logTest :: Priority -> String -> StateT [MockAction] IO ()
 logTest prio text = StateT $ \s -> 
@@ -240,7 +240,7 @@ main = hspec $ do
         LOGMSG DEBUG $ "Send request to send msg \"UNKNOWN NUMBER\\nI,m ssory, number of repeats has not changed, it is still 2\\nTo change it you may sent me command \\\"/repeat\\\" and then choose number from 1 to 5 on keyboard\\nPlease, try again later\\n\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118947329, text = \"UNKNOWN NUMBER\\nI,m ssory, number of repeats has not changed, it is still 2\\nTo change it you may sent me command \\\"/repeat\\\" and then choose number from 1 to 5 on keyboard\\nPlease, try again later\\n\"}\n",
         SENDMSG 1118947329 $ "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still 2\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n",
         LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
-        LOGMSG WARNING "Msg \"UNKNOWN NUMBER\\nI,m ssory, number of repeats has not changed, it is still 2\\nTo change it you may sent me command \\\"/repeat\\\" and then choose number from 1 to 5 on keyboard\\nPlease, try again later\\n\" was sent to user 1118947329\n"]
+        LOGMSG INFO "Msg \"UNKNOWN NUMBER\\nI,m ssory, number of repeats has not changed, it is still 2\\nTo change it you may sent me command \\\"/repeat\\\" and then choose number from 1 to 5 on keyboard\\nPlease, try again later\\n\" was sent to user 1118947329\n"]
 
     it "throw Exception on negative getUpdates response" $ do
       evalStateT (evalStateT (run handle6) initialDB1 ) [] 
