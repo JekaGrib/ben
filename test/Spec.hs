@@ -8,7 +8,7 @@ import qualified Data.Text                      as T
 import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
 
-data MockAction = GOTUPDATES | SENDMSG Int T.Text | CONFIRMUPDATES Int | SENDKEYB Int Int T.Text | LOGMSG Priority String
+data MockAction = GOTUPDATES | SENDMSG Int T.Text | COPYMSG Int Int | CONFIRMUPDATES Int | SENDKEYB Int Int T.Text | LOGMSG Priority String
                                        deriving (Eq,Show)
 
 
@@ -22,6 +22,10 @@ confirmUpdatesTest json offset = StateT $ \s ->
 sendMsgTest :: LBS.ByteString -> Int -> T.Text -> StateT [MockAction] IO LBS.ByteString
 sendMsgTest json usId msg = StateT $ \s -> 
     return ( json , (SENDMSG usId msg) : s)
+
+copyMsgTest :: LBS.ByteString -> Int -> Int -> StateT [MockAction] IO LBS.ByteString
+copyMsgTest json usId msgId = StateT $ \s -> 
+    return ( json , (COPYMSG usId msgId) : s)
 
 sendKeybTest :: LBS.ByteString -> Int -> Int -> T.Text-> StateT [MockAction] IO LBS.ByteString
 sendKeybTest json usId currN msg = StateT $ \s -> 
@@ -40,7 +44,8 @@ handle1 = Handle { hConf = config1,
                    getShortUpdates = getUpdatesTest json1,
                    confirmUpdates = confirmUpdatesTest json1,
                    sendMsg = sendMsgTest json4,
-                   sendKeyb = sendKeybTest json4}
+                   sendKeyb = sendKeybTest json4,
+                   copyMsg = copyMsgTest json11}
 
 handle2  = handle1 { getShortUpdates = getUpdatesTest json2}
 handle3  = handle1 { getShortUpdates = getUpdatesTest json3}
@@ -103,7 +108,8 @@ main = hspec $ do
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
         LOGMSG INFO "Received updates confirmed\n",
         LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg \"love\" from user 1118947329\n"] ++
+        LOGMSG INFO "Get msg_id: 2112 from user 1118947329\n",
+        LOGMSG INFO "Msg_id:2112 is text: \"love\"\n"] ++
         (concat . replicate 2 $ 
           [LOGMSG DEBUG $ "Send request to send msg \"love\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118947329, text = \"love\"}\n",
           SENDMSG 1118947329 "love",
@@ -121,10 +127,11 @@ main = hspec $ do
         LOGMSG INFO "There is new updates list\n",
         LOGMSG DEBUG "Send request to confirmOldUpdates with offset:235800277 https://api.telegram.org/botABC123/getUpdates\n",
         CONFIRMUPDATES 235800277,
-        LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
+        LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true,\\\"result\\\":[]}\"\n",
         LOGMSG INFO "Received updates confirmed\n",
         LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg \"/help\" from user 1118947329\n",
+        LOGMSG INFO "Get msg_id: 2113 from user 1118947329\n",
+        LOGMSG INFO "Msg_id:2113 is text: \"/help\"\n",
         LOGMSG DEBUG $ "Send request to send msg \"Hello\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118947329, text = \"Hello\"}\n",
         SENDMSG 1118947329 "Hello",
         LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
@@ -144,7 +151,8 @@ main = hspec $ do
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
         LOGMSG INFO "Received updates confirmed\n",
         LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg \"/repeat\" from user 1118947329\n",
+        LOGMSG INFO "Get msg_id: 2114 from user 1118947329\n",
+        LOGMSG INFO "Msg_id:2114 is text: \"/repeat\"\n",
         LOGMSG DEBUG "Send request to send keyboard with message: 2\" : Current number of repeats your message.\\nWhy?\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage\n",
         SENDKEYB 1118947329 2 " : Current number of repeats your message.\nWhy?",
         LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
@@ -153,7 +161,7 @@ main = hspec $ do
       
       
     
-    it "work (do nothing) with unknown update" $ do
+    it "work with sticker update" $ do
       state <- execStateT (evalStateT (run handle11 ) initialDB1 ) []
       reverse state `shouldBe`
         [LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n", 
@@ -165,7 +173,16 @@ main = hspec $ do
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
         LOGMSG INFO "Received updates confirmed\n",
         LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG WARNING "There is UNKNOWN UPDATE. Bot will ignore it\n"]
+        LOGMSG INFO "Get msg_id: 2140 from user 1267750993\n",
+        LOGMSG INFO "Msg_id:2140 is attachment\n",
+        LOGMSG DEBUG "Send request to send attachment msg_id: 2140 to userId 1267750993: https://api.telegram.org/botABC123/copyMessage   JSON body : {chat_id = 1267750993,from_chat_id = 1267750993, message_id = 2140}\n",
+        COPYMSG 1267750993 2140,
+        LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true,\\\"result\\\":{\\\"message_id\\\":2141}}\"\n",
+        LOGMSG INFO "Attachment msg_id: 2140 was sent to user 1267750993\n",
+        LOGMSG DEBUG "Send request to send attachment msg_id: 2140 to userId 1267750993: https://api.telegram.org/botABC123/copyMessage   JSON body : {chat_id = 1267750993,from_chat_id = 1267750993, message_id = 2140}\n",
+        COPYMSG 1267750993 2140,
+        LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true,\\\"result\\\":{\\\"message_id\\\":2141}}\"\n",
+        LOGMSG INFO "Attachment msg_id: 2140 was sent to user 1267750993\n"]
 
     it "work with msg:4 after /repeat" $ do
       dbState <- evalStateT (execStateT (run handle10 >> run handle12) initialDB1 ) []
@@ -181,7 +198,8 @@ main = hspec $ do
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
         LOGMSG INFO "Received updates confirmed\n",
         LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg \"/repeat\" from user 1118947329\n",
+        LOGMSG INFO "Get msg_id: 2114 from user 1118947329\n",
+        LOGMSG INFO "Msg_id:2114 is text: \"/repeat\"\n",
         LOGMSG DEBUG "Send request to send keyboard with message: 2\" : Current number of repeats your message.\\nWhy?\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage\n",
         SENDKEYB 1118947329 2 " : Current number of repeats your message.\nWhy?",
         LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
@@ -196,7 +214,7 @@ main = hspec $ do
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
         LOGMSG INFO "Received updates confirmed\n",
         LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg \"4\" from user 1118947329\n",
+        LOGMSG INFO "Get msg_id: 2117 from user 1118947329\n",
         LOGMSG INFO "User 1118947329 is in OpenRepeat mode\n",
         LOGMSG INFO "Change number of repeats to 4 for user 1118947329\n",
         LOGMSG DEBUG $ "Send request to send msg \"Number of repeats successfully changed from 2 to 4\\n\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118947329, text = \"Number of repeats successfully changed from 2 to 4\\n\"}\n",
@@ -219,7 +237,8 @@ main = hspec $ do
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
         LOGMSG INFO "Received updates confirmed\n",
         LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg \"/repeat\" from user 1118947329\n",
+        LOGMSG INFO "Get msg_id: 2114 from user 1118947329\n",
+        LOGMSG INFO "Msg_id:2114 is text: \"/repeat\"\n",
         LOGMSG DEBUG "Send request to send keyboard with message: 2\" : Current number of repeats your message.\\nWhy?\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage\n",
         SENDKEYB 1118947329 2 " : Current number of repeats your message.\nWhy?",
         LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
@@ -234,7 +253,7 @@ main = hspec $ do
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
         LOGMSG INFO "Received updates confirmed\n",
         LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg \"love\" from user 1118947329\n",
+        LOGMSG INFO "Get msg_id: 2112 from user 1118947329\n",
         LOGMSG INFO "User 1118947329 is in OpenRepeat mode\n",
         LOGMSG WARNING $ "User 1118947329 press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: 2\n",
         LOGMSG DEBUG $ "Send request to send msg \"UNKNOWN NUMBER\\nI,m ssory, number of repeats has not changed, it is still 2\\nTo change it you may sent me command \\\"/repeat\\\" and then choose number from 1 to 5 on keyboard\\nPlease, try again later\\n\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118947329, text = \"UNKNOWN NUMBER\\nI,m ssory, number of repeats has not changed, it is still 2\\nTo change it you may sent me command \\\"/repeat\\\" and then choose number from 1 to 5 on keyboard\\nPlease, try again later\\n\"}\n",
@@ -266,4 +285,4 @@ json7  = "{\"ok\":true,\"result\":[{\"update_id\":235800276,\n\"message\":{\"mes
 json8  = "{\"ok\":true,\"result\":[{\"update_id\":235800275,\n\"message\":{\"message_id\":2114,\"from\":{\"id\":1118947329,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118947329,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594202617,\"text\":\"/repeat\"}}]}"
 json9  = "{\"ok\":true,\"result\":[{\"update_id\":235800286,\n\"message\":{\"message_id\":2140,\"from\":{\"id\":1267750993,\"is_bot\":false,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"language_code\":\"ru\"},\"chat\":{\"id\":1267750993,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"type\":\"private\"},\"date\":1594219382,\"sticker\":{\"width\":512,\"height\":512,\"emoji\":\"\\ud83d\\udc4b\",\"set_name\":\"HotCherry\",\"is_animated\":true,\"thumb\":{\"file_id\":\"AAMCAgADGQEAAghcXwXbdpokxFdrCT29uzt0nEq3KzwAAgUAA8A2TxP5al-agmtNdZc4uA8ABAEAB20AA7V6AAIaBA\",\"file_unique_id\":\"AQADlzi4DwAEtXoAAg\",\"file_size\":3848,\"width\":128,\"height\":128},\"file_id\":\"CAACAgIAAxkBAAIIXF8F23aaJMRXawk9vbs7dJxKtys8AAIFAAPANk8T-WpfmoJrTXUaBA\",\"file_unique_id\":\"AgADBQADwDZPEw\",\"file_size\":7285}}}]}"
 json10 = "{\"ok\":true,\"result\":[{\"update_id\":235800276,\n\"message\":{\"message_id\":2117,\"from\":{\"id\":1118947329,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118947329,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594202617,\"text\":\"4\"}}]}"
-
+json11 = "{\"ok\":true,\"result\":{\"message_id\":2141}}"

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a393cd1ae781c69f054650e71273f7074968dcac0588a71c3eb5a144426f827b
+-- hash: a795cd3c7c2f6e6fc83ea7e1642cea02ef0a3bcf30537bed7750cc05abbfb853
 
 name:           ben
 version:        0.1.0.0
@@ -55,7 +55,7 @@ executable ben-exe
       Paths_ben
   hs-source-dirs:
       app
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , base >=4.7 && <5

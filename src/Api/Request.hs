@@ -31,6 +31,17 @@ data SendMsgJSONBody = SendMsgJSONBody {
 instance ToJSON SendMsgJSONBody where
     toEncoding = genericToEncoding defaultOptions
 
+data CopyMsgJSONBody = CopyMsgJSONBody {
+      chat_idCM :: Int
+    , from_chat_idCM :: Int
+    , msg_idCM  :: Int
+    } deriving (Generic, Show)
+
+instance ToJSON CopyMsgJSONBody where
+  toJSON (CopyMsgJSONBody chat_idCM  from_chat_idCM msg_idCM) =
+    object ["chat_id" .= chat_idCM , "from_chat_id" .= from_chat_idCM, "message_id" .= msg_idCM]
+  toEncoding (CopyMsgJSONBody chat_idCM  from_chat_idCM msg_idCM) =
+    pairs ("chat_id" .= chat_idCM  <> "from_chat_id" .= from_chat_idCM <> "message_id" .= msg_idCM)
 
 data KeybJSONBody = KeybJSONBody {
       chat_idKeyb :: Int

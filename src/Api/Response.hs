@@ -37,20 +37,31 @@ instance FromJSON Update where
         <$> v .: "update_id")
 
 
-data Message = Message { message_id :: Int,
-                         fromUser :: From,
-                         chat :: Chat,
-                         date :: Int,
-                         textMsg :: T.Text
-                       }
+data Message 
+  = TxtMessage 
+    { message_id :: Int,
+      fromUser :: From,
+      chat :: Chat,
+      date :: Int,
+      textMsg :: T.Text }
+  | Message 
+    { message_id :: Int,
+      fromUser :: From,
+      chat :: Chat,
+      date :: Int}
+
 
 instance FromJSON Message where
-    parseJSON = withObject "Message" $ \v -> Message
+    parseJSON (Object v) = (TxtMessage
         <$> v .: "message_id"
         <*> v .: "from"
         <*> v .: "chat"
         <*> v .: "date"
-        <*> v .: "text"
+        <*> v .: "text") <|> (Message
+        <$> v .: "message_id"
+        <*> v .: "from"
+        <*> v .: "chat"
+        <*> v .: "date")
 
 
 data From = From { idUser :: Int,
