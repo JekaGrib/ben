@@ -7,8 +7,8 @@ import           Api.Request
 import           Api.Response
 import           Logger
 import qualified Data.Text                      as T
-import           Network.HTTP.Simple            ( parseRequest, setRequestBody, getResponseBody, httpLBS )
-import           Network.HTTP.Client.Conduit               
+import           Network.HTTP.Client            ( parseRequest, responseBody, httpLbs, method, requestBody, requestHeaders, newManager, defaultManagerSettings, RequestBody(RequestBodyLBS) )
+import           Network.HTTP.Client.TLS        (newTlsManager)
 import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
 import           Data.List
@@ -261,49 +261,54 @@ checkSendKeybResponse h usId n msg json = do
 
 getShortUpdates' :: Handle IO -> IO LBS.ByteString
 getShortUpdates' h = do
+  manager <- newTlsManager 
   req <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
-  res <- httpLBS req
-  return (getResponseBody res)
+  res <- httpLbs req manager
+  return (responseBody res)
 
 getUpdates' :: Handle IO -> IO LBS.ByteString
 getUpdates' h = do
   let toon =  JSONBodyTimeOut {timeout = 25}
+  manager <- newTlsManager 
   initReq <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
   let req = initReq { method = "POST", requestBody = (RequestBodyLBS . encode $ toon), requestHeaders =
                     [ ("Content-Type", "application/json; charset=utf-8")
                     ]}
-  res <- httpLBS req
-  return (getResponseBody res)
+  res <- httpLbs req manager
+  return (responseBody res)
           
 confirmUpdates' :: Handle IO -> Int -> IO LBS.ByteString
 confirmUpdates' h nextUpdate = do
   let bodyOffset =  JSONBodyOffset {offset = nextUpdate }
+  manager <- newTlsManager 
   initReq <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
   let req = initReq { method = "POST", requestBody = (RequestBodyLBS . encode $ bodyOffset), requestHeaders =
                     [ ("Content-Type", "application/json; charset=utf-8")
                     ]}
-  res <- httpLBS req
-  return (getResponseBody res)
+  res <- httpLbs req manager
+  return (responseBody res)
 
 sendMsg' :: Handle IO -> Int -> T.Text -> IO LBS.ByteString
 sendMsg' h usId msg = do
   let msgBody = encode (SendMsgJSONBody {chat_id = usId, text = msg})
+  manager <- newTlsManager 
   initReq <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage")
   let req = initReq { method = "POST", requestBody = (RequestBodyLBS $ msgBody), requestHeaders =
                      [ ("Content-Type", "application/json; charset=utf-8")
                      ]}
-  res <- httpLBS req
-  return (getResponseBody res)
+  res <- httpLbs req manager
+  return (responseBody res)
 
 copyMsg' :: Handle IO -> Int -> Int -> IO LBS.ByteString
 copyMsg' h usId msgId = do
   let msgBody = encode (CopyMsgJSONBody {chat_idCM = usId, from_chat_idCM = usId, msg_idCM = msgId})
+  manager <- newTlsManager 
   initReq <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/copyMessage")
   let req = initReq { method = "POST", requestBody = (RequestBodyLBS $ msgBody), requestHeaders =
                      [ ("Content-Type", "application/json; charset=utf-8")
                      ]}
-  res <- httpLBS req
-  return (getResponseBody res)
+  res <- httpLbs req manager
+  return (responseBody res)
 
 sendKeyb' :: Handle IO -> Int -> Int -> T.Text-> IO LBS.ByteString
 sendKeyb' h usId n msg = do 
@@ -318,13 +323,14 @@ sendKeyb' h usId n msg = do
                                                           one_time_keyboard = True
                                                         }
                            }
+  manager <- newTlsManager 
   initReq <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage")
   let req = initReq { method = "POST",
                       requestBody = (RequestBodyLBS . encode $ keybBody), 
                       requestHeaders = [ ("Content-Type", "application/json; charset=utf-8")]
                     }
-  res <- httpLBS req
-  return (getResponseBody res)
+  res <- httpLbs req manager
+  return (responseBody res)
 
 
 
