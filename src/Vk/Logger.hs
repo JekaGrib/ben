@@ -1,4 +1,4 @@
-module Logger where
+module Vk.Logger where
 
 import           Prelude          hiding (log)
 import           System.IO        (appendFile)

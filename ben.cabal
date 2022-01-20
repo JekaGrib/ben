@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f2e076c06f0f11f3bfb9b917c6cd56adfcc94701b8d7b7f72e4b21b9baa5cc88
+-- hash: 85977380fce1e809381c7a7a6d5d3b5caee9ebc7a22bee3a4fb0fee549692639
 
 name:           ben
 version:        0.1.0.0
@@ -27,10 +27,16 @@ source-repository head
 
 library
   exposed-modules:
-      Api.Request
-      Api.Response
-      App
-      Logger
+      Tg.Api.Request
+      Tg.Api.Response
+      Tg.App
+      Tg.Logger
+      Tg.MainTg
+      Vk.Api.Request
+      Vk.Api.Response
+      Vk.App
+      Vk.Logger
+      Vk.MainVk
   other-modules:
       Paths_ben
   hs-source-dirs:
@@ -38,6 +44,7 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
+    , binary
     , bytestring
     , configurator
     , exceptions
@@ -61,6 +68,7 @@ executable ben-exe
       aeson
     , base >=4.7 && <5
     , ben
+    , binary
     , bytestring
     , configurator
     , exceptions
@@ -85,6 +93,7 @@ test-suite ben-test
       aeson
     , base >=4.7 && <5
     , ben
+    , binary
     , bytestring
     , configurator
     , exceptions

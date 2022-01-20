@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Api.Response where
+module Tg.Api.Response where
 
 import           Data.Aeson
 import           GHC.Generics

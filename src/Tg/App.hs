@@ -1,13 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module App where
+module Tg.App where
 
-import           Api.Request
-import           Api.Response
-import           Logger
+import           Tg.Api.Request
+import           Tg.Api.Response
+import           Tg.Logger
 import qualified Data.Text                      as T
-import           Network.HTTP.Client            ( parseRequest, responseBody, httpLbs, method, requestBody, requestHeaders, newManager, defaultManagerSettings, RequestBody(RequestBodyLBS) )
+import           Network.HTTP.Client            ( parseRequest, responseBody, httpLbs, method, requestBody, requestHeaders, RequestBody(RequestBodyLBS) )
 import           Network.HTTP.Client.TLS        (newTlsManager)
 import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
