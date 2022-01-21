@@ -1,26 +1,28 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Tg.Api.Response where
 
 import           Data.Aeson
-import           GHC.Generics
 import qualified Data.Text                      as T
 import           Control.Applicative
 
 
 data Answer 
-    = Answer 
-        { ok :: Bool,
-          result :: [Update] }
-    | OkAnswer
-        { ok :: Bool}
+  = Answer 
+    { ok :: Bool,
+      result :: [Update] }
+  | OkAnswer
+    { ok :: Bool}
 
 instance FromJSON Answer where
-    parseJSON (Object v) = (Answer
-        <$> v .: "ok"
-        <*> v .: "result") <|> ( OkAnswer
-        <$> v .: "ok")
+  parseJSON = liftA2 (<|>)
+    (withObject "Answer" (\v -> Answer
+      <$> v .: "ok"
+      <*> v .: "result")) 
+    (withObject "OkAnswer" (\v -> OkAnswer
+      <$> v .: "ok"))
 
 
 data Update
@@ -31,10 +33,12 @@ data Update
         { update_id :: Int }
 
 instance FromJSON Update where
-    parseJSON (Object v) = (Update
+  parseJSON = liftA2 (<|>)
+      (withObject "Update" (\v -> Update
         <$> v .: "update_id"
-        <*> v .: "message") <|> ( UnknownUpdate
-        <$> v .: "update_id")
+        <*> v .: "message"))
+      (withObject "UnknownUpdate" (\v -> UnknownUpdate
+        <$> v .: "update_id"))
 
 
 data Message 
@@ -50,18 +54,19 @@ data Message
       chat :: Chat,
       date :: Int}
 
-
 instance FromJSON Message where
-    parseJSON (Object v) = (TxtMessage
+  parseJSON = liftA2 (<|>)
+      (withObject "TxtMessage" (\v -> TxtMessage
         <$> v .: "message_id"
         <*> v .: "from"
         <*> v .: "chat"
         <*> v .: "date"
-        <*> v .: "text") <|> (Message
+        <*> v .: "text"))
+      (withObject "Message" (\v -> Message
         <$> v .: "message_id"
         <*> v .: "from"
         <*> v .: "chat"
-        <*> v .: "date")
+        <*> v .: "date"))
 
 
 data From = From { idUser :: Int,
