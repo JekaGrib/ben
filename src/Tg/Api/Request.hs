@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -38,10 +40,10 @@ data CopyMsgJSONBody = CopyMsgJSONBody {
     } deriving (Generic, Show)
 
 instance ToJSON CopyMsgJSONBody where
-  toJSON (CopyMsgJSONBody chat_idCM  from_chat_idCM msg_idCM) =
-    object ["chat_id" .= chat_idCM , "from_chat_id" .= from_chat_idCM, "message_id" .= msg_idCM]
-  toEncoding (CopyMsgJSONBody chat_idCM  from_chat_idCM msg_idCM) =
-    pairs ("chat_id" .= chat_idCM  <> "from_chat_id" .= from_chat_idCM <> "message_id" .= msg_idCM)
+  toJSON (CopyMsgJSONBody a b c) =
+    object ["chat_id" .= a, "from_chat_id" .= b, "message_id" .= c]
+  toEncoding (CopyMsgJSONBody a b c) =
+    pairs ("chat_id" .= a  <> "from_chat_id" .= b <> "message_id" .= c)
 
 data KeybJSONBody = KeybJSONBody {
       chat_idKeyb :: Int
@@ -50,10 +52,10 @@ data KeybJSONBody = KeybJSONBody {
     } deriving (Generic, Show)
 
 instance ToJSON KeybJSONBody where
-  toJSON (KeybJSONBody chat_idKeyb  textKeyb reply_markup) =
-    object ["chat_id" .= chat_idKeyb , "text" .= textKeyb, "reply_markup" .= reply_markup]
-  toEncoding (KeybJSONBody chat_idKeyb  textKeyb reply_markup) =
-    pairs ("chat_id" .= chat_idKeyb  <> "text" .= textKeyb <> "reply_markup" .= reply_markup)
+  toJSON (KeybJSONBody a b c) =
+    object ["chat_id" .= a, "text" .= b, "reply_markup" .= c]
+  toEncoding (KeybJSONBody a b c) =
+    pairs ("chat_id" .= a  <> "text" .= b <> "reply_markup" .= c)
 
 
 data KeyBoard = KeyBoard {
@@ -62,10 +64,10 @@ data KeyBoard = KeyBoard {
     } deriving (Generic, Show)
 
 instance ToJSON KeyBoard where
-  toJSON (KeyBoard keyboard one_time_keyboard) =
-    object ["keyboard" .= keyboard, "one_time_keyboard" .= one_time_keyboard]
-  toEncoding (KeyBoard keyboard one_time_keyboard) =
-    pairs ("keyboard" .= keyboard <> "one_time_keyboard" .= one_time_keyboard)    
+  toJSON (KeyBoard a b) =
+    object ["keyboard" .= a, "one_time_keyboard" .= b]
+  toEncoding (KeyBoard a b) =
+    pairs ("keyboard" .= a <> "one_time_keyboard" .= b)    
 
 
 data KeyButton = KeyButton {
@@ -73,8 +75,8 @@ data KeyButton = KeyButton {
     } deriving (Generic, Show)
 
 instance ToJSON KeyButton where
-  toJSON (KeyButton textBtn) =
-    object ["text" .= textBtn]
-  toEncoding (KeyButton textBtn) =
-    pairs ("text" .= textBtn)
+  toJSON (KeyButton a) =
+    object ["text" .= a]
+  toEncoding (KeyButton a) =
+    pairs ("text" .= a)
 

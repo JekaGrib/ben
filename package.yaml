@@ -37,6 +37,7 @@ dependencies:
 library:
   source-dirs: src
 
+
 executables:
   ben-exe:
     main:                Main.hs
