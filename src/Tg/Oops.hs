@@ -7,6 +7,9 @@ import qualified Data.Text                      as T
 import           Control.Monad.Catch            (Exception, MonadCatch(..), SomeException, throwM)
 import qualified Data.ByteString.Lazy           as LBS
 import           Tg.Logger                      (LogHandle(..), logError)
+import qualified Control.Exception              as E
+import qualified Data.Configurator.Types        as C
+
 
 
 data TGBotException 
@@ -23,6 +26,7 @@ data TGBotException
   | DuringGetTimeException String
   | DuringPullConfigException String
   | DuringParseConfigException String
+  | DuringInputException String
     deriving (Eq,Show)
 
 instance Exception TGBotException 
@@ -61,8 +65,24 @@ handleExConfUpd logH json e = do
   let ex = DuringConfirmUpdatesException $ show e ++ "\nWhen try to confirm old updates: " ++ show json 
   logError logH $ show ex
   throwM ex
- 
 
 
+handleExPullConf :: E.SomeException -> IO C.Config
+handleExPullConf e = do
+  putStrLn $ show e
+  E.throw $ DuringPullConfigException $ show e 
 
- 
+handleExParseConf :: String -> E.SomeException -> IO a
+handleExParseConf str e = do
+  putStrLn $ show e
+  E.throw $ DuringParseConfigException $ str ++ "\n" ++ show e 
+
+handleExGetTime :: E.SomeException -> IO String
+handleExGetTime e = do
+  putStrLn $ show e
+  E.throw $ DuringGetTimeException $ show e 
+
+handleExInput :: String -> E.SomeException -> IO a
+handleExInput str e = do
+  putStrLn $ show e
+  E.throw $ DuringInputException $ str ++ "\n" ++ show e 
