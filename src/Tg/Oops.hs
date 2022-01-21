@@ -1,16 +1,13 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Tg.Oops where
-
-
---import           Control.Monad.State            (StateT, lift, modify, replicateM_, get)
 
 import qualified Data.Text                      as T
 import           Control.Monad.Catch            (Exception, MonadCatch(..), SomeException, throwM)
 import qualified Data.ByteString.Lazy           as LBS
 import           Tg.Logger                      (LogHandle(..), logError)
+
 
 data TGBotException 
   = DuringGetUpdatesException String

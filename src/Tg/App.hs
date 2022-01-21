@@ -7,7 +7,8 @@ module Tg.App where
 import           Tg.Api.Request                 (JSONBodyTimeOut(..), JSONBodyOffset(..), SendMsgJSONBody(..), CopyMsgJSONBody(..), KeybJSONBody(..), KeyBoard(..), KeyButton(..))
 import           Tg.Api.Response                (Answer(..), Update(..), Message(..), From(..))
 import           Tg.Logger                      (LogHandle(..), logDebug, logInfo, logWarning, logError)
-import           Tg.Oops
+import           Tg.Oops                        (TGBotException(..), handleExGetUpd, handleExSendMsg, handleExCopyMsg, handleExSendKeyb, handleExConfUpd, Msg(..), ToUserId(..), MsgId(..))
+import           Tg.Conf                        (Config(..))
 import qualified Data.Text                      as T
 import           Network.HTTP.Client            (parseRequest, responseBody, httpLbs, method, requestBody, requestHeaders, RequestBody(RequestBodyLBS) )
 import           Network.HTTP.Client.TLS        (newTlsManager)
@@ -28,13 +29,6 @@ data Handle m = Handle
     sendMsg          :: Integer -> T.Text -> m LBS.ByteString,
     sendKeyb         :: Integer -> Int -> T.Text -> m LBS.ByteString,
     copyMsg          :: Integer -> Integer -> m LBS.ByteString
-    }
-
-data Config = Config 
-  { cStartN   :: Int,
-    cBotToken :: String,
-    cHelpMsg  :: String,
-    cRepeatQ  :: String
     }
 
 data OpenRepeat = OpenRepeat Int
