@@ -58,7 +58,7 @@ run h = do
   let upds = extractUpdates $ json
   mapM_ (chooseActionOfUpd h) upds
 
-chooseActionOfUpd :: (Monad m, MonadCatch m)=> Handle m -> Update -> StateT [(Integer , Either OpenRepeat Int)] m ()
+chooseActionOfUpd :: (Monad m, MonadCatch m) => Handle m -> Update -> StateT [(Integer , Either OpenRepeat Int)] m ()
 chooseActionOfUpd h upd = do
   lift $ logInfo (hLog h) ("Analysis update from the list\n")
   case upd of
@@ -69,42 +69,56 @@ chooseActionOfUpd h upd = do
       let msgId = message_id msg
       let usId = extractUserId $ upd
       lift $ logInfo (hLog h) ("Get msg_id: " ++ show msgId ++ " from user " ++ show usId ++ "\n")
-      db <- get
-      case lookup usId db of 
-        Just (Left (OpenRepeat oldN)) -> do
-          lift $ logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode\n")
-          case checkButton msg of
-            Just newN -> do
-              lift $ logInfo (hLog h) ("Change number of repeats to " ++ show newN ++ " for user " ++ show usId ++ "\n")
-              modify (changeDB usId (Right newN))
-              let infoMsg = T.pack $ "Number of repeats successfully changed from " ++ show oldN ++ " to " ++ show newN ++ "\n"
-              lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
-              response <- lift $ (sendMsg h) usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
-              lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-              lift $ checkSendMsgResponse h usId infoMsg response 
-            Nothing -> do
-              lift $ logWarning (hLog h) ("User " ++ show usId ++ " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: " ++ show oldN ++ "\n")
-              modify (changeDB usId (Right oldN))
-              let infoMsg = T.pack $ "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++ show oldN ++ "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n"
-              lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
-              response <- lift $ (sendMsg h) usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
-              lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-              lift $ checkSendMsgResponse h usId infoMsg response 
-        _   -> do
-          let currN = case lookup usId db of { Just (Right n) -> n ; Nothing -> cStartN (hConf h); _ -> 1 }
-          case pullTextMsg msg of 
-            Just txt -> do
-              lift $ logInfo (hLog h) ("Msg_id:" ++ show msgId ++ " is text: " ++ show txt ++ "\n")
-              chooseActionOfTxt h currN usId txt
-            Nothing  -> do
-              lift $ logInfo (hLog h) ("Msg_id:" ++ show msgId ++ " is attachment\n")
-              let logMsg = "Send request to send attachment msg_id: " ++ show msgId ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/copyMessage   JSON body : {chat_id = " ++ show usId ++ ",from_chat_id = " ++ show usId ++ ", message_id = " ++ show msgId ++ "}\n"
-              lift $ replicateM_ currN $ do
-                logDebug (hLog h) logMsg
-                response <- copyMsg h usId msgId `catch` handleExCopyMsg (hLog h) usId msgId
-                logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-                checkCopyMsgResponse h usId msgId response
-                    
+      chooseActionOfDbState h msg msgId usId
+      
+chooseActionOfDbState :: (Monad m, MonadCatch m) => Handle m -> Message -> Integer -> Integer -> StateT [(Integer , Either OpenRepeat Int)] m ()
+chooseActionOfDbState h msg msgId usId = do
+  db <- get
+  let nState = lookup usId db
+  case nState of 
+    Just (Left (OpenRepeat oldN)) -> do
+      lift $ logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode\n")
+      chooseActionOfButton h msg usId oldN  
+    Just (Right n) -> do
+      let currN = n 
+      chooseActionOfTryPullTxt h msg msgId usId currN
+    Nothing -> do
+      let currN = cStartN (hConf h)
+      chooseActionOfTryPullTxt h msg msgId usId currN
+
+chooseActionOfTryPullTxt :: (Monad m, MonadCatch m) => Handle m -> Message -> Integer -> Integer -> Int -> StateT [(Integer , Either OpenRepeat Int)] m ()
+chooseActionOfTryPullTxt h msg msgId usId currN = case pullTextMsg msg of 
+  Just txt -> do
+    lift $ logInfo (hLog h) ("Msg_id:" ++ show msgId ++ " is text: " ++ show txt ++ "\n")
+    chooseActionOfTxt h currN usId txt
+  Nothing  -> do
+    lift $ logInfo (hLog h) ("Msg_id:" ++ show msgId ++ " is attachment\n")
+    let logMsg = "Send request to send attachment msg_id: " ++ show msgId ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/copyMessage   JSON body : {chat_id = " ++ show usId ++ ",from_chat_id = " ++ show usId ++ ", message_id = " ++ show msgId ++ "}\n"
+    lift $ replicateM_ currN $ do
+      logDebug (hLog h) logMsg
+      response <- copyMsg h usId msgId `catch` handleExCopyMsg (hLog h) usId msgId
+      logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+      checkCopyMsgResponse h usId msgId response
+
+chooseActionOfButton :: (Monad m, MonadCatch m) => Handle m -> Message -> Integer -> Int -> StateT [(Integer , Either OpenRepeat Int)] m ()
+chooseActionOfButton h msg usId oldN = case checkButton msg of
+  Just newN -> do
+    lift $ logInfo (hLog h) ("Change number of repeats to " ++ show newN ++ " for user " ++ show usId ++ "\n")
+    modify (changeDB usId (Right newN))
+    let infoMsg = T.pack $ "Number of repeats successfully changed from " ++ show oldN ++ " to " ++ show newN ++ "\n"
+    lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
+    response <- lift $ (sendMsg h) usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
+    lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+    lift $ checkSendMsgResponse h usId infoMsg response 
+  Nothing -> do
+    lift $ logWarning (hLog h) ("User " ++ show usId ++ " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: " ++ show oldN ++ "\n")
+    modify (changeDB usId (Right oldN))
+    let infoMsg = T.pack $ "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++ show oldN ++ "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n"
+    lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
+    response <- lift $ (sendMsg h) usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
+    lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+    lift $ checkSendMsgResponse h usId infoMsg response 
+
 chooseActionOfTxt :: (Monad m, MonadCatch m) => Handle m -> Int -> Integer -> T.Text -> StateT [(Integer , Either OpenRepeat Int)] m ()
 chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
   "/help" -> do
