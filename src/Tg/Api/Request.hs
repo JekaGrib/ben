@@ -1,12 +1,12 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Tg.Api.Request where
 
-import           Data.Aeson
-import           GHC.Generics
+import           Data.Aeson                     (ToJSON, toJSON, toEncoding, object, pairs, (.=), genericToEncoding, defaultOptions)
+import           GHC.Generics                   (Generic)
 import qualified Data.Text                      as T
 
 data JSONBodyOffset = JSONBodyOffset {
@@ -33,6 +33,7 @@ data SendMsgJSONBody = SendMsgJSONBody {
 instance ToJSON SendMsgJSONBody where
     toEncoding = genericToEncoding defaultOptions
 
+
 data CopyMsgJSONBody = CopyMsgJSONBody {
       chat_idCM :: Int
     , from_chat_idCM :: Int
@@ -44,6 +45,7 @@ instance ToJSON CopyMsgJSONBody where
     object ["chat_id" .= a, "from_chat_id" .= b, "message_id" .= c]
   toEncoding (CopyMsgJSONBody a b c) =
     pairs ("chat_id" .= a  <> "from_chat_id" .= b <> "message_id" .= c)
+
 
 data KeybJSONBody = KeybJSONBody {
       chat_idKeyb :: Int
