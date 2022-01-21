@@ -27,10 +27,10 @@ instance FromJSON Answer where
 
 data Update
   = Update 
-      { update_id :: Int,
+      { update_id :: Integer,
         message :: Message }
   | UnknownUpdate 
-      { update_id :: Int }
+      { update_id :: Integer }
 
 instance FromJSON Update where
   parseJSON = liftA2 (<|>)
@@ -43,13 +43,13 @@ instance FromJSON Update where
 
 data Message 
   = TxtMessage 
-    { message_id :: Int,
+    { message_id :: Integer,
       fromUser :: From,
       chat :: Chat,
       date :: Int,
       textMsg :: T.Text }
   | Message 
-    { message_id :: Int,
+    { message_id :: Integer,
       fromUser :: From,
       chat :: Chat,
       date :: Int}
@@ -69,7 +69,7 @@ instance FromJSON Message where
         <*> v .: "date"))
 
 
-data From = From { idUser :: Int,
+data From = From { idUser :: Integer,
                    is_bot :: Bool,
                    first_name :: T.Text,
                    last_name :: T.Text,
@@ -84,7 +84,7 @@ instance FromJSON From where
         <*> v .: "language_code"
 
 
-data Chat = Chat { id1 :: Int,
+data Chat = Chat { id1 :: Integer,
                    first_nameChat :: T.Text,
                    last_nameChat :: T.Text,
                    typ :: T.Text }

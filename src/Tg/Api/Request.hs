@@ -10,7 +10,7 @@ import           GHC.Generics                   (Generic)
 import qualified Data.Text                      as T
 
 data JSONBodyOffset = JSONBodyOffset {
-      offset :: Int
+      offset :: Integer
     } deriving (Generic, Show)
 
 instance ToJSON JSONBodyOffset where
@@ -18,7 +18,7 @@ instance ToJSON JSONBodyOffset where
 
 
 data JSONBodyTimeOut = JSONBodyTimeOut {
-      timeout :: Int
+      timeout :: Integer
     } deriving (Generic, Show)
 
 instance ToJSON JSONBodyTimeOut where
@@ -26,7 +26,7 @@ instance ToJSON JSONBodyTimeOut where
 
 
 data SendMsgJSONBody = SendMsgJSONBody {
-      chat_id :: Int
+      chat_id :: Integer
     , text  :: T.Text
     } deriving (Generic, Show)
 
@@ -35,9 +35,9 @@ instance ToJSON SendMsgJSONBody where
 
 
 data CopyMsgJSONBody = CopyMsgJSONBody {
-      chat_idCM :: Int
-    , from_chat_idCM :: Int
-    , msg_idCM  :: Int
+      chat_idCM :: Integer
+    , from_chat_idCM :: Integer
+    , msg_idCM  :: Integer
     } deriving (Generic, Show)
 
 instance ToJSON CopyMsgJSONBody where
@@ -48,7 +48,7 @@ instance ToJSON CopyMsgJSONBody where
 
 
 data KeybJSONBody = KeybJSONBody {
-      chat_idKeyb :: Int
+      chat_idKeyb :: Integer
     , textKeyb  :: T.Text
     , reply_markup :: KeyBoard
     } deriving (Generic, Show)

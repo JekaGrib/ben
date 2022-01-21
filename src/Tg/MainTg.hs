@@ -4,7 +4,8 @@
 
 module Tg.MainTg where
 
-import           Tg.App                         (startApp, run, Handle(..), Config(..), TGBotException(..), getUpdates', getShortUpdates', confirmUpdates', sendMsg', sendKeyb', copyMsg')
+import           Tg.App                         (startApp, run, Handle(..), Config(..), getUpdates', getShortUpdates', confirmUpdates', sendMsg', sendKeyb', copyMsg')
+import           Tg.Oops                        (TGBotException(..))
 import           Tg.Logger                      (Priority(..), LogHandle(..), LogConfig(..), logger)
 import qualified Data.Configurator              as C
 import qualified Data.Configurator.Types        as C
