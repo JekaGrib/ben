@@ -1,25 +1,17 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Tg.MainTg where
 
-import           Tg.App
-import           Tg.Logger
+import           Tg.App                         (startApp, run, Handle(..), Config(..), TGBotException(..), getUpdates', getShortUpdates', confirmUpdates', sendMsg', sendKeyb', copyMsg')
+import           Tg.Logger                      (Priority(..), LogHandle(..), LogConfig(..), logger)
 import qualified Data.Configurator              as C
 import qualified Data.Configurator.Types        as C
-import           Control.Monad.State
-import           Data.Char
+import           Control.Monad.State            (evalStateT, forever)
+import           Data.Char                      (toUpper)
 import qualified Control.Exception              as E
-import           Data.Time.LocalTime
-
-
-pullConfig :: IO C.Config
-pullConfig = do
-  C.load [C.Required "./bot.config"] 
-    `E.catch` (\e -> putStrLn (show (e :: C.ConfigError)) >> return C.empty)
-    `E.catch` (\e -> putStrLn (show (e :: C.KeyError   )) >> return C.empty)
-    `E.catch` (\e -> putStrLn (show (e :: E.IOException  )) >> return C.empty)
-    `E.catch` (\e -> E.throw $ DuringPullConfigException  $ show (e :: E.SomeException))
+import           Data.Time.LocalTime            (getZonedTime)
 
 
 mainTg :: IO ()
@@ -39,14 +31,22 @@ mainTg =  do
   startApp handle
   evalStateT (forever $ run handle ) []
 
+
+pullConfig :: IO C.Config
+pullConfig = do
+  C.load [C.Required "./bot.config"] 
+    `E.catch` (\e -> putStrLn (show (e :: C.ConfigError)) >> return C.empty)
+    `E.catch` (\e -> putStrLn (show (e :: C.KeyError   )) >> return C.empty)
+    `E.catch` (\e -> putStrLn (show (e :: E.IOException  )) >> return C.empty)
+    `E.catch` (\e -> E.throw $ DuringPullConfigException  $ show (e :: E.SomeException))
+
+
 getTime :: IO String
 getTime = (do
   time    <- getZonedTime
   return $ show time)     
     `E.catch` (\e -> ((putStrLn $ show (e :: E.SomeException)) >> inputLocalTime) )
-    
-      
-
+  
 
 parseConfStartN :: C.Config -> IO Int
 parseConfStartN conf = (do
@@ -106,7 +106,6 @@ parseConfRepeatQ conf = (do
     Nothing -> inputRepeatQ
     Just n  -> return n)
       `E.catch` (\e -> E.throw $ DuringParseConfigException $ "repeatQuestion\n" ++ show (e :: E.SomeException))
-
 
 
 inputStartN :: IO Int
