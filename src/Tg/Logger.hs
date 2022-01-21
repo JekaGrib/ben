@@ -1,8 +1,9 @@
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
+
 module Tg.Logger where
 
 import           Prelude          hiding (log)
-import           System.IO        (appendFile)
-
 
 
 data LogHandle m = LogHandle 
@@ -29,6 +30,5 @@ logInfo    h = log h INFO
 logWarning h = log h WARNING
 logError   h = log h ERROR
 
---handleLog = LogHandle (logger handleLog) (hLogConf handleLog)
 
 
