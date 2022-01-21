@@ -4,19 +4,18 @@
 
 module Tg.App where
 
-import           Tg.Api.Request                (JSONBodyTimeOut(..), JSONBodyOffset(..), SendMsgJSONBody(..), CopyMsgJSONBody(..), KeybJSONBody(..), KeyBoard(..), KeyButton(..))
-import           Tg.Api.Response
-import           Tg.Logger
+import           Tg.Api.Request                 (JSONBodyTimeOut(..), JSONBodyOffset(..), SendMsgJSONBody(..), CopyMsgJSONBody(..), KeybJSONBody(..), KeyBoard(..), KeyButton(..))
+import           Tg.Api.Response                (Answer(..), Update(..), Message(..), From(..))
+import           Tg.Logger                      (LogHandle(..), logDebug, logInfo, logWarning, logError)
 import qualified Data.Text                      as T
 import           Network.HTTP.Client            (parseRequest, responseBody, httpLbs, method, requestBody, requestHeaders, RequestBody(RequestBodyLBS) )
 import           Network.HTTP.Client.TLS        (newTlsManager)
 import qualified Data.ByteString.Lazy           as LBS
-import           Control.Monad.State
-import           Data.List
-import           Prelude                        hiding (log)
+import           Control.Monad.State            (StateT, lift, modify, replicateM_, get)
+import           Data.List                      (delete)
 import           Data.Aeson                     (decode, encode)
 import           Data.Maybe                     (fromJust)
-import           Control.Monad.Catch
+import           Control.Monad.Catch            (Exception, MonadCatch(..), SomeException, throwM)
 
 data Msg           = Msg        T.Text            deriving (Eq,Show)
 data ToUserId      = ToUserId   Int               deriving (Eq,Show)
