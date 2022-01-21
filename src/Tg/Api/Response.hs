@@ -4,9 +4,9 @@
 
 module Tg.Api.Response where
 
-import           Data.Aeson
+import           Data.Aeson                     (FromJSON, parseJSON, (.:), withObject)
 import qualified Data.Text                      as T
-import           Control.Applicative
+import           Control.Applicative            (liftA2, (<|>))
 
 
 data Answer 
@@ -26,11 +26,11 @@ instance FromJSON Answer where
 
 
 data Update
-    = Update 
-        { update_id :: Int,
-          message :: Message }
-    | UnknownUpdate 
-        { update_id :: Int }
+  = Update 
+      { update_id :: Int,
+        message :: Message }
+  | UnknownUpdate 
+      { update_id :: Int }
 
 instance FromJSON Update where
   parseJSON = liftA2 (<|>)
