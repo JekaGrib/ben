@@ -1,22 +1,22 @@
-{-# LANGUAGE DeriveGeneric #-}
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Tg.App where
 
-import           Tg.Api.Request
+import           Tg.Api.Request                (JSONBodyTimeOut(..), JSONBodyOffset(..), SendMsgJSONBody(..), CopyMsgJSONBody(..), KeybJSONBody(..), KeyBoard(..), KeyButton(..))
 import           Tg.Api.Response
 import           Tg.Logger
 import qualified Data.Text                      as T
-import           Network.HTTP.Client            ( parseRequest, responseBody, httpLbs, method, requestBody, requestHeaders, RequestBody(RequestBodyLBS) )
+import           Network.HTTP.Client            (parseRequest, responseBody, httpLbs, method, requestBody, requestHeaders, RequestBody(RequestBodyLBS) )
 import           Network.HTTP.Client.TLS        (newTlsManager)
 import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
 import           Data.List
 import           Prelude                        hiding (log)
-import           Data.Aeson
+import           Data.Aeson                     (decode, encode)
 import           Data.Maybe                     (fromJust)
 import           Control.Monad.Catch
-import qualified Control.Exception              as E
 
 data Msg           = Msg        T.Text            deriving (Eq,Show)
 data ToUserId      = ToUserId   Int               deriving (Eq,Show)
@@ -91,7 +91,7 @@ chooseActionOfUpd h upd = do
     UnknownUpdate _ -> do 
       lift $ logWarning (hLog h) ("There is UNKNOWN UPDATE. Bot will ignore it\n")
       return ()
-    Update upId msg -> do
+    Update _ msg -> do
       let msgId = message_id msg
       let usId = extractUserId $ upd
       lift $ logInfo (hLog h) ("Get msg_id: " ++ show msgId ++ " from user " ++ show usId ++ "\n")
@@ -121,7 +121,7 @@ chooseActionOfUpd h upd = do
               lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
               lift $ checkSendMsgResponse h usId infoMsg response 
         _   -> do
-          let currN = case lookup usId db of { Just (Right n) -> n ; Nothing -> cStartN (hConf h) }
+          let currN = case lookup usId db of { Just (Right n) -> n ; Nothing -> cStartN (hConf h); _ -> 1 }
           case pullTextMsg msg of 
             Just txt -> do
               lift $ logInfo (hLog h) ("Msg_id:" ++ show msgId ++ " is text: " ++ show txt ++ "\n")
@@ -197,17 +197,17 @@ checkAndConfirmUpdates h json = do
         
 
 checkConfirmUpdatesResponse :: (Monad m, MonadCatch m) => Handle m -> Int -> LBS.ByteString -> LBS.ByteString -> m ()
-checkConfirmUpdatesResponse h offset confirmedJson responseJson = do
+checkConfirmUpdatesResponse h offsetArg confirmedJson responseJson = do
   case decode responseJson of
       Nothing                      -> do
         logError (hLog h) $ "UNKNOWN RESPONSE to confirmUpdates:\n" ++ show responseJson 
-        throwM $ CheckConfirmUpdatesResponseException $ "UNKNOWN RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nPROBABLY NOT CONFIRM with offset: " ++ show offset 
+        throwM $ CheckConfirmUpdatesResponseException $ "UNKNOWN RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nPROBABLY NOT CONFIRM with offset: " ++ show offsetArg 
       Just (OkAnswer {ok = False}) -> do
         logError (hLog h) $ "NEGATIVE RESPONSE to confirmUpdates:\n" ++ show responseJson
-        throwM $ CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offset
+        throwM $ CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg
       Just (Answer False _) -> do
         logError (hLog h) $ "NEGATIVE RESPONSE to confirmUpdates:\n" ++ show responseJson
-        throwM $ CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offset  
+        throwM $ CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg  
       Just _                       -> do
         logInfo (hLog h) ("Received updates confirmed\n" )
 
@@ -360,8 +360,8 @@ checkButton msg =
     Nothing  -> Nothing
 
 checkTextButton :: T.Text -> Maybe Int
-checkTextButton text =
-    case text of 
+checkTextButton txt =
+    case txt of 
       { "1" -> Just 1 ; "2" -> Just 2 ; "3" -> Just 3 ; "4" -> Just 4 ; "5" -> Just 5 ; _ -> Nothing }
 
 {-isTextMsg :: Message -> Bool
