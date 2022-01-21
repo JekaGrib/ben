@@ -6,30 +6,31 @@ module TestTg where
 import           Test.Hspec
 import           Tg.App
 import           Tg.Logger
+import           Tg.Oops
 import qualified Data.Text                      as T
 import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
 
-data MockAction = GOTUPDATES | SENDMSG Int T.Text | COPYMSG Int Int | CONFIRMUPDATES Int | SENDKEYB Int Int T.Text | LOGMSG Priority String
+data MockAction = GOTUPDATES | SENDMSG Integer T.Text | COPYMSG Integer Integer | CONFIRMUPDATES Integer | SENDKEYB Integer Int T.Text | LOGMSG Priority String
                                        deriving (Eq,Show)
 
 
 getUpdatesTest:: LBS.ByteString -> StateT [MockAction] IO LBS.ByteString
 getUpdatesTest json = StateT $ \s -> return ( json , GOTUPDATES : s)
 
-confirmUpdatesTest :: LBS.ByteString -> Int -> StateT [MockAction] IO LBS.ByteString
+confirmUpdatesTest :: LBS.ByteString -> Integer -> StateT [MockAction] IO LBS.ByteString
 confirmUpdatesTest json offset = StateT $ \s -> 
     return ( json , (CONFIRMUPDATES offset) : s)
 
-sendMsgTest :: LBS.ByteString -> Int -> T.Text -> StateT [MockAction] IO LBS.ByteString
+sendMsgTest :: LBS.ByteString -> Integer -> T.Text -> StateT [MockAction] IO LBS.ByteString
 sendMsgTest json usId msg = StateT $ \s -> 
     return ( json , (SENDMSG usId msg) : s)
 
-copyMsgTest :: LBS.ByteString -> Int -> Int -> StateT [MockAction] IO LBS.ByteString
+copyMsgTest :: LBS.ByteString -> Integer -> Integer -> StateT [MockAction] IO LBS.ByteString
 copyMsgTest json usId msgId = StateT $ \s -> 
     return ( json , (COPYMSG usId msgId) : s)
 
-sendKeybTest :: LBS.ByteString -> Int -> Int -> T.Text-> StateT [MockAction] IO LBS.ByteString
+sendKeybTest :: LBS.ByteString -> Integer -> Int -> T.Text-> StateT [MockAction] IO LBS.ByteString
 sendKeybTest json usId currN msg = StateT $ \s -> 
     return ( json , (SENDKEYB usId currN msg) : s)
 
