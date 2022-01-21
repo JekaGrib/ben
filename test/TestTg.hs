@@ -7,6 +7,7 @@ import           Test.Hspec
 import           Tg.App
 import           Tg.Logger
 import           Tg.Oops
+import           Tg.Conf
 import qualified Data.Text                      as T
 import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
@@ -39,7 +40,7 @@ logTest prio text = StateT $ \s ->
     return (() , LOGMSG prio text : s)
 
 
-config1 = Config { cStartN = 2 , cBotToken = "ABC123" , cHelpMsg = "Hello" , cRepeatQ = "Why?"}
+config1 = Config { cStartN = 2 , cBotToken = "ABC123" , cHelpMsg = "Hello" , cRepeatQ = "Why?", cPriority = DEBUG}
 handleLog1 = LogHandle (LogConfig DEBUG) logTest
 handle1 = Handle { hConf = config1,
                    hLog = handleLog1,

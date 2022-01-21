@@ -11,7 +11,6 @@ import qualified Control.Exception              as E
 import qualified Data.Configurator.Types        as C
 
 
-
 data TGBotException 
   = DuringGetUpdatesException String
   | CheckGetUpdatesResponseException String
@@ -35,6 +34,7 @@ data Msg           = Msg        T.Text            deriving (Eq,Show)
 data ToUserId      = ToUserId   Integer           deriving (Eq,Show)
 data MsgId         = MsgId      Integer           deriving (Eq,Show)
 
+-- handles for logic functions:
 
 handleExGetUpd :: (Monad m, MonadCatch m) => LogHandle m -> SomeException -> m LBS.ByteString
 handleExGetUpd logH e = do
@@ -66,6 +66,7 @@ handleExConfUpd logH json e = do
   logError logH $ show ex
   throwM ex
 
+-- handles for IO configuration functions:
 
 handleExPullConf :: E.SomeException -> IO C.Config
 handleExPullConf e = do

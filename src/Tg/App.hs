@@ -34,6 +34,7 @@ data Handle m = Handle
 data OpenRepeat = OpenRepeat Int
                         deriving (Eq,Show)
 
+-- logic functions:
 
 startApp :: (Monad m, MonadCatch m) => Handle m -> m ()
 startApp h = do
@@ -161,8 +162,7 @@ checkAndConfirmUpdates h json = do
         logDebug (hLog h) ("Send request to confirmOldUpdates with offset:" ++ show nextUpdate ++ " https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
         emptyJson <- confirmUpdates h nextUpdate `catch` handleExConfUpd (hLog h) json
         logDebug (hLog h) ("Get response: " ++ show emptyJson ++ "\n")
-        checkConfirmUpdatesResponse h nextUpdate json emptyJson
-        
+        checkConfirmUpdatesResponse h nextUpdate json emptyJson        
 
 checkConfirmUpdatesResponse :: (Monad m, MonadCatch m) => Handle m -> Integer -> LBS.ByteString -> LBS.ByteString -> m ()
 checkConfirmUpdatesResponse h offsetArg confirmedJson responseJson = do
@@ -225,7 +225,7 @@ checkSendKeybResponse h usId n msg json = do
         logInfo (hLog h) ("Keyboard with message: " ++ show n ++ show msg ++ " was sent to user " ++ show usId ++ "\n")
 
 
-
+-- IO methods functions:
 
 getShortUpdates' :: Handle IO -> IO LBS.ByteString
 getShortUpdates' h = do
@@ -301,6 +301,7 @@ sendKeyb' h usId n msg = do
   return (responseBody res)
 
 
+-- clear functions:
 
 extractNextUpdate :: LBS.ByteString -> Integer
 extractNextUpdate = succ . update_id . last . result . fromJust . decode
