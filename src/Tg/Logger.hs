@@ -10,7 +10,7 @@ data LogHandle m = LogHandle
    { hLogConf :: LogConfig,
      log      :: Priority -> String -> m ()}
 
-data LogConfig = LogConfig
+newtype LogConfig = LogConfig
   { cLogLevel :: Priority }
 
 data Priority = DEBUG | INFO | WARNING | ERROR 

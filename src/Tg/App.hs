@@ -31,14 +31,14 @@ data Handle m = Handle
     copyMsg          :: Integer -> Integer -> m LBS.ByteString
     }
 
-data OpenRepeat = OpenRepeat Int
+newtype OpenRepeat = OpenRepeat Int
                         deriving (Eq,Show)
 
 -- logic functions:
 
 startApp :: (Monad m, MonadCatch m) => Handle m -> m ()
 startApp h = do
-  logInfo (hLog h) ("App started\n")
+  logInfo (hLog h) "App started\n"
   logDebug (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
   json <- getShortUpdates h `catch` handleExGetUpd (hLog h)
   logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
@@ -47,22 +47,22 @@ startApp h = do
 run :: (Monad m, MonadCatch m)=> Handle m -> StateT [(Integer , Either OpenRepeat Int)] m ()
 run h = do
   lift $ logDebug (hLog h) ("Send request to getUpdates: https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
-  json <- lift $ (getUpdates h) `catch` handleExGetUpd (hLog h)
+  json <- lift $ getUpdates h `catch` handleExGetUpd (hLog h)
   lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
   lift $ checkAndConfirmUpdates h json
-  let upds = extractUpdates $ json
+  let upds = extractUpdates json
   mapM_ (chooseActionOfUpd h) upds
 
 chooseActionOfUpd :: (Monad m, MonadCatch m) => Handle m -> Update -> StateT [(Integer , Either OpenRepeat Int)] m ()
 chooseActionOfUpd h upd = do
-  lift $ logInfo (hLog h) ("Analysis update from the list\n")
+  lift $ logInfo (hLog h) "Analysis update from the list\n"
   case upd of
     UnknownUpdate _ -> do 
-      lift $ logWarning (hLog h) ("There is UNKNOWN UPDATE. Bot will ignore it\n")
+      lift $ logWarning (hLog h) "There is UNKNOWN UPDATE. Bot will ignore it\n"
       return ()
     Update _ msg -> do
       let msgId = message_id msg
-      let usId = extractUserId $ upd
+      let usId = extractUserId upd
       lift $ logInfo (hLog h) ("Get msg_id: " ++ show msgId ++ " from user " ++ show usId ++ "\n")
       chooseActionOfDbState h msg msgId usId
       
@@ -102,7 +102,7 @@ chooseActionOfButton h msg usId oldN = case checkButton msg of
     modify (changeDB usId (Right newN))
     let infoMsg = T.pack $ "Number of repeats successfully changed from " ++ show oldN ++ " to " ++ show newN ++ "\n"
     lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
-    response <- lift $ (sendMsg h) usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
+    response <- lift $ sendMsg h usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
     lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
     lift $ checkSendMsgResponse h usId infoMsg response 
   Nothing -> do
@@ -110,22 +110,22 @@ chooseActionOfButton h msg usId oldN = case checkButton msg of
     modify (changeDB usId (Right oldN))
     let infoMsg = T.pack $ "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++ show oldN ++ "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n"
     lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
-    response <- lift $ (sendMsg h) usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
+    response <- lift $ sendMsg h usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
     lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
     lift $ checkSendMsgResponse h usId infoMsg response 
 
 chooseActionOfTxt :: (Monad m, MonadCatch m) => Handle m -> Int -> Integer -> T.Text -> StateT [(Integer , Either OpenRepeat Int)] m ()
-chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
+chooseActionOfTxt h currN usId txt = case filter (' ' /=) . T.unpack $ txt of
   "/help" -> do
     let infoMsg = T.pack $ cHelpMsg (hConf h)
     lift $ logDebug (hLog h) ("Send request to send msg " ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage   JSON body : {chat_id = " ++ show usId ++ ", text = " ++ show infoMsg ++ "}\n" )
-    response <- lift $ (sendMsg h) usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
+    response <- lift $ sendMsg h usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
     lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
     lift $ checkSendMsgResponse h usId infoMsg response
   "/repeat" -> do
     let infoMsg = T.pack $ " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
     lift $ logDebug (hLog h) $ "Send request to send keyboard with message: " ++ show currN ++ show infoMsg ++ " to userId " ++ show usId ++ ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage\n" 
-    keybResponse <- lift $ (sendKeyb h) usId currN infoMsg `catch` handleExSendKeyb (hLog h) usId
+    keybResponse <- lift $ sendKeyb h usId currN infoMsg `catch` handleExSendKeyb (hLog h) usId
     lift $ logDebug (hLog h) ("Get response: " ++ show keybResponse ++ "\n")
     lift $ checkSendKeybResponse h usId currN infoMsg keybResponse
     lift $ logInfo (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode\n")
@@ -140,89 +140,84 @@ chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
 
 
 checkAndConfirmUpdates :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m ()
-checkAndConfirmUpdates h json = do
-  case decode json of
-      Nothing                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to getUpdates:\n" ++ show json
-        throwM $ CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
-      Just (OkAnswer {ok = False}) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to getUpdates:\n" ++ show json
-        throwM $ CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"  ++ show json
-      Just (Answer False _) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to getUpdates:\n" ++ show json
-        throwM $ CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"  ++ show json      
-      Just (OkAnswer True)         -> do
-        logError (hLog h) $ "Too short response to getUpdates:\n" ++ show json
-        throwM $ CheckGetUpdatesResponseException $ "Too short response:\n" ++ show json
-      Just (Answer True [])        -> do
-        logInfo (hLog h) ("No new updates\n")
-      Just _                       -> do
-        logInfo (hLog h) ("There is new updates list\n" )
-        let nextUpdate =  extractNextUpdate $ json
-        logDebug (hLog h) ("Send request to confirmOldUpdates with offset:" ++ show nextUpdate ++ " https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
-        emptyJson <- confirmUpdates h nextUpdate `catch` handleExConfUpd (hLog h) json
-        logDebug (hLog h) ("Get response: " ++ show emptyJson ++ "\n")
-        checkConfirmUpdatesResponse h nextUpdate json emptyJson        
+checkAndConfirmUpdates h json = case decode json of
+  Nothing                      -> do
+    logError (hLog h) $ "UNKNOWN RESPONSE to getUpdates:\n" ++ show json
+    throwM $ CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+  Just OkAnswer {ok = False} -> do
+    logError (hLog h) $ "NEGATIVE RESPONSE to getUpdates:\n" ++ show json
+    throwM $ CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"  ++ show json
+  Just (Answer False _) -> do
+    logError (hLog h) $ "NEGATIVE RESPONSE to getUpdates:\n" ++ show json
+    throwM $ CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"  ++ show json      
+  Just (OkAnswer True)         -> do
+    logError (hLog h) $ "Too short response to getUpdates:\n" ++ show json
+    throwM $ CheckGetUpdatesResponseException $ "Too short response:\n" ++ show json
+  Just (Answer True [])        -> 
+    logInfo (hLog h) "No new updates\n"
+  Just _                       -> do
+    logInfo (hLog h) "There is new updates list\n"
+    let nextUpdate =  extractNextUpdate json
+    logDebug (hLog h) ("Send request to confirmOldUpdates with offset:" ++ show nextUpdate ++ " https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates\n" )
+    emptyJson <- confirmUpdates h nextUpdate `catch` handleExConfUpd (hLog h) json
+    logDebug (hLog h) ("Get response: " ++ show emptyJson ++ "\n")
+    checkConfirmUpdatesResponse h nextUpdate json emptyJson       
 
 checkConfirmUpdatesResponse :: (Monad m, MonadCatch m) => Handle m -> Integer -> LBS.ByteString -> LBS.ByteString -> m ()
-checkConfirmUpdatesResponse h offsetArg confirmedJson responseJson = do
-  case decode responseJson of
-      Nothing                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to confirmUpdates:\n" ++ show responseJson 
-        throwM $ CheckConfirmUpdatesResponseException $ "UNKNOWN RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nPROBABLY NOT CONFIRM with offset: " ++ show offsetArg 
-      Just (OkAnswer {ok = False}) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to confirmUpdates:\n" ++ show responseJson
-        throwM $ CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg
-      Just (Answer False _) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to confirmUpdates:\n" ++ show responseJson
-        throwM $ CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg  
-      Just _                       -> do
-        logInfo (hLog h) ("Received updates confirmed\n" )
+checkConfirmUpdatesResponse h offsetArg confirmedJson responseJson = case decode responseJson of
+  Nothing                      -> do
+    logError (hLog h) $ "UNKNOWN RESPONSE to confirmUpdates:\n" ++ show responseJson 
+    throwM $ CheckConfirmUpdatesResponseException $ "UNKNOWN RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nPROBABLY NOT CONFIRM with offset: " ++ show offsetArg 
+  Just OkAnswer {ok = False} -> do
+    logError (hLog h) $ "NEGATIVE RESPONSE to confirmUpdates:\n" ++ show responseJson
+    throwM $ CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg
+  Just (Answer False _) -> do
+    logError (hLog h) $ "NEGATIVE RESPONSE to confirmUpdates:\n" ++ show responseJson
+    throwM $ CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg  
+  Just _                       -> 
+    logInfo (hLog h) "Received updates confirmed\n"
 
 checkSendMsgResponse :: (Monad m, MonadCatch m) => Handle m -> Integer -> T.Text -> LBS.ByteString -> m ()
-checkSendMsgResponse h usId msg json = do
-  case decode json of
-      Nothing                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to sendMessage:\n" ++ show json
-        throwM $ CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"  
-      Just (OkAnswer {ok = False}) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to sendMessage:\n" ++ show json
-        throwM $ CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-      Just (Answer False _) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to sendMessage:\n" ++ show json
-        throwM $ CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-      Just _                       -> do
-        logInfo (hLog h) ("Msg " ++ show msg ++ " was sent to user " ++ show usId ++ "\n")
+checkSendMsgResponse h usId msg json = case decode json of
+  Nothing                      -> do
+    logError (hLog h) $ "UNKNOWN RESPONSE to sendMessage:\n" ++ show json
+    throwM $ CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"  
+  Just OkAnswer {ok = False} -> do
+    logError (hLog h) $ "NEGATIVE RESPONSE to sendMessage:\n" ++ show json
+    throwM $ CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+  Just (Answer False _) -> do
+    logError (hLog h) $ "NEGATIVE RESPONSE to sendMessage:\n" ++ show json
+    throwM $ CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+  Just _                       -> 
+    logInfo (hLog h) ("Msg " ++ show msg ++ " was sent to user " ++ show usId ++ "\n")
 
 checkCopyMsgResponse :: (Monad m, MonadCatch m) => Handle m -> Integer -> Integer -> LBS.ByteString -> m ()
-checkCopyMsgResponse h usId msgId json = do
-  case decode json of
-      Nothing                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to copyMessage:\n" ++ show json
-        throwM $ CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"  
-      Just (OkAnswer {ok = False}) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to copyMessage:\n" ++ show json
-        throwM $ CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-      Just (Answer False _) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to copyMessage:\n" ++ show json
-        throwM $ CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-      Just _                       -> do
-        logInfo (hLog h) ("Attachment msg_id: " ++ show msgId ++ " was sent to user " ++ show usId ++ "\n")
+checkCopyMsgResponse h usId msgId json = case decode json of
+  Nothing                      -> do
+    logError (hLog h) $ "UNKNOWN RESPONSE to copyMessage:\n" ++ show json
+    throwM $ CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"  
+  Just OkAnswer {ok = False} -> do
+    logError (hLog h) $ "NEGATIVE RESPONSE to copyMessage:\n" ++ show json
+    throwM $ CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+  Just (Answer False _) -> do
+    logError (hLog h) $ "NEGATIVE RESPONSE to copyMessage:\n" ++ show json
+    throwM $ CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+  Just _                       -> 
+    logInfo (hLog h) ("Attachment msg_id: " ++ show msgId ++ " was sent to user " ++ show usId ++ "\n")
 
 checkSendKeybResponse :: (Monad m, MonadCatch m) => Handle m -> Integer -> Int -> T.Text -> LBS.ByteString -> m ()
-checkSendKeybResponse h usId n msg json = do
-  case decode json of
-      Nothing                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to sendKeyboard:\n" ++ show json
-        throwM $ CheckSendKeybResponseException (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"  
-      Just (OkAnswer {ok = False}) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to sendKeyboard:\n" ++ show json
-        throwM $ CheckSendKeybResponseException (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
-      Just (Answer False _) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to sendKeyboard:\n" ++ show json
-        throwM $ CheckSendKeybResponseException (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
-      Just _                       -> do
-        logInfo (hLog h) ("Keyboard with message: " ++ show n ++ show msg ++ " was sent to user " ++ show usId ++ "\n")
+checkSendKeybResponse h usId n msg json = case decode json of
+  Nothing                      -> do
+    logError (hLog h) $ "UNKNOWN RESPONSE to sendKeyboard:\n" ++ show json
+    throwM $ CheckSendKeybResponseException (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"  
+  Just OkAnswer {ok = False} -> do
+    logError (hLog h) $ "NEGATIVE RESPONSE to sendKeyboard:\n" ++ show json
+    throwM $ CheckSendKeybResponseException (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
+  Just (Answer False _) -> do
+    logError (hLog h) $ "NEGATIVE RESPONSE to sendKeyboard:\n" ++ show json
+    throwM $ CheckSendKeybResponseException (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
+  Just _                       -> 
+    logInfo (hLog h) ("Keyboard with message: " ++ show n ++ show msg ++ " was sent to user " ++ show usId ++ "\n")
 
 
 -- IO methods functions:
@@ -239,7 +234,7 @@ getUpdates' h = do
   let toon =  JSONBodyTimeOut {timeout = 25}
   manager <- newTlsManager 
   initReq <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
-  let req = initReq { method = "POST", requestBody = (RequestBodyLBS . encode $ toon), requestHeaders =
+  let req = initReq { method = "POST", requestBody = RequestBodyLBS . encode $ toon, requestHeaders =
                     [ ("Content-Type", "application/json; charset=utf-8")
                     ]}
   res <- httpLbs req manager
@@ -250,7 +245,7 @@ confirmUpdates' h nextUpdate = do
   let bodyOffset =  JSONBodyOffset {offset = nextUpdate }
   manager <- newTlsManager 
   initReq <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
-  let req = initReq { method = "POST", requestBody = (RequestBodyLBS . encode $ bodyOffset), requestHeaders =
+  let req = initReq { method = "POST", requestBody = RequestBodyLBS . encode $ bodyOffset, requestHeaders =
                     [ ("Content-Type", "application/json; charset=utf-8")
                     ]}
   res <- httpLbs req manager
@@ -261,7 +256,7 @@ sendMsg' h usId msg = do
   let msgBody = encode (SendMsgJSONBody {chat_id = usId, text = msg})
   manager <- newTlsManager 
   initReq <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage")
-  let req = initReq { method = "POST", requestBody = (RequestBodyLBS $ msgBody), requestHeaders =
+  let req = initReq { method = "POST", requestBody = RequestBodyLBS msgBody, requestHeaders =
                      [ ("Content-Type", "application/json; charset=utf-8")
                      ]}
   res <- httpLbs req manager
@@ -272,7 +267,7 @@ copyMsg' h usId msgId = do
   let msgBody = encode (CopyMsgJSONBody {chat_idCM = usId, from_chat_idCM = usId, msg_idCM = msgId})
   manager <- newTlsManager 
   initReq <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/copyMessage")
-  let req = initReq { method = "POST", requestBody = (RequestBodyLBS $ msgBody), requestHeaders =
+  let req = initReq { method = "POST", requestBody = RequestBodyLBS msgBody, requestHeaders =
                      [ ("Content-Type", "application/json; charset=utf-8")
                      ]}
   res <- httpLbs req manager
@@ -281,7 +276,7 @@ copyMsg' h usId msgId = do
 sendKeyb' :: Handle IO -> Integer -> Int -> T.Text-> IO LBS.ByteString
 sendKeyb' h usId n msg = do 
   let keybBody =  KeybJSONBody {chat_idKeyb  = usId, 
-                                textKeyb = T.concat [(T.pack . show $ n), msg],
+                                textKeyb = T.concat [T.pack . show $ n, msg],
                                 reply_markup = KeyBoard { keyboard = [[KeyButton {textBtn = "1"}],
                                                                       [KeyButton {textBtn = "2"}], 
                                                                       [KeyButton {textBtn = "3"}], 
@@ -294,7 +289,7 @@ sendKeyb' h usId n msg = do
   manager <- newTlsManager 
   initReq <- parseRequest ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage")
   let req = initReq { method = "POST",
-                      requestBody = (RequestBodyLBS . encode $ keybBody), 
+                      requestBody = RequestBodyLBS . encode $ keybBody, 
                       requestHeaders = [ ("Content-Type", "application/json; charset=utf-8")]
                     }
   res <- httpLbs req manager
@@ -319,7 +314,7 @@ changeDB :: Integer -> Either OpenRepeat Int -> [(Integer , Either OpenRepeat In
 changeDB usId eitherN bd = 
     case lookup usId bd of
         Just eitherX -> (:) (usId,eitherN) . delete (usId, eitherX) $ bd
-        Nothing -> (:) (usId,eitherN) $ bd
+        Nothing -> (:) (usId,eitherN) bd
 
 checkButton :: Message -> Maybe Int
 checkButton msg =

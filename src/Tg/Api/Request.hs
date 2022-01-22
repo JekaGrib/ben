@@ -9,7 +9,7 @@ import           Data.Aeson                     (ToJSON, toJSON, toEncoding, obj
 import           GHC.Generics                   (Generic)
 import qualified Data.Text                      as T
 
-data JSONBodyOffset = JSONBodyOffset {
+newtype JSONBodyOffset = JSONBodyOffset {
       offset :: Integer
     } deriving (Generic, Show)
 
@@ -17,7 +17,7 @@ instance ToJSON JSONBodyOffset where
     toEncoding = genericToEncoding defaultOptions
 
 
-data JSONBodyTimeOut = JSONBodyTimeOut {
+newtype JSONBodyTimeOut = JSONBodyTimeOut {
       timeout :: Integer
     } deriving (Generic, Show)
 
@@ -72,7 +72,7 @@ instance ToJSON KeyBoard where
     pairs ("keyboard" .= a <> "one_time_keyboard" .= b)    
 
 
-data KeyButton = KeyButton {
+newtype KeyButton = KeyButton {
       textBtn  :: T.Text
     } deriving (Generic, Show)
 

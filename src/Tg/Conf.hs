@@ -30,18 +30,18 @@ parseConf = do
   repeatQuestion <- parseConfRepeatQ  conf   `E.catch` handleExParseConf "telegram.repeat_Info_Question"
   return $ Config startN botToken helpMsg repeatQuestion prio
 
-pullConfig :: IO C.Config
-pullConfig = do
-  C.load [C.Required "./bot.config"] 
-    `E.catch` (\e -> putStrLn (show (e :: C.ConfigError)) >> return C.empty)
-    `E.catch` (\e -> putStrLn (show (e :: C.KeyError   )) >> return C.empty)
-    `E.catch` (\e -> putStrLn (show (e :: E.IOException  )) >> return C.empty)
-    
 
+pullConfig :: IO C.Config
+pullConfig = C.load [C.Required "./bot.config"] 
+  `E.catch` (\e -> print (e :: C.ConfigError) >> return C.empty)
+  `E.catch` (\e -> print (e :: C.KeyError   ) >> return C.empty)
+  `E.catch` (\e -> print (e :: E.IOException) >> return C.empty)
+ 
+-- parse config functions:
 
 parseConfStartN :: C.Config -> IO Int
 parseConfStartN conf = do
-  str <- ((C.lookup conf "telegram.startN") :: IO (Maybe Int))
+  str <- (C.lookup conf "telegram.startN" :: IO (Maybe Int))
     `E.catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe Int) )
     `E.catch` ( (\_ -> return Nothing) :: E.IOException -> IO (Maybe Int) ) 
   case str of
@@ -55,7 +55,7 @@ parseConfStartN conf = do
 
 parseConfBotToken :: C.Config -> IO String
 parseConfBotToken conf = do
-  str <- ((C.lookup conf "telegram.botToken") :: IO (Maybe String))
+  str <- (C.lookup conf "telegram.botToken" :: IO (Maybe String))
     `E.catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
     `E.catch` ( (\_ -> return Nothing) :: E.IOException -> IO (Maybe String) ) 
   case str of
@@ -75,26 +75,25 @@ parseConfPrio conf = do
     Just "ERROR"   -> return ERROR
     Just _         -> inputLogLevel   `E.catch` handleExInput "logLevel"
       
-
 parseConfHelpMsg :: C.Config -> IO String
 parseConfHelpMsg conf = do
-  str <- ((C.lookup conf "telegram.help_Info_Msg") :: IO (Maybe String))
+  str <- (C.lookup conf "telegram.help_Info_Msg" :: IO (Maybe String))
     `E.catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
     `E.catch` ( (\_ -> return Nothing) :: E.IOException -> IO (Maybe String) ) 
   case str of
     Nothing -> inputHelpMsg `E.catch` handleExInput "help_Info_Msg"
     Just n  -> return n
       
-
 parseConfRepeatQ :: C.Config -> IO String
 parseConfRepeatQ conf = do
-  str <- ((C.lookup conf "telegram.repeat_Info_Question") :: IO (Maybe String))
+  str <- (C.lookup conf "telegram.repeat_Info_Question" :: IO (Maybe String))
     `E.catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
     `E.catch` ( (\_ -> return Nothing) :: E.IOException -> IO (Maybe String) ) 
   case str of
     Nothing -> inputRepeatQ `E.catch` handleExInput "repeat_Info_Question"
     Just n  -> return n
       
+-- input functions:
 
 inputStartN :: IO Int
 inputStartN = do
@@ -117,7 +116,7 @@ inputLogLevel :: IO Priority
 inputLogLevel = do
   putStrLn "Can`t parse value \"logLevel\" from configuration file or command line\nPlease, enter logging level (logs of this level and higher will be recorded)\nAvailable levels: DEBUG ; INFO ; WARNING ; ERROR (without quotes)"
   input <- getLine
-  case (map toUpper input) of
+  case map toUpper input of
     "DEBUG"   -> return DEBUG
     "INFO"    -> return INFO
     "WARNING" -> return WARNING
@@ -134,15 +133,14 @@ inputRepeatQ = do
   putStrLn "Can`t parse value \"/repeat Info Question\" from configuration file or command line\nPlease, enter \"/repeat Info Question\"\nExample: How many times to repeat message in the future?"
   getLine
 
-
-getTime :: IO String
-getTime = (do
-  time    <- getZonedTime
-  return $ show time)     
-    `E.catch` (\e -> ((putStrLn $ show (e :: E.SomeException)) >> inputLocalTime) )
-
 inputLocalTime :: IO String
 inputLocalTime = (do
   putStrLn "Local time not found\nPlease, enter your local time in any form\nExample: 06.07.2020 16:21"
   getLine) 
     `E.catch` handleExGetTime
+
+-- getTime function:
+
+getTime :: IO String
+getTime = (show <$> getZonedTime)     
+    `E.catch` (\e -> print (e :: E.SomeException) >> inputLocalTime) 

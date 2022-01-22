@@ -30,9 +30,9 @@ data TGBotException
 
 instance Exception TGBotException 
 
-data Msg           = Msg        T.Text            deriving (Eq,Show)
-data ToUserId      = ToUserId   Integer           deriving (Eq,Show)
-data MsgId         = MsgId      Integer           deriving (Eq,Show)
+newtype Msg           = Msg        T.Text            deriving (Eq,Show)
+newtype ToUserId      = ToUserId   Integer           deriving (Eq,Show)
+newtype MsgId         = MsgId      Integer           deriving (Eq,Show)
 
 -- handles for logic functions:
 
@@ -70,20 +70,20 @@ handleExConfUpd logH json e = do
 
 handleExPullConf :: E.SomeException -> IO C.Config
 handleExPullConf e = do
-  putStrLn $ show e
+  print e
   E.throw $ DuringPullConfigException $ show e 
 
 handleExParseConf :: String -> E.SomeException -> IO a
 handleExParseConf str e = do
-  putStrLn $ show e
+  print e
   E.throw $ DuringParseConfigException $ str ++ "\n" ++ show e 
 
 handleExGetTime :: E.SomeException -> IO String
 handleExGetTime e = do
-  putStrLn $ show e
+  print e
   E.throw $ DuringGetTimeException $ show e 
 
 handleExInput :: String -> E.SomeException -> IO a
 handleExInput str e = do
-  putStrLn $ show e
+  print e
   E.throw $ DuringInputException $ str ++ "\n" ++ show e 
