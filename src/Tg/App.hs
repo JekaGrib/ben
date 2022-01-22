@@ -13,6 +13,8 @@ import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import Network.HTTP.Client
   ( RequestBody(RequestBodyLBS)
+  , Request
+  , Manager
   , httpLbs
   , method
   , parseRequest
@@ -306,16 +308,16 @@ checkAndConfirmUpdates ::
      (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m ()
 checkAndConfirmUpdates h json =
   case decode json of
-    Nothing -> do
+    Nothing -> 
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
         "UNKNOWN RESPONSE:\n" ++ show json
-    Just OkAnswer {ok = False} -> do
+    Just OkAnswer {ok = False} -> 
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
         "NEGATIVE RESPONSE:\n" ++ show json
-    Just (Answer False _) -> do
+    Just (Answer False _) -> 
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
         "NEGATIVE RESPONSE:\n" ++ show json
-    Just (OkAnswer True) -> do
+    Just (OkAnswer True) -> 
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
         "Too short response:\n" ++ show json
     Just (Answer True []) -> logInfo (hLog h) "No new updates\n"
@@ -372,15 +374,15 @@ checkSendMsgResponse ::
   -> m ()
 checkSendMsgResponse h usId msg json =
   case decode json of
-    Nothing -> do
+    Nothing -> 
       throwAndLogEx (hLog h) .
         CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
         "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
-    Just OkAnswer {ok = False} -> do
+    Just OkAnswer {ok = False} -> 
       throwAndLogEx (hLog h) .
         CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
         "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-    Just (Answer False _) -> do
+    Just (Answer False _) -> 
       throwAndLogEx (hLog h) .
         CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
         "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
@@ -398,15 +400,15 @@ checkCopyMsgResponse ::
   -> m ()
 checkCopyMsgResponse h usId msgId json =
   case decode json of
-    Nothing -> do
+    Nothing -> 
       throwAndLogEx (hLog h) .
         CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
         "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
-    Just OkAnswer {ok = False} -> do
+    Just OkAnswer {ok = False} -> 
       throwAndLogEx (hLog h) .
         CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
         "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-    Just (Answer False _) -> do
+    Just (Answer False _) -> 
       throwAndLogEx (hLog h) .
         CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
         "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
@@ -426,13 +428,13 @@ checkSendKeybResponse ::
   -> m ()
 checkSendKeybResponse h usId n msg json =
   case decode json of
-    Nothing -> do
+    Nothing -> 
       throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $
         "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"
-    Just OkAnswer {ok = False} -> do
+    Just OkAnswer {ok = False} -> 
       throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $
         "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
-    Just (Answer False _) -> do
+    Just (Answer False _) -> 
       throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $
         "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
     Just _ ->
@@ -492,15 +494,8 @@ sendMsg' h usId msg = do
   initReq <-
     parseRequest
       ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage")
-  let req =
-        initReq
-          { method = "POST"
-          , requestBody = RequestBodyLBS msgBody
-          , requestHeaders =
-              [("Content-Type", "application/json; charset=utf-8")]
-          }
-  res <- httpLbs req manager
-  return (responseBody res)
+  let req =  makeReq initReq msgBody
+  sendReqAndGetRespBody manager req
 
 copyMsg' :: Handle IO -> Integer -> Integer -> IO LBS.ByteString
 copyMsg' h usId msgId = do
@@ -512,15 +507,8 @@ copyMsg' h usId msgId = do
   initReq <-
     parseRequest
       ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/copyMessage")
-  let req =
-        initReq
-          { method = "POST"
-          , requestBody = RequestBodyLBS msgBody
-          , requestHeaders =
-              [("Content-Type", "application/json; charset=utf-8")]
-          }
-  res <- httpLbs req manager
-  return (responseBody res)
+  let req = makeReq initReq msgBody
+  sendReqAndGetRespBody manager req
 
 sendKeyb' :: Handle IO -> Integer -> Int -> T.Text -> IO LBS.ByteString
 sendKeyb' h usId n msg = do
@@ -551,8 +539,10 @@ sendKeyb' h usId n msg = do
           , requestHeaders =
               [("Content-Type", "application/json; charset=utf-8")]
           }
-  res <- httpLbs req manager
-  return (responseBody res)
+  sendReqAndGetRespBody manager req
+
+sendReqAndGetRespBody :: Manager -> Request -> IO LBS.ByteString
+sendReqAndGetRespBody manager req = responseBody <$> httpLbs req manager
 
 -- clear functions:
 extractNextUpdate :: LBS.ByteString -> Integer
@@ -596,3 +586,17 @@ checkTextButton txt =
 pullTextMsg :: Message -> Maybe T.Text
 pullTextMsg (TxtMessage _ _ _ _ txt) = Just txt
 pullTextMsg _ = Nothing
+
+
+makeReq :: Request -> LBS.ByteString -> Request 
+makeReq initReq msgBody = 
+        initReq
+          { method = "POST"
+          , requestBody = RequestBodyLBS msgBody
+          , requestHeaders =
+              [("Content-Type", "application/json; charset=utf-8")]
+          }
+
+
+  
+
