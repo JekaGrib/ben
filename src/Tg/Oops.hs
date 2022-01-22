@@ -34,7 +34,13 @@ newtype Msg           = Msg        T.Text            deriving (Eq,Show)
 newtype ToUserId      = ToUserId   Integer           deriving (Eq,Show)
 newtype MsgId         = MsgId      Integer           deriving (Eq,Show)
 
--- handles for logic functions:
+throwAndLogEx :: (Monad m, MonadCatch m) => LogHandle m -> TGBotException -> m a
+throwAndLogEx logH ex = do
+  let info = show ex
+  logError logH info
+  throwM ex
+
+-- handles to catch exceptions in logic functions:
 
 handleExGetUpd :: (Monad m, MonadCatch m) => LogHandle m -> SomeException -> m LBS.ByteString
 handleExGetUpd logH e = do
@@ -66,7 +72,7 @@ handleExConfUpd logH json e = do
   logError logH $ show ex
   throwM ex
 
--- handles for IO configuration functions:
+-- handles to catch exceptions in IO configuration functions:
 
 handleExPullConf :: E.SomeException -> IO C.Config
 handleExPullConf e = do

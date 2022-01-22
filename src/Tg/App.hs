@@ -6,8 +6,8 @@ module Tg.App where
 
 import           Tg.Api.Request                 (JSONBodyTimeOut(..), JSONBodyOffset(..), SendMsgJSONBody(..), CopyMsgJSONBody(..), KeybJSONBody(..), KeyBoard(..), KeyButton(..))
 import           Tg.Api.Response                (Answer(..), Update(..), Message(..), From(..))
-import           Tg.Logger                      (LogHandle(..), logDebug, logInfo, logWarning, logError)
-import           Tg.Oops                        (TGBotException(..), handleExGetUpd, handleExSendMsg, handleExCopyMsg, handleExSendKeyb, handleExConfUpd, Msg(..), ToUserId(..), MsgId(..))
+import           Tg.Logger                      (LogHandle(..), logDebug, logInfo, logWarning)
+import           Tg.Oops                        (TGBotException(..), throwAndLogEx, handleExGetUpd, handleExSendMsg, handleExCopyMsg, handleExSendKeyb, handleExConfUpd, Msg(..), ToUserId(..), MsgId(..))
 import           Tg.Conf                        (Config(..))
 import qualified Data.Text                      as T
 import           Network.HTTP.Client            (parseRequest, responseBody, httpLbs, method, requestBody, requestHeaders, RequestBody(RequestBodyLBS) )
@@ -17,7 +17,7 @@ import           Control.Monad.State            (StateT, lift, modify, replicate
 import           Data.List                      (delete)
 import           Data.Aeson                     (decode, encode)
 import           Data.Maybe                     (fromJust)
-import           Control.Monad.Catch            (MonadCatch(..), throwM)
+import           Control.Monad.Catch            (MonadCatch(..))
 
 
 data Handle m = Handle 
@@ -142,17 +142,13 @@ chooseActionOfTxt h currN usId txt = case filter (' ' /=) . T.unpack $ txt of
 checkAndConfirmUpdates :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m ()
 checkAndConfirmUpdates h json = case decode json of
   Nothing                      -> do
-    logError (hLog h) $ "UNKNOWN RESPONSE to getUpdates:\n" ++ show json
-    throwM $ CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+    throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
   Just OkAnswer {ok = False} -> do
-    logError (hLog h) $ "NEGATIVE RESPONSE to getUpdates:\n" ++ show json
-    throwM $ CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"  ++ show json
+    throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"  ++ show json
   Just (Answer False _) -> do
-    logError (hLog h) $ "NEGATIVE RESPONSE to getUpdates:\n" ++ show json
-    throwM $ CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"  ++ show json      
+    throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"  ++ show json      
   Just (OkAnswer True)         -> do
-    logError (hLog h) $ "Too short response to getUpdates:\n" ++ show json
-    throwM $ CheckGetUpdatesResponseException $ "Too short response:\n" ++ show json
+    throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $ "Too short response:\n" ++ show json
   Just (Answer True [])        -> 
     logInfo (hLog h) "No new updates\n"
   Just _                       -> do
@@ -165,58 +161,46 @@ checkAndConfirmUpdates h json = case decode json of
 
 checkConfirmUpdatesResponse :: (Monad m, MonadCatch m) => Handle m -> Integer -> LBS.ByteString -> LBS.ByteString -> m ()
 checkConfirmUpdatesResponse h offsetArg confirmedJson responseJson = case decode responseJson of
-  Nothing                      -> do
-    logError (hLog h) $ "UNKNOWN RESPONSE to confirmUpdates:\n" ++ show responseJson 
-    throwM $ CheckConfirmUpdatesResponseException $ "UNKNOWN RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nPROBABLY NOT CONFIRM with offset: " ++ show offsetArg 
-  Just OkAnswer {ok = False} -> do
-    logError (hLog h) $ "NEGATIVE RESPONSE to confirmUpdates:\n" ++ show responseJson
-    throwM $ CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg
-  Just (Answer False _) -> do
-    logError (hLog h) $ "NEGATIVE RESPONSE to confirmUpdates:\n" ++ show responseJson
-    throwM $ CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg  
-  Just _                       -> 
+  Nothing                    -> 
+    throwAndLogEx (hLog h) . CheckConfirmUpdatesResponseException $ "UNKNOWN RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nPROBABLY NOT CONFIRM with offset: " ++ show offsetArg
+  Just OkAnswer {ok = False} -> 
+    throwAndLogEx (hLog h) . CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg
+  Just (Answer False _)      -> 
+    throwAndLogEx (hLog h) . CheckConfirmUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show responseJson ++ "\nUpdates: \n" ++ show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg  
+  Just _                     -> 
     logInfo (hLog h) "Received updates confirmed\n"
 
 checkSendMsgResponse :: (Monad m, MonadCatch m) => Handle m -> Integer -> T.Text -> LBS.ByteString -> m ()
 checkSendMsgResponse h usId msg json = case decode json of
-  Nothing                      -> do
-    logError (hLog h) $ "UNKNOWN RESPONSE to sendMessage:\n" ++ show json
-    throwM $ CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"  
+  Nothing                    -> do
+    throwAndLogEx (hLog h) . CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"  
   Just OkAnswer {ok = False} -> do
-    logError (hLog h) $ "NEGATIVE RESPONSE to sendMessage:\n" ++ show json
-    throwM $ CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-  Just (Answer False _) -> do
-    logError (hLog h) $ "NEGATIVE RESPONSE to sendMessage:\n" ++ show json
-    throwM $ CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-  Just _                       -> 
+    throwAndLogEx (hLog h) . CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+  Just (Answer False _)      -> do
+    throwAndLogEx (hLog h) . CheckSendMsgResponseException (Msg msg) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+  Just _                     -> 
     logInfo (hLog h) ("Msg " ++ show msg ++ " was sent to user " ++ show usId ++ "\n")
 
 checkCopyMsgResponse :: (Monad m, MonadCatch m) => Handle m -> Integer -> Integer -> LBS.ByteString -> m ()
 checkCopyMsgResponse h usId msgId json = case decode json of
-  Nothing                      -> do
-    logError (hLog h) $ "UNKNOWN RESPONSE to copyMessage:\n" ++ show json
-    throwM $ CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"  
+  Nothing                    -> do
+    throwAndLogEx (hLog h) . CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"  
   Just OkAnswer {ok = False} -> do
-    logError (hLog h) $ "NEGATIVE RESPONSE to copyMessage:\n" ++ show json
-    throwM $ CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-  Just (Answer False _) -> do
-    logError (hLog h) $ "NEGATIVE RESPONSE to copyMessage:\n" ++ show json
-    throwM $ CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-  Just _                       -> 
+    throwAndLogEx (hLog h) . CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+  Just (Answer False _)      -> do
+    throwAndLogEx (hLog h) . CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+  Just _                     -> 
     logInfo (hLog h) ("Attachment msg_id: " ++ show msgId ++ " was sent to user " ++ show usId ++ "\n")
 
 checkSendKeybResponse :: (Monad m, MonadCatch m) => Handle m -> Integer -> Int -> T.Text -> LBS.ByteString -> m ()
 checkSendKeybResponse h usId n msg json = case decode json of
-  Nothing                      -> do
-    logError (hLog h) $ "UNKNOWN RESPONSE to sendKeyboard:\n" ++ show json
-    throwM $ CheckSendKeybResponseException (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"  
+  Nothing                    -> do
+    throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"  
   Just OkAnswer {ok = False} -> do
-    logError (hLog h) $ "NEGATIVE RESPONSE to sendKeyboard:\n" ++ show json
-    throwM $ CheckSendKeybResponseException (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
-  Just (Answer False _) -> do
-    logError (hLog h) $ "NEGATIVE RESPONSE to sendKeyboard:\n" ++ show json
-    throwM $ CheckSendKeybResponseException (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
-  Just _                       -> 
+    throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
+  Just (Answer False _)      -> do
+    throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
+  Just _                     -> 
     logInfo (hLog h) ("Keyboard with message: " ++ show n ++ show msg ++ " was sent to user " ++ show usId ++ "\n")
 
 
