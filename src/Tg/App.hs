@@ -12,9 +12,9 @@ import Data.List (delete)
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import Network.HTTP.Client
-  ( RequestBody(RequestBodyLBS)
+  ( Manager
   , Request
-  , Manager
+  , RequestBody(RequestBodyLBS)
   , httpLbs
   , method
   , parseRequest
@@ -143,7 +143,7 @@ chooseActionOfTryPullTxt ::
   -> Int
   -> StateT [(Integer, Either OpenRepeat Int)] m ()
 chooseActionOfTryPullTxt h msg msgId usId currN =
-  case pullTextMsg msg of
+  case tryPullTextMsg msg of
     Just txt -> do
       lift $
         logInfo
@@ -152,24 +152,7 @@ chooseActionOfTryPullTxt h msg msgId usId currN =
       chooseActionOfTxt h currN usId txt
     Nothing -> do
       lift $ logInfo (hLog h) ("Msg_id:" ++ show msgId ++ " is attachment\n")
-      let logMsg =
-            "Send request to send attachment msg_id: " ++
-            show msgId ++
-            " to userId " ++
-            show usId ++
-            ": https://api.telegram.org/bot" ++
-            cBotToken (hConf h) ++
-            "/copyMessage   JSON body : {chat_id = " ++
-            show usId ++
-            ",from_chat_id = " ++
-            show usId ++ ", message_id = " ++ show msgId ++ "}\n"
-      lift $
-        replicateM_ currN $ do
-          logDebug (hLog h) logMsg
-          response <-
-            copyMsg h usId msgId `catch` handleExCopyMsg (hLog h) usId msgId
-          logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-          checkCopyMsgResponse h usId msgId response
+      lift $ replicateM_ currN $ copyMsgAndCheckResp h usId msgId
 
 chooseActionOfButton ::
      (Monad m, MonadCatch m)
@@ -191,22 +174,7 @@ chooseActionOfButton h msg usId oldN =
             T.pack $
             "Number of repeats successfully changed from " ++
             show oldN ++ " to " ++ show newN ++ "\n"
-      lift $
-        logDebug
-          (hLog h)
-          ("Send request to send msg " ++
-           show infoMsg ++
-           " to userId " ++
-           show usId ++
-           ": https://api.telegram.org/bot" ++
-           cBotToken (hConf h) ++
-           "/sendMessage   JSON body : {chat_id = " ++
-           show usId ++ ", text = " ++ show infoMsg ++ "}\n")
-      response <-
-        lift $
-        sendMsg h usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
-      lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-      lift $ checkSendMsgResponse h usId infoMsg response
+      lift $ sendMsgAndCheckResp h usId infoMsg
     Nothing -> do
       lift $
         logWarning
@@ -221,22 +189,7 @@ chooseActionOfButton h msg usId oldN =
             "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++
             show oldN ++
             "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n"
-      lift $
-        logDebug
-          (hLog h)
-          ("Send request to send msg " ++
-           show infoMsg ++
-           " to userId " ++
-           show usId ++
-           ": https://api.telegram.org/bot" ++
-           cBotToken (hConf h) ++
-           "/sendMessage   JSON body : {chat_id = " ++
-           show usId ++ ", text = " ++ show infoMsg ++ "}\n")
-      response <-
-        lift $
-        sendMsg h usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
-      lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-      lift $ checkSendMsgResponse h usId infoMsg response
+      lift $ sendMsgAndCheckResp h usId infoMsg
 
 chooseActionOfTxt ::
      (Monad m, MonadCatch m)
@@ -249,77 +202,85 @@ chooseActionOfTxt h currN usId txt =
   case filter (' ' /=) . T.unpack $ txt of
     "/help" -> do
       let infoMsg = T.pack $ cHelpMsg (hConf h)
-      lift $
-        logDebug
-          (hLog h)
-          ("Send request to send msg " ++
-           show infoMsg ++
-           " to userId " ++
-           show usId ++
-           ": https://api.telegram.org/bot" ++
-           cBotToken (hConf h) ++
-           "/sendMessage   JSON body : {chat_id = " ++
-           show usId ++ ", text = " ++ show infoMsg ++ "}\n")
-      response <-
-        lift $
-        sendMsg h usId infoMsg `catch` handleExSendMsg (hLog h) usId infoMsg
-      lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-      lift $ checkSendMsgResponse h usId infoMsg response
+      lift $ sendMsgAndCheckResp h usId infoMsg
     "/repeat" -> do
-      let infoMsg =
-            T.pack $
-            " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
-      lift $
-        logDebug (hLog h) $
-        "Send request to send keyboard with message: " ++
-        show currN ++
-        show infoMsg ++
-        " to userId " ++
-        show usId ++
-        ": https://api.telegram.org/bot" ++
-        cBotToken (hConf h) ++ "/sendMessage\n"
-      keybResponse <-
-        lift $
-        sendKeyb h usId currN infoMsg `catch` handleExSendKeyb (hLog h) usId
-      lift $ logDebug (hLog h) ("Get response: " ++ show keybResponse ++ "\n")
-      lift $ checkSendKeybResponse h usId currN infoMsg keybResponse
+      lift $ sendKeybAndCheckResp h usId currN
       lift $
         logInfo (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode\n")
       modify (changeDB usId (Left $ OpenRepeat currN))
     _ -> do
-      let logMsg =
-            "Send request to send msg " ++
-            show txt ++
-            " to userId " ++
-            show usId ++
-            ": https://api.telegram.org/bot" ++
-            cBotToken (hConf h) ++
-            "/sendMessage   JSON body : {chat_id = " ++
-            show usId ++ ", text = " ++ show txt ++ "}\n"
-      lift $
-        replicateM_ currN $ do
-          logDebug (hLog h) logMsg
-          response <-
-            sendMsg h usId txt `catch` handleExSendMsg (hLog h) usId txt
-          logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-          checkSendMsgResponse h usId txt response
+      lift $ replicateM_ currN $ sendMsgAndCheckResp h usId txt
+
+sendMsgAndCheckResp ::
+     (Monad m, MonadCatch m) => Handle m -> Integer -> T.Text -> m ()
+sendMsgAndCheckResp h usId msg = do
+  logDebug
+    (hLog h)
+    ("Send request to send msg " ++
+     show msg ++
+     " to userId " ++
+     show usId ++
+     ": https://api.telegram.org/bot" ++
+     cBotToken (hConf h) ++
+     "/sendMessage   JSON body : {chat_id = " ++
+     show usId ++ ", text = " ++ show msg ++ "}\n")
+  response <- sendMsg h usId msg `catch` handleExSendMsg (hLog h) usId msg
+  logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+  checkSendMsgResponse h usId msg response
+
+copyMsgAndCheckResp ::
+     (Monad m, MonadCatch m) => Handle m -> Integer -> Integer -> m ()
+copyMsgAndCheckResp h usId msgId = do
+  let logMsg =
+        "Send request to send attachment msg_id: " ++
+        show msgId ++
+        " to userId " ++
+        show usId ++
+        ": https://api.telegram.org/bot" ++
+        cBotToken (hConf h) ++
+        "/copyMessage   JSON body : {chat_id = " ++
+        show usId ++
+        ",from_chat_id = " ++
+        show usId ++ ", message_id = " ++ show msgId ++ "}\n"
+  logDebug (hLog h) logMsg
+  response <- copyMsg h usId msgId `catch` handleExCopyMsg (hLog h) usId msgId
+  logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+  checkCopyMsgResponse h usId msgId response
+
+sendKeybAndCheckResp ::
+     (Monad m, MonadCatch m) => Handle m -> Integer -> Int -> m ()
+sendKeybAndCheckResp h usId currN = do
+  let infoMsg =
+        T.pack $
+        " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
+  logDebug (hLog h) $
+    "Send request to send keyboard with message: " ++
+    show currN ++
+    show infoMsg ++
+    " to userId " ++
+    show usId ++
+    ": https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage\n"
+  keybResponse <-
+    sendKeyb h usId currN infoMsg `catch` handleExSendKeyb (hLog h) usId
+  logDebug (hLog h) ("Get response: " ++ show keybResponse ++ "\n")
+  checkSendKeybResponse h usId currN infoMsg keybResponse
 
 checkAndConfirmUpdates ::
      (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m ()
 checkAndConfirmUpdates h json =
   case decode json of
-    Nothing -> 
+    Nothing ->
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
-        "UNKNOWN RESPONSE:\n" ++ show json
-    Just OkAnswer {ok = False} -> 
+      "UNKNOWN RESPONSE:\n" ++ show json
+    Just OkAnswer {ok = False} ->
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
-        "NEGATIVE RESPONSE:\n" ++ show json
-    Just (Answer False _) -> 
+      "NEGATIVE RESPONSE:\n" ++ show json
+    Just (Answer False _) ->
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
-        "NEGATIVE RESPONSE:\n" ++ show json
-    Just (OkAnswer True) -> 
+      "NEGATIVE RESPONSE:\n" ++ show json
+    Just (OkAnswer True) ->
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
-        "Too short response:\n" ++ show json
+      "Too short response:\n" ++ show json
     Just (Answer True []) -> logInfo (hLog h) "No new updates\n"
     Just _ -> do
       logInfo (hLog h) "There is new updates list\n"
@@ -374,18 +335,18 @@ checkSendMsgResponse ::
   -> m ()
 checkSendMsgResponse h usId msg json =
   case decode json of
-    Nothing -> 
+    Nothing ->
       throwAndLogEx (hLog h) .
-        CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
-        "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
-    Just OkAnswer {ok = False} -> 
+      CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
+      "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
+    Just OkAnswer {ok = False} ->
       throwAndLogEx (hLog h) .
-        CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
-        "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-    Just (Answer False _) -> 
+      CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
+      "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+    Just (Answer False _) ->
       throwAndLogEx (hLog h) .
-        CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
-        "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+      CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
+      "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
     Just _ ->
       logInfo
         (hLog h)
@@ -400,18 +361,18 @@ checkCopyMsgResponse ::
   -> m ()
 checkCopyMsgResponse h usId msgId json =
   case decode json of
-    Nothing -> 
+    Nothing ->
       throwAndLogEx (hLog h) .
-        CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
-        "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
-    Just OkAnswer {ok = False} -> 
+      CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
+      "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
+    Just OkAnswer {ok = False} ->
       throwAndLogEx (hLog h) .
-        CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
-        "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-    Just (Answer False _) -> 
+      CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
+      "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+    Just (Answer False _) ->
       throwAndLogEx (hLog h) .
-        CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
-        "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+      CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
+      "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
     Just _ ->
       logInfo
         (hLog h)
@@ -428,15 +389,15 @@ checkSendKeybResponse ::
   -> m ()
 checkSendKeybResponse h usId n msg json =
   case decode json of
-    Nothing -> 
+    Nothing ->
       throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $
-        "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"
-    Just OkAnswer {ok = False} -> 
+      "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"
+    Just OkAnswer {ok = False} ->
       throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $
-        "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
-    Just (Answer False _) -> 
+      "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
+    Just (Answer False _) ->
       throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $
-        "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
+      "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
     Just _ ->
       logInfo
         (hLog h)
@@ -450,25 +411,17 @@ getShortUpdates' h = do
   req <-
     parseRequest
       ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
-  res <- httpLbs req manager
-  return (responseBody res)
+  sendReqAndGetRespBody manager req
 
 getUpdates' :: Handle IO -> IO LBS.ByteString
 getUpdates' h = do
-  let toon = JSONBodyTimeOut {timeout = 25}
+  let bodyTimeOut = JSONBodyTimeOut {timeout = 25}
   manager <- newTlsManager
   initReq <-
     parseRequest
       ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
-  let req =
-        initReq
-          { method = "POST"
-          , requestBody = RequestBodyLBS . encode $ toon
-          , requestHeaders =
-              [("Content-Type", "application/json; charset=utf-8")]
-          }
-  res <- httpLbs req manager
-  return (responseBody res)
+  let req = addBodyToReq initReq (RequestBodyLBS . encode $ bodyTimeOut)
+  sendReqAndGetRespBody manager req
 
 confirmUpdates' :: Handle IO -> Integer -> IO LBS.ByteString
 confirmUpdates' h nextUpdate = do
@@ -477,15 +430,8 @@ confirmUpdates' h nextUpdate = do
   initReq <-
     parseRequest
       ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
-  let req =
-        initReq
-          { method = "POST"
-          , requestBody = RequestBodyLBS . encode $ bodyOffset
-          , requestHeaders =
-              [("Content-Type", "application/json; charset=utf-8")]
-          }
-  res <- httpLbs req manager
-  return (responseBody res)
+  let req = addBodyToReq initReq (RequestBodyLBS . encode $ bodyOffset)
+  sendReqAndGetRespBody manager req
 
 sendMsg' :: Handle IO -> Integer -> T.Text -> IO LBS.ByteString
 sendMsg' h usId msg = do
@@ -494,7 +440,7 @@ sendMsg' h usId msg = do
   initReq <-
     parseRequest
       ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage")
-  let req =  makeReq initReq msgBody
+  let req = addBodyToReq initReq (RequestBodyLBS msgBody)
   sendReqAndGetRespBody manager req
 
 copyMsg' :: Handle IO -> Integer -> Integer -> IO LBS.ByteString
@@ -507,38 +453,17 @@ copyMsg' h usId msgId = do
   initReq <-
     parseRequest
       ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/copyMessage")
-  let req = makeReq initReq msgBody
+  let req = addBodyToReq initReq (RequestBodyLBS msgBody)
   sendReqAndGetRespBody manager req
 
 sendKeyb' :: Handle IO -> Integer -> Int -> T.Text -> IO LBS.ByteString
 sendKeyb' h usId n msg = do
-  let keybBody =
-        KeybJSONBody
-          { chat_idKeyb = usId
-          , textKeyb = T.concat [T.pack . show $ n, msg]
-          , reply_markup =
-              KeyBoard
-                { keyboard =
-                    [ [KeyButton {textBtn = "1"}]
-                    , [KeyButton {textBtn = "2"}]
-                    , [KeyButton {textBtn = "3"}]
-                    , [KeyButton {textBtn = "4"}]
-                    , [KeyButton {textBtn = "5"}]
-                    ]
-                , one_time_keyboard = True
-                }
-          }
   manager <- newTlsManager
   initReq <-
     parseRequest
       ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage")
-  let req =
-        initReq
-          { method = "POST"
-          , requestBody = RequestBodyLBS . encode $ keybBody
-          , requestHeaders =
-              [("Content-Type", "application/json; charset=utf-8")]
-          }
+  let keybBody = makeKeybBody usId msg n
+  let req = addBodyToReq initReq (RequestBodyLBS . encode $ keybBody)
   sendReqAndGetRespBody manager req
 
 sendReqAndGetRespBody :: Manager -> Request -> IO LBS.ByteString
@@ -569,7 +494,7 @@ changeDB usId eitherN bd =
 
 checkButton :: Message -> Maybe Int
 checkButton msg =
-  case pullTextMsg msg of
+  case tryPullTextMsg msg of
     Just txt -> checkTextButton txt
     Nothing -> Nothing
 
@@ -583,19 +508,36 @@ checkTextButton txt =
     "5" -> Just 5
     _ -> Nothing
 
-pullTextMsg :: Message -> Maybe T.Text
-pullTextMsg (TxtMessage _ _ _ _ txt) = Just txt
-pullTextMsg _ = Nothing
+tryPullTextMsg :: Message -> Maybe T.Text
+tryPullTextMsg (TxtMessage _ _ _ _ txt) = Just txt
+tryPullTextMsg _ = Nothing
 
+addBodyToReq :: Request -> RequestBody -> Request
+addBodyToReq initReq reqBody =
+  initReq
+    { method = "POST"
+    , requestBody = reqBody
+    , requestHeaders = [("Content-Type", "application/json; charset=utf-8")]
+    }
 
-makeReq :: Request -> LBS.ByteString -> Request 
-makeReq initReq msgBody = 
-        initReq
-          { method = "POST"
-          , requestBody = RequestBodyLBS msgBody
-          , requestHeaders =
-              [("Content-Type", "application/json; charset=utf-8")]
+makeKeybBody :: Integer -> T.Text -> Int -> KeybJSONBody
+makeKeybBody usId msg n =
+  KeybJSONBody
+    { chat_idKeyb = usId
+    , textKeyb = T.concat [T.pack . show $ n, msg]
+    , reply_markup =
+        KeyBoard
+          { keyboard =
+              [ [KeyButton {textBtn = "1"}]
+              , [KeyButton {textBtn = "2"}]
+              , [KeyButton {textBtn = "3"}]
+              , [KeyButton {textBtn = "4"}]
+              , [KeyButton {textBtn = "5"}]
+              ]
+          , one_time_keyboard = True
           }
+    }
+
 
 
   
