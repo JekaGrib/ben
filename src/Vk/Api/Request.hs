@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -6,20 +8,6 @@ module Vk.Api.Request where
 import           Data.Aeson
 import           GHC.Generics
 import qualified Data.Text                      as T
-
-kB = KeyBoard True [[button1],[button2],[button3],[button4],[button5]] False
-
-button1 = Button action1 "positive"
-button2 = Button action2 "positive"
-button3 = Button action3 "positive"
-button4 = Button action4 "positive"
-button5 = Button action5 "positive"
-
-action1 = Action "text" "1"
-action2 = Action "text" "2"
-action3 = Action "text" "3"
-action4 = Action "text" "4"
-action5 = Action "text" "5"
 
 data KeyBoard = KeyBoard
   { one_time  :: Bool,
@@ -44,9 +32,14 @@ data Action = Action
     } deriving (Generic, Show)
 
 instance ToJSON Action where
-  toJSON (Action typeA  label ) =
-    object ["type" .= typeA , "label" .= label]
-  toEncoding (Action typeA  label ) =
-    pairs ("type" .= typeA  <> "label" .= label)
+  toJSON (Action a  b) =
+    object ["type" .= a, "label" .= b]
+  toEncoding (Action a  b) =
+    pairs ("type" .= a  <> "label" .= b)
 
+kB :: KeyBoard
+kB = KeyBoard True [[button "1"],[button "2"],[button "3"],[button "4"],[button "5"]] False
+
+button :: T.Text -> Button
+button txt = Button (Action "text" txt) "positive"
 
