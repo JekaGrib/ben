@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -6,39 +8,40 @@ module Vk.Api.Response where
 import           Data.Aeson
 import           GHC.Generics
 import qualified Data.Text                      as T
-import           Control.Applicative
+import           Control.Applicative         
+import Data.Aeson.Types (Parser)
+import Data.Foldable (asum)
 
 
-data Answer 
-    = Answer       { ts      :: T.Text,
+data Answer
+    = AnswerOk     { ts      :: T.Text,
                      updates :: [Update] }
     | FailAnswer   { fail'   :: Integer }               
     | FailTSAnswer { fail''  :: Integer,
                      ts''    :: Integer }  
-    | ErrorAnswer  { error' :: Object } deriving (Generic, Show)
+    | ErrorAnswer  { error' :: Value } deriving (Generic, Show)
          
 instance FromJSON Answer where
-    parseJSON (Object v) = (Answer 
-        <$> v .: "ts"
-        <*> v .: "updates") <|> ( FailAnswer
-        <$> v .: "fail") <|> ( FailTSAnswer
-        <$> v .: "fail"
-        <*> v .: "ts") <|> ( ErrorAnswer
-        <$> v .: "error")
-
+  parseJSON val = 
+      (withObject "AnswerOk" (\v -> AnswerOk <$> v .: "ts" <*> v .: "updates")) val <|>
+      (withObject "FailTSAnswer" (\v -> FailTSAnswer <$> v .: "fail" <*> v .: "ts")) val <|>
+      (withObject "FailAnswer" (\v -> FailAnswer <$> v .: "fail")) val <|>
+      (withObject "ErrorAnswer" (\v -> ErrorAnswer <$> v .: "error")) val 
 
 
 data Update 
   = Update {typeUpd :: T.Text,
             objectUpd  :: AboutObj
             } 
-    | UnknownUpdate Object 
+    | UnknownUpdate Value 
        deriving ( Show)
 
 instance FromJSON Update where
-    parseJSON  (Object v) = (Update
-        <$> v .: "type"
-        <*> v .: "object") <|> (UnknownUpdate  <$> parseJSON (Object v))
+  parseJSON = 
+    liftA2 
+      (<|>)
+        (withObject "Update" (\v -> Update <$> v .: "type" <*> v .: "object"))
+        (fmap UnknownUpdate . parseJSON )
 
 
 data AboutObj = AboutObj {
@@ -81,29 +84,46 @@ data Attachment
     | PollAttachment
       { type' :: T.Text
       , poll :: DocInfo }
-    | UnknownAttachment Object 
+    | UnknownAttachment Value 
      deriving (Generic, Show)
 
 instance FromJSON Attachment where
-    parseJSON (Object v) = (PhotoAttachment
+    parseJSON v = asum [parsePhotoAtt v,parseAudioMesAtt v,parseVideoAtt v,parseStickerAtt v,parseAudioAtt v,parseMarketAtt v,parseWallAtt v,parsePollAtt v,parseUnknownAtt v]
+
+parsePhotoAtt, parseAudioMesAtt, parseVideoAtt, parseStickerAtt, parseAudioAtt, parseMarketAtt, parseWallAtt, parsePollAtt, parseUnknownAtt :: Value -> Parser Attachment
+parsePhotoAtt =  withObject "PhotoAttachment" $ \v -> PhotoAttachment
         <$> v .: "type"
-        <*> v .: "photo") <|> (DocAttachment
+        <*> v .: "photo"
+
+parseAudioMesAtt = withObject "DocAttachment" $ \v -> DocAttachment
         <$> v .: "type"
-        <*> v .: "doc") <|> (AudioMesAttachment
+        <*> v .: "doc"
+
+parseVideoAtt = withObject "VideoAttachment" $ \v -> VideoAttachment
         <$> v .: "type"
-        <*> v .: "audio_message") <|> (VideoAttachment
+        <*> v .: "video"
+
+parseStickerAtt = withObject "StickerAttachment" $ \v -> StickerAttachment
         <$> v .: "type"
-        <*> v .: "video") <|> (StickerAttachment
+        <*> v .: "sticker"
+
+parseAudioAtt = withObject "AudioAttachment" $ \v -> AudioAttachment
         <$> v .: "type"
-        <*> v .: "sticker") <|> (AudioAttachment
+        <*> v .: "audio"
+
+parseMarketAtt = withObject "MarketAttachment" $ \v -> MarketAttachment
         <$> v .: "type"
-        <*> v .: "audio") <|> (MarketAttachment
+        <*> v .: "market"
+
+parseWallAtt = withObject "WallAttachment" $ \v -> WallAttachment
         <$> v .: "type"
-        <*> v .: "market") <|> (WallAttachment
+        <*> v .: "wall"
+
+parsePollAtt = withObject "PollAttachment" $ \v -> PollAttachment
         <$> v .: "type"
-        <*> v .: "wall") <|> (PollAttachment
-        <$> v .: "type"
-        <*> v .: "poll") <|> (UnknownAttachment  <$> parseJSON (Object v))
+        <*> v .: "poll"
+
+parseUnknownAtt = fmap UnknownAttachment . parseJSON 
 
 data Doc 
     = Doc{
@@ -113,7 +133,8 @@ data Doc
     } deriving (Show)
 
 instance FromJSON Doc where
-    parseJSON (Object v) = Doc
+    parseJSON = 
+      withObject "Doc" $ \v -> Doc
         <$> v .: "url"
         <*> v .: "ext"
         <*> v .: "title"
@@ -155,7 +176,7 @@ instance FromJSON LoadPhotoResp
 data SavePhotoResp = SavePhotoResp {responseSPR :: [DocInfo]} deriving (Generic, Show)
 
 instance FromJSON SavePhotoResp where
-    parseJSON (Object v) = SavePhotoResp
+    parseJSON = withObject "SavePhotoResp" $ \v -> SavePhotoResp
         <$> v .: "response"
 
 data PhotoInfo = PhotoInfo {
@@ -165,7 +186,7 @@ data PhotoInfo = PhotoInfo {
     } deriving (Generic, Show)
 
 instance FromJSON PhotoInfo where
-      parseJSON (Object v) = PhotoInfo
+      parseJSON = withObject "PhotoInfo" $ \v -> PhotoInfo
         <$> v .: "id"
         <*> v .: "owner_id"
         <*> v .: "access_key"
@@ -177,7 +198,7 @@ data AudioMesInfo = AudioMesInfo {
     } deriving (Generic, Show)
 
 instance FromJSON AudioMesInfo where
-      parseJSON (Object v) = AudioMesInfo
+      parseJSON = withObject "AudioMesInfo" $ \v -> AudioMesInfo
         <$> v .: "id"
         <*> v .: "owner_id"
         <*> v .: "access_key"
@@ -191,7 +212,7 @@ instance FromJSON StickerInfo
 data SaveDocResp = SaveDocResp {responseSDR :: ResponseSDR} deriving (Generic, Show)
 
 instance FromJSON SaveDocResp where
-    parseJSON (Object v) = SaveDocResp
+    parseJSON = withObject "SaveDocResp" $ \v -> SaveDocResp
         <$> v .: "response"
 
 data ResponseSDR = ResponseSDR {
@@ -200,7 +221,7 @@ data ResponseSDR = ResponseSDR {
     } deriving (Generic, Show)
 
 instance FromJSON ResponseSDR where
-    parseJSON (Object v) = ResponseSDR
+    parseJSON = withObject "ResponseSDR" $ \v -> ResponseSDR
         <$> v .: "type"
         <*> v .: "doc"
 
@@ -210,7 +231,7 @@ data DocInfo = DocInfo {
     } deriving (Generic, Show)
 
 instance FromJSON DocInfo where
-      parseJSON (Object v) = DocInfo
+      parseJSON =  withObject "DocInfo" $ \v -> DocInfo
         <$> v .: "id"
         <*> v .: "owner_id"
 
@@ -220,14 +241,14 @@ data WallInfo = WallInfo {
     } deriving (Generic, Show)
 
 instance FromJSON WallInfo where
-      parseJSON (Object v) = WallInfo
+      parseJSON = withObject "WallInfo" $ \v -> WallInfo
         <$> v .: "id"
         <*> v .: "from_id"
 
 data SaveDocAuMesResp = SaveDocAuMesResp {responseSDAMR :: ResponseSDAMR} deriving (Generic, Show)
 
 instance FromJSON SaveDocAuMesResp where
-    parseJSON (Object v) = SaveDocAuMesResp
+    parseJSON = withObject "SaveDocAuMesResp" $ \v -> SaveDocAuMesResp
         <$> v .: "response"
 
 data ResponseSDAMR = ResponseSDAMR {
@@ -236,7 +257,7 @@ data ResponseSDAMR = ResponseSDAMR {
     } deriving (Generic, Show)
 
 instance FromJSON ResponseSDAMR where
-    parseJSON (Object v) = ResponseSDAMR
+    parseJSON = withObject "ResponseSDAMR" $ \v -> ResponseSDAMR
         <$> v .: "type"
         <*> v .: "audio_message"
 
@@ -249,9 +270,11 @@ data GetPollServerJSONBody
     | ErrorAnswerServ  { error'' :: Object } deriving (Generic, Show)
 
 instance FromJSON GetPollServerJSONBody where
-    parseJSON (Object v) = (GetPollServerJSONBody
-        <$> v .: "response") <|> ( ErrorAnswerServ
-        <$> v .: "error")
+  parseJSON = 
+    liftA2
+      (<|>)
+      (withObject "GetPollServerJSONBody" $ \v -> GetPollServerJSONBody <$> v .: "response")
+      (withObject "ErrorAnswerServ" $ \v -> ErrorAnswerServ <$> v .: "error")
 
 
 data ServerInfo 
@@ -261,29 +284,31 @@ data ServerInfo
 
 
 instance FromJSON ServerInfo where
-    parseJSON (Object v) = ServerInfo
+    parseJSON = withObject "ServerInfo" $ \v -> ServerInfo
         <$> v .: "key"
         <*> v .: "server"
         <*> v .: "ts" 
 
 data Response 
-    = Response { response' :: Int }
-    | ErrorAnswerMsg  { error''' :: Object } deriving (Generic, Show)
+    = Response { response' :: Integer }
+    | ErrorAnswerMsg  { error''' :: Value } deriving (Generic, Show)
 
 instance FromJSON Response where
-    parseJSON (Object v) = (Response
-        <$> v .: "response") <|> ( ErrorAnswerMsg
-        <$> v .: "error")
+  parseJSON  = 
+    liftA2
+      (<|>) 
+      (withObject "Response" $ \v -> Response <$> v .: "response")
+      (withObject "ErrorAnswerMsg" $ \v -> ErrorAnswerMsg <$> v .: "error")
 
-data ErrorInfo = ErrorInfo { error_code :: Int} deriving (Generic, Show)
+data ErrorInfo = ErrorInfo { error_code :: Integer} deriving (Generic, Show)
 
 instance FromJSON ErrorInfo
 
 data UploadServerResponse = UploadServerResponse {responsePSR :: UploadUrl} deriving (Generic, Show)
 
 instance FromJSON UploadServerResponse where
-    parseJSON (Object v) = UploadServerResponse
-        <$> v .: "response"
+    parseJSON = withObject "UploadServerResponse" $ \v -> UploadServerResponse 
+      <$> v .: "response"
 
 data UploadUrl = UploadUrl {upload_url :: T.Text} deriving (Generic, Show)
 
@@ -295,7 +320,7 @@ data Geo = Geo {
     } deriving (Eq, Generic, Show)
 
 instance FromJSON Geo where
-    parseJSON (Object v) = Geo
+    parseJSON = withObject "Geo" $ \v -> Geo
         <$> v .: "type"
         <*> v .: "coordinates"
 

@@ -10,9 +10,11 @@ import           Vk.Api.Response                (ServerInfo(..))
 import qualified Data.Text                      as T
 import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
+import Vk.TypeSynonym
+import Vk.Oops
 
 
-data MockAction = GOTSERVER | GOTUPDATES T.Text T.Text T.Text | SENDMSG Int MSG | SENDKEYB Int Int T.Text | LOGMSG Priority String
+data MockAction = GOTSERVER | GOTUPDATES T.Text T.Text T.Text | SENDMSG UserId MSG | SENDKEYB UserId N T.Text | LOGMSG Priority String
                                        deriving (Eq,Show)
 
 getServerTest:: LBS.ByteString -> StateT [MockAction] IO LBS.ByteString
@@ -21,13 +23,13 @@ getServerTest json = StateT $ \s -> return ( json , GOTSERVER : s)
 getUpdatesTest:: LBS.ByteString -> T.Text -> T.Text -> T.Text -> StateT [MockAction] IO LBS.ByteString
 getUpdatesTest json key server ts = StateT $ \s -> return ( json , GOTUPDATES key server ts : s)
 
-sendMsgTest :: LBS.ByteString -> Int -> T.Text -> [Int] -> [String] -> String -> (String,String) -> StateT [MockAction] IO LBS.ByteString
+sendMsgTest :: LBS.ByteString -> UserId -> T.Text -> [Integer] -> [String] -> String -> (String,String) -> StateT [MockAction] IO LBS.ByteString
 sendMsgTest json usId txt [] [] "" ("","") = StateT $ \s -> 
     return ( json , (SENDMSG usId (TextMsg txt)) : s)
 sendMsgTest json usId "" [] [] stickerId ("","") = StateT $ \s -> 
     return ( json , (SENDMSG usId (StickerMsg (read stickerId))) : s)    
 
-sendKeybTest :: LBS.ByteString -> Int -> Int -> T.Text-> StateT [MockAction] IO LBS.ByteString
+sendKeybTest :: LBS.ByteString -> UserId -> N -> T.Text-> StateT [MockAction] IO LBS.ByteString
 sendKeybTest json usId currN msg = StateT $ \s -> 
     return ( json , (SENDKEYB usId currN msg) : s)
 

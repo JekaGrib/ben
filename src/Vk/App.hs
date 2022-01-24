@@ -291,10 +291,10 @@ checkUpdates h json = do
       Just (FailAnswer _ ) -> do
         lift $ logError (hLog h) $ "NEGATIVE RESPONSE to getUpdates:\n" ++ show json
         throwM $ CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"   ++ show json
-      Just (Answer { updates = [] }) -> do
+      Just (AnswerOk { updates = [] }) -> do
         lift $ logInfo (hLog h) ("No new updates\n")
         return []
-      Just (Answer ts upds) -> do
+      Just (AnswerOk ts upds) -> do
         modify $ changeTs ts
         lift $ logInfo (hLog h) ("There is new updates list\n")
         return upds
