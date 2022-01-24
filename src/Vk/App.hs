@@ -1,5 +1,5 @@
---{-# OPTIONS_GHC -Werror #-}
---{-# OPTIONS_GHC  -Wall  #-}
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -9,22 +9,18 @@ module Vk.App where
 import           Vk.Logger
 import           Vk.Api.Response
 import           Vk.Api.Request
-import           Network.HTTP.Client            ( urlEncodedBody, parseRequest, responseBody, httpLbs, method, requestBody, requestHeaders, RequestBody(..) )
+import           Network.HTTP.Client            (urlEncodedBody, parseRequest, responseBody, httpLbs, RequestBody(..) )
 import           Network.HTTP.Client.TLS        (newTlsManager)
 import qualified Data.ByteString.Lazy           as LBS
 import qualified Data.ByteString                as BS
 import           Data.Aeson (decode,encode)
-import           GHC.Generics
 import qualified Data.Text                      as T
 import           Data.Maybe                     ( fromJust )
 import           Control.Monad
 import           Control.Monad.State
 import           Data.List
 import           Control.Monad.Catch
-import qualified Control.Exception              as E
 import           Network.HTTP.Client.MultipartFormData
-import           Data.Binary.Builder
-import qualified System.IO                      as S
 import           Data.String                    ( fromString )
 import Vk.TypeSynonym
 import Vk.Oops
@@ -91,7 +87,7 @@ chooseActionOfUpd :: (Monad m, MonadCatch m) => Handle m -> Update -> StateT Ser
 chooseActionOfUpd h upd = do
   lift $ logInfo (hLog h) ("Analysis update from the list\n")
   case upd of   
-    Update "message_new" obj@(AboutObj usId id peerId txt fwds attachs maybeGeo) -> do
+    Update "message_new" obj -> do
       lift $ logInfo (hLog h) (logStrForGetObj obj)
       chooseActionOfNState h obj
     UnknownUpdate _ -> do
@@ -100,7 +96,7 @@ chooseActionOfUpd h upd = do
       lift $ logWarning (hLog h) ("There is UNKNOWN UPDATE. BOT WILL IGNORE IT. " ++ show upd ++ "\n")
 
 chooseActionOfNState :: (Monad m, MonadCatch m) => Handle m -> AboutObj -> StateT ServerAndUsersNs m ()
-chooseActionOfNState h obj@(AboutObj usId id peerId txt fwds attachs maybeGeo) = do
+chooseActionOfNState h obj@(AboutObj usId _ _ _ _ _ _) = do
   usersNs <- gets snd
   let nState = lookup usId usersNs
   case nState of
@@ -115,7 +111,7 @@ chooseActionOfNState h obj@(AboutObj usId id peerId txt fwds attachs maybeGeo) =
       chooseActionOfObject h obj currN
 
 chooseActionOfButton :: (Monad m, MonadCatch m) => Handle m -> AboutObj -> N -> StateT ServerAndUsersNs m ()
-chooseActionOfButton h obj@(AboutObj usId id peerId txt fwds attachs maybeGeo) oldN =
+chooseActionOfButton h obj@(AboutObj usId _ _ _ _ _ _) oldN =
   case checkButton obj of
     Just newN -> do
       lift $ logInfo (hLog h) ("Change number of repeats to " ++ show newN ++ " for user " ++ show usId ++ "\n")
@@ -141,16 +137,16 @@ chooseActionOfButton h obj@(AboutObj usId id peerId txt fwds attachs maybeGeo) o
 chooseActionOfObject :: (Monad m, MonadCatch m) => Handle m -> AboutObj -> N -> StateT ServerAndUsersNs m ()
 chooseActionOfObject h obj currN =
   case obj of
-    AboutObj usId id peerId txt [] [] Nothing -> do
+    AboutObj usId _ _ txt [] [] Nothing -> do
       chooseActionOfTxt h currN usId txt
-    AboutObj usId id peerId txt [] [StickerAttachment "sticker" (StickerInfo idSt)] Nothing -> do
+    AboutObj usId _ _ "" [] [StickerAttachment "sticker" (StickerInfo idSt)] Nothing -> do
       lift $ replicateM_ currN $ do
         logDebug (hLog h) ("Send request to send StickerMsg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&sticker_id=" ++ show idSt ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
         response <- sendStickMsg h usId idSt `catch` (\e -> do
                             logError (hLog h) $ show e ++ " SendMessage fail\n"    
                             throwM $ DuringSendMsgException (StickerMsg idSt) (ToUserId usId) $ show (e :: SomeException))
         checkSendMsgResponse h usId (StickerMsg idSt) response
-    AboutObj usId id peerId txt [] attachs maybeGeo -> do
+    AboutObj _ _ _ _ [] _ _ -> do
       chooseActionOfAttachs h currN obj
     AboutObj usId _ _ _ _ _ _ -> do
       lift $ logWarning (hLog h) ("There is forward message. BOT WILL IGNORE IT. " ++ show obj ++ "\n")
@@ -191,7 +187,7 @@ chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
       checkSendMsgResponse h usId (TextMsg txt) response
 
 chooseActionOfAttachs :: (Monad m, MonadCatch m) => Handle m -> N -> AboutObj -> StateT ServerAndUsersNs m () 
-chooseActionOfAttachs h currN obj@(AboutObj usId id peerId txt fwds attachs maybeGeo) = do
+chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
   eitherAttachStrings <- lift $ mapM (getAttachmentString h usId) attachs
   case sequence eitherAttachStrings of
     Right attachStrings -> do
