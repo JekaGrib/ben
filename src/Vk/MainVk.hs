@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -8,13 +10,9 @@ import           Vk.Logger
 import           Vk.Api.Response
 import qualified Data.Configurator              as C
 import qualified Data.Configurator.Types        as C
-import qualified Data.Text                      as T
-import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
 import           Data.Char
-import           Control.Exception
-import           System.IO
-import           Data.Time.Clock
+import           Control.Exception              (IOException, SomeException, throw, catch)
 import           Data.Time.LocalTime
 import Vk.Oops
 import Vk.TypeSynonym
@@ -59,8 +57,8 @@ getTime = (do
 parseConfStartN :: C.Config -> IO N
 parseConfStartN conf = (do
   str <- ((C.lookup conf "VK.startN") :: IO (Maybe Int))
-    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe Int) )
-    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe Int) ) 
+    `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe Int) )
+    `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe Int) ) 
   case str of
     Nothing -> inputStartN
     Just 1  -> return 1
@@ -74,8 +72,8 @@ parseConfStartN conf = (do
 parseConfBotToken :: C.Config -> IO String
 parseConfBotToken conf = (do
   str <- ((C.lookup conf "VK.botToken") :: IO (Maybe String))
-    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
-    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe String) ) 
+    `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
+    `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
     Nothing -> inputBotToken
     Just n  -> return n)
@@ -84,8 +82,8 @@ parseConfBotToken conf = (do
 parseConfPrio :: C.Config -> IO Priority
 parseConfPrio conf = (do
   str <- (C.lookup conf "VK.logLevel" :: IO (Maybe String))
-    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
-    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe String) ) 
+    `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
+    `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
     Nothing        -> inputLogLevel
     Just "DEBUG"   -> return DEBUG
@@ -98,8 +96,8 @@ parseConfPrio conf = (do
 parseConfHelpMsg :: C.Config -> IO String
 parseConfHelpMsg conf = (do
   str <- ((C.lookup conf "VK.help_Info_Msg") :: IO (Maybe String))
-    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
-    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe String) ) 
+    `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
+    `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
     Nothing -> inputHelpMsg
     Just n  -> return n)
@@ -108,8 +106,8 @@ parseConfHelpMsg conf = (do
 parseConfRepeatQ :: C.Config -> IO String
 parseConfRepeatQ conf = (do
   str <- ((C.lookup conf "VK.repeat_Info_Question") :: IO (Maybe String))
-    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
-    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe String) ) 
+    `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
+    `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
     Nothing -> inputRepeatQ
     Just n  -> return n)
@@ -118,8 +116,8 @@ parseConfRepeatQ conf = (do
 parseConfGroupId :: C.Config -> IO GroupId
 parseConfGroupId conf = (do
   str <- ((C.lookup conf "VK.group_id") :: IO (Maybe GroupId))
-    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe GroupId) )
-    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe GroupId) ) 
+    `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe GroupId) )
+    `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe GroupId) ) 
   case str of
     Nothing -> inputGroupId
     Just n  -> return n)

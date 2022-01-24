@@ -1,3 +1,5 @@
+--{-# OPTIONS_GHC -Werror #-}
+--{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
@@ -11,7 +13,7 @@ import           Network.HTTP.Client            ( urlEncodedBody, parseRequest, 
 import           Network.HTTP.Client.TLS        (newTlsManager)
 import qualified Data.ByteString.Lazy           as LBS
 import qualified Data.ByteString                as BS
-import           Data.Aeson
+import           Data.Aeson (decode,encode)
 import           GHC.Generics
 import qualified Data.Text                      as T
 import           Data.Maybe                     ( fromJust )
@@ -66,7 +68,7 @@ getServer h = do
                                 throwM $ DuringGetLongPollServerException $ show (e :: SomeException))
   lift $ logDebug (hLog h) ("Get response: " ++ show jsonServ ++ "\n")
   lift $ checkGetServResponse h jsonServ
-  let ts = tsSI . response . fromJust . decode $ jsonServ
+  let ts = tsSI . responseGPSJB . fromJust . decode $ jsonServ
   let key =  extractKey $ jsonServ
   let server = extractServ $ jsonServ
   modify $ changeServerInfo (ServerInfo key server ts)
@@ -74,7 +76,7 @@ getServer h = do
 getUpdAndLog :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndUsersNs m LBS.ByteString     
 getUpdAndLog h = do
   ServerInfo key server ts <- gets fst
-  lift $ logDebug (hLog h) $ "Send request to getUpdates: " ++ T.unpack server ++ "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=25\n"
+  lift $ logDebug (hLog h) $ "Send request to getUpdates: " ++ T.unpack server ++ "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20\n"
   json <- lift $ getUpdates h key server ts `catch` (\e -> do
                                 logError (hLog h) $ show e ++ " GetUpdates fail\n"
                                 throwM $ DuringGetUpdatesException $ show (e :: SomeException))
@@ -92,7 +94,7 @@ chooseAction h upd = do
   lift $ logInfo (hLog h) ("Analysis update from the list\n")
   case upd of   
     Update "message_new" obj@(AboutObj usId id peerId txt fwds attachs maybeGeo) -> do
-      lift $ logInfo (hLog h) (prettyMsgInfo usId txt fwds attachs maybeGeo)
+      lift $ logInfo (hLog h) (logStrForGetObj obj)
       db <- gets snd
       case lookup usId db of 
         Just (Left (OpenRepeat oldN)) -> do
@@ -142,7 +144,7 @@ chooseAction h upd = do
                     checkSendMsgResponse h usId (AttachmentMsg txt attachStrings maybeGeo) response
                 Left str ->
                   lift $ logWarning (hLog h) ("There is UNKNOWN ATTACMENT in updateList. BOT WILL IGNORE IT. " ++ show attachs ++ ". " ++ str ++ "\n")     
-            AboutObj usId id peerId txt fwds attachs Nothing -> do
+            AboutObj _ _ _ _ _ _ Nothing -> do
               lift $ logWarning (hLog h) ("There is forward message. BOT WILL IGNORE IT. " ++ show upd ++ "\n")
               let infoMsg = T.pack $ "I`m sorry, I can`t work with forward messages, so I will ignore this message\n"
               lift $ logDebug (hLog h) ("Send request to send msg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&message=" ++ T.unpack infoMsg ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
@@ -186,7 +188,7 @@ chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
 
 
 getAttachmentString :: (Monad m, MonadCatch m) => Handle m -> UserId -> Attachment -> m (Either String String)
-getAttachmentString h usId (PhotoAttachment "photo" (Photo [])) = do
+getAttachmentString _ _ (PhotoAttachment "photo" (Photo [])) = do
   return $ Left $ "Unknown photo attachment, empty sizes\n"
 getAttachmentString h usId (PhotoAttachment "photo" (Photo sizes)) = do
   let picUrl = url . head . reverse . sortOn height $ sizes
@@ -196,8 +198,10 @@ getAttachmentString h usId (PhotoAttachment "photo" (Photo sizes)) = do
   loadPhotoJson <- loadPhotoToServ h serUrl picUrl bsPic
   loadPhotoResp <- checkLoadPhotoResponse h loadPhotoJson
   savePhotoJson <- savePhotoOnServ h loadPhotoResp
-  (DocInfo id owner_id) <- checkSavePhotoResponse h savePhotoJson
-  return $ Right $ "photo" ++ show owner_id ++ "_" ++ show id 
+  (DocInfo idDoc owner_id) <- checkSavePhotoResponse h savePhotoJson
+  return $ Right $ "photo" ++ show owner_id ++ "_" ++ show idDoc 
+getAttachmentString _ _ (PhotoAttachment attType _) = do
+  return $ Left $ "WrongType for photoMessage attachment: " ++ show attType ++ "\n"
 getAttachmentString h usId (DocAttachment "doc" (Doc docUrl ext title)) = do
   serRespJson <- getDocServer h usId "doc"
   serUrl <- checkGetUploadServResponse h serRespJson
@@ -205,8 +209,10 @@ getAttachmentString h usId (DocAttachment "doc" (Doc docUrl ext title)) = do
   loadDocJson <- loadDocToServ h serUrl docUrl bsDoc ext
   loadDocResp <- checkLoadDocResponse h loadDocJson
   saveDocJson <- saveDocOnServ h loadDocResp title
-  (DocInfo id owner_id) <- checkSaveDocResponse h saveDocJson
-  return $ Right $ "doc" ++ show owner_id ++ "_" ++ show id 
+  (DocInfo idDoc owner_id) <- checkSaveDocResponse h saveDocJson
+  return $ Right $ "doc" ++ show owner_id ++ "_" ++ show idDoc 
+getAttachmentString _ _ (DocAttachment attType _) = do
+  return $ Left $ "WrongType for docMessage attachment: " ++ show attType ++ "\n" 
 getAttachmentString h usId (AudioMesAttachment "audio_message" (Audio docUrl)) = do
   serRespJson <- getDocServer h usId "audio_message"
   serUrl <- checkGetUploadServResponse h serRespJson
@@ -214,21 +220,36 @@ getAttachmentString h usId (AudioMesAttachment "audio_message" (Audio docUrl)) =
   loadDocJson <- loadDocToServ h serUrl docUrl bsDoc "ogg"
   loadDocResp <- checkLoadDocResponse h loadDocJson
   saveDocJson <- saveDocOnServ h loadDocResp "audio_message"
-  (DocInfo id owner_id) <- checkSaveDocAuMesResponse h saveDocJson
-  return $ Right $ "doc" ++ show owner_id ++ "_" ++ show id
-getAttachmentString h usId (VideoAttachment "video" (DocInfo id owner_id)) = do
-  return $ Right $ "video" ++ show owner_id ++ "_" ++ show id
-getAttachmentString h usId (AudioAttachment "audio" (DocInfo id owner_id)) = do
-  return $ Right $ "audio" ++ show owner_id ++ "_" ++ show id
-getAttachmentString h usId (MarketAttachment "market" (DocInfo id owner_id)) = do
-  return $ Right $ "market" ++ show owner_id ++ "_" ++ show id
-getAttachmentString h usId (WallAttachment "wall" (WallInfo id owner_id)) = do
-  return $ Right $ "wall" ++ show owner_id ++ "_" ++ show id
-getAttachmentString h usId (PollAttachment "poll" (DocInfo id owner_id)) = do
-  return $ Right $ "poll" ++ show owner_id ++ "_" ++ show id  
-getAttachmentString h usId (StickerAttachment "sticker" (StickerInfo id)) = 
-  return $ Left "Wrong sticker attachment. Sticker not alone in msg.\n"
-getAttachmentString h usId (UnknownAttachment obj) = return $ Left $ "Unknown attachment" ++ show obj ++ "\n"
+  (DocInfo idDoc owner_id) <- checkSaveDocAuMesResponse h saveDocJson
+  return $ Right $ "doc" ++ show owner_id ++ "_" ++ show idDoc
+getAttachmentString _ _ (AudioMesAttachment attType _) = do
+  return $ Left $ "WrongType for audioMessage attachment: " ++ show attType ++ "\n"
+getAttachmentString _ _ (VideoAttachment "video" (DocInfo idDoc owner_id)) = do
+  return $ Right $ "video" ++ show owner_id ++ "_" ++ show idDoc
+getAttachmentString _ _ (VideoAttachment attType _) = do
+  return $ Left $ "WrongType for videoMessage attachment: " ++ show attType ++ "\n"
+getAttachmentString _ _ (AudioAttachment "audio" (DocInfo idDoc owner_id)) = do
+  return $ Right $ "audio" ++ show owner_id ++ "_" ++ show idDoc
+getAttachmentString _ _ (AudioAttachment attType _) = do
+  return $ Left $ "WrongType for audio attachment: " ++ show attType ++ "\n"  
+getAttachmentString _ _ (MarketAttachment "market" (DocInfo idDoc owner_id)) = do
+  return $ Right $ "market" ++ show owner_id ++ "_" ++ show idDoc
+getAttachmentString _ _ (MarketAttachment attType _) = do
+  return $ Left $ "WrongType for marketMessage attachment: " ++ show attType ++ "\n"
+getAttachmentString _ _ (WallAttachment "wall" (WallInfo idWall owner_id)) = do
+  return $ Right $ "wall" ++ show owner_id ++ "_" ++ show idWall
+getAttachmentString _ _ (WallAttachment attType _) = do
+  return $ Left $ "WrongType for marketMessage attachment: " ++ show attType ++ "\n"
+getAttachmentString _ _ (PollAttachment "poll" (DocInfo idDoc owner_id)) = do
+  return $ Right $ "poll" ++ show owner_id ++ "_" ++ show idDoc  
+getAttachmentString _ _ (PollAttachment attType _) = do
+  return $ Left $ "WrongType for marketMessage attachment: " ++ show attType ++ "\n"
+getAttachmentString _ usId (StickerAttachment "sticker" (StickerInfo _)) = 
+  return $ Left $ "Wrong sticker attachment from user: " ++ show usId  ++ ". Sticker not alone in msg.\n"
+getAttachmentString _ _ (StickerAttachment attType _) = do
+  return $ Left $ "WrongType for stickerMessage attachment: " ++ show attType ++ "\n"
+getAttachmentString _ usId (UnknownAttachment obj) = return $ Left $ "Unknown attachment from user: " ++ show usId  ++ ". " ++ show obj ++ "\n"
+  
 
 
 sendTxtMsg :: (Monad m, MonadCatch m) => Handle m -> UserId -> T.Text -> m LBS.ByteString
@@ -253,7 +274,7 @@ checkGetServResponse h json = do
       Nothing                      -> do
         logError (hLog h) $ "UNKNOWN RESPONSE to getLongPollServer:\n" ++ show json
         throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
-      Just (ErrorAnswerServ { error'' =  _ } ) -> do
+      Just (ErrorAnswerServ { errorEAS =  _ } ) -> do
         logError (hLog h) $ "NEGATIVE RESPONSE to getLongPollServer:\n" ++ show json
         throwM $ CheckGetServerResponseException $ "NEGATIVE RESPONSE:\n"   ++ show json
       Just _ -> do
@@ -265,7 +286,7 @@ checkUpdates h json = do
       Nothing                      -> do
         lift $ logError (hLog h) $ "UNKNOWN RESPONSE to getUpdates:\n" ++ show json
         throwM $ CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
-      Just (ErrorAnswer { error' = _ } ) -> do
+      Just (ErrorAnswer { errorEA = _ } ) -> do
         lift $ logError (hLog h) $ "NEGATIVE RESPONSE to getUpdates:\n" ++ show json
         throwM $ CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"   ++ show json
       Just (FailAnswer 2 ) -> do
@@ -278,12 +299,12 @@ checkUpdates h json = do
         getServer h
         json2 <- getUpdAndLog h
         checkUpdates h json2
-      Just (FailTSAnswer {fail'' = 1 , ts'' = ts } ) -> do
+      Just (FailTSAnswer {failFTSA = 1 , tsFTSA = ts } ) -> do
         lift $ logWarning (hLog h) ("FAIL. Ts in request is wrong, need to use received ts\n")
         modify $ changeTs (T.pack . show $ ts)
         json2 <- getUpdAndLog h
         checkUpdates h json2
-      Just (FailTSAnswer {fail'' = _ , ts'' = ts } ) -> do
+      Just (FailTSAnswer {failFTSA = _ , tsFTSA = ts } ) -> do
         lift $ logWarning (hLog h) ("FAIL. Ts in request is wrong, need to use received ts\n")
         modify $ changeTs (T.pack . show $ ts)
         json2 <- getUpdAndLog h
@@ -305,7 +326,7 @@ checkSendMsgResponse h usId msg json = do
       Nothing                      -> do
         logError (hLog h) $ "UNKNOWN RESPONSE to sendMessage:\n" ++ show json
         throwM $ CheckSendMsgResponseException msg (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"  
-      Just (ErrorAnswerMsg { error''' = _ } ) -> do
+      Just (ErrorAnswerMsg { errorEAM = _ } ) -> do
         logError (hLog h) $ "NEGATIVE RESPONSE to sendMessage:\n" ++ show json
         throwM $ CheckSendMsgResponseException msg (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
       Just _                       -> case msg of
@@ -323,7 +344,7 @@ checkSendKeybResponse h usId n msg json = do
       Nothing                      -> do
         logError (hLog h) $ "UNKNOWN RESPONSE to sendKeyboard:\n" ++ show json
         throwM $ CheckSendKeybResponseException (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"  
-      Just (ErrorAnswerMsg { error''' = _ } ) -> do
+      Just (ErrorAnswerMsg { errorEAM = _ } ) -> do
         logError (hLog h) $ "NEGATIVE RESPONSE to sendKeyboard:\n" ++ show json
         throwM $ CheckSendKeybResponseException (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
       Just _                       -> do
@@ -340,7 +361,7 @@ checkGetUploadServResponse h json = do
 checkLoadDocResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m LoadDocResp
 checkLoadDocResponse h json = do
   case decode json of
-      Just loadDocResp@(LoadDocResp file) -> return loadDocResp
+      Just loadDocResp@(LoadDocResp _) -> return loadDocResp
       _                      -> do
         logError (hLog h) $ "UNKNOWN RESPONSE to loadDocToServer:\n" ++ show json
         throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
@@ -348,7 +369,7 @@ checkLoadDocResponse h json = do
 checkSaveDocResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m DocInfo
 checkSaveDocResponse h json = do
   case decode json of
-      Just (SaveDocResp (ResponseSDR "doc" (DocInfo id ownerId) )) -> return (DocInfo id ownerId)
+      Just (SaveDocResp (ResponseSDR "doc" docInf )) -> return docInf
       _                      -> do
         logError (hLog h) $ "UNKNOWN RESPONSE to saveDocOnServer:\n" ++ show json
         throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
@@ -356,7 +377,7 @@ checkSaveDocResponse h json = do
 checkSaveDocAuMesResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m DocInfo
 checkSaveDocAuMesResponse h json = do
   case decode json of
-      Just (SaveDocAuMesResp (ResponseSDAMR "audio_message" (DocInfo id ownerId) )) -> return (DocInfo id ownerId)
+      Just (SaveDocAuMesResp (ResponseSDAMR "audio_message" docInf )) -> return docInf
       _                      -> do
         logError (hLog h) $ "UNKNOWN RESPONSE to saveDocAudioMesOnServer:\n" ++ show json
         throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
@@ -364,7 +385,7 @@ checkSaveDocAuMesResponse h json = do
 checkLoadPhotoResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m LoadPhotoResp
 checkLoadPhotoResponse h json = do
   case decode json of
-      Just loadPhotoResp@(LoadPhotoResp server hash photo) -> return loadPhotoResp
+      Just loadPhotoResp@(LoadPhotoResp _ _ _) -> return loadPhotoResp
       _                      -> do
         logError (hLog h) $ "UNKNOWN RESPONSE to loadPhotoToServer:\n" ++ show json
         throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
@@ -372,7 +393,7 @@ checkLoadPhotoResponse h json = do
 checkSavePhotoResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m DocInfo
 checkSavePhotoResponse h json = do
   case decode json of
-      Just (SavePhotoResp [DocInfo id ownerId ]) -> return (DocInfo id ownerId )
+      Just (SavePhotoResp [DocInfo id' ownerId ]) -> return (DocInfo id' ownerId )
       _                      -> do
         logError (hLog h) $ "UNKNOWN RESPONSE to savePhotoOnServer:\n" ++ show json
         throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
@@ -390,7 +411,7 @@ getLongPollServer' h = do
 getUpdates' :: T.Text -> T.Text -> T.Text -> IO LBS.ByteString
 getUpdates' key server ts = do
   manager <- newTlsManager  
-  req <- parseRequest $ T.unpack server ++ "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=25"
+  req <- parseRequest $ T.unpack server ++ "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20"
   res <- httpLbs req manager
   return (responseBody res)
 
@@ -487,9 +508,9 @@ savePhotoOnServ' h (LoadPhotoResp server hash photo) = do
   return (responseBody res)
 
 goToUrl' :: T.Text -> IO BS.ByteString
-goToUrl' url = do
+goToUrl' urlTxt = do
   manager <- newTlsManager
-  req <- parseRequest $ T.unpack url
+  req <- parseRequest $ T.unpack urlTxt
   res  <- httpLbs req manager
   let bs = LBS.toStrict . responseBody $ res
   return bs
@@ -501,10 +522,10 @@ extractTs :: LBS.ByteString -> T.Text
 extractTs = tsSI . fromJust . decode
 
 extractKey :: LBS.ByteString -> T.Text
-extractKey = key . response . fromJust . decode
+extractKey = keySI . responseGPSJB . fromJust . decode
 
 extractServ :: LBS.ByteString -> T.Text
-extractServ = serverSI . response . fromJust . decode
+extractServ = serverSI . responseGPSJB . fromJust . decode
 
 extractTextMsg :: Update -> T.Text
 extractTextMsg = text . objectUpd 
@@ -513,10 +534,10 @@ extractUserId :: Update -> UserId
 extractUserId = from_id . objectUpd
 
 changeServerInfo :: ServerInfo -> ServerAndUsersNs -> ServerAndUsersNs
-changeServerInfo newInfo (oldInfo,usersNs) = (newInfo,usersNs)
+changeServerInfo newInfo (_,usersNs) = (newInfo,usersNs)
 
 changeTs :: T.Text -> ServerAndUsersNs -> ServerAndUsersNs
-changeTs newTs ((ServerInfo key serv oldTs),usersNs) = ((ServerInfo key serv newTs),usersNs)
+changeTs newTs (serverInfo,usersNs) = (serverInfo {tsSI = newTs}, usersNs)
 
 func :: (b -> b) -> (a,b) -> (a,b)
 func f (a,b) = (a, f b)
@@ -524,28 +545,31 @@ func f (a,b) = (a, f b)
 changeUsersNs :: UserId -> NState -> UsersNs -> UsersNs
 changeUsersNs usId nState usersNs = 
     case lookup usId usersNs of
-        Just eitherX -> (:) (usId,nState) . delete (usId, nState) $ usersNs
+        Just oldNState -> (:) (usId,nState) . delete (usId, oldNState) $ usersNs
         Nothing -> (:) (usId,nState) $ usersNs
 
 
 checkButton :: AboutObj -> Maybe N
 checkButton obj =
   case obj of
-    AboutObj usId id peerId txt [] [] Nothing -> checkTextButton txt
+    AboutObj _ _ _ txt [] [] Nothing -> checkTextButton txt
     _  -> Nothing
 
 checkTextButton :: T.Text -> Maybe N
-checkTextButton text =
-    case text of 
+checkTextButton txt =
+    case txt of 
       { "1" -> Just 1 ; "2" -> Just 2 ; "3" -> Just 3 ; "4" -> Just 4 ; "5" -> Just 5 ; _ -> Nothing }
   
-prettyMsgInfo :: UserId -> T.Text -> [Object] -> [Attachment] -> Maybe Geo -> String
-prettyMsgInfo usId txt [] [] Nothing = "Get TextMsg: " ++ show txt ++ " from user " ++ show usId ++ "\n"
-prettyMsgInfo usId txt objs [] Nothing = "Get ForwardMsg: " ++ show objs ++ " from user " ++ show usId ++ "\n"
-prettyMsgInfo usId txt [] [] (Just geo) = "Get GeoMsg: " ++ show geo ++ " from user " ++ show usId ++ "\n"
-prettyMsgInfo usId txt [] attachs Nothing = "Get AttachmentMsg: " ++ show attachs ++ " from user " ++ show usId ++ "\n"
-prettyMsgInfo usId txt objs attachs Nothing = "Get AttachmentMsg: " ++ show attachs ++ ", with ForwardParts: " ++ show objs ++ "  from user " ++ show usId ++ "\n"
-prettyMsgInfo usId txt [] attachs (Just geo) = "Get AttachmentMsg: " ++ show attachs ++ ", with Geo: " ++ show geo ++ "  from user " ++ show usId ++ "\n"
-prettyMsgInfo usId txt objs [] (Just geo) = "Get ForwardMsg: " ++ show objs ++ ", with Geo: " ++ show geo ++ "  from user " ++ show usId ++ "\n"
-prettyMsgInfo usId txt objs attachs (Just geo) = "Get AttachmentMsg: " ++ show attachs ++ ", with Geo: " ++ show geo ++ ", with ForwardParts: " ++ show objs ++ "  from user " ++ show usId ++ "\n"
+logStrForGetObj :: AboutObj -> String
+logStrForGetObj (AboutObj usId _ _ txt [] [] Nothing) = "Get TextMsg: " ++ show txt ++ " from user " ++ show usId ++ "\n"
+logStrForGetObj (AboutObj usId _ _ txt fwds [] Nothing) = "Get ForwardMsg: " ++ show fwds ++ addInfoAboutTxt txt ++ " from user " ++ show usId ++ "\n"
+logStrForGetObj (AboutObj usId _ _ txt [] [] (Just geo)) = "Get GeoMsg: " ++ show geo ++ addInfoAboutTxt txt ++ " from user " ++ show usId ++ "\n"
+logStrForGetObj (AboutObj usId _ _ txt [] attachs Nothing) = "Get AttachmentMsg: " ++ show attachs ++ addInfoAboutTxt txt ++ " from user " ++ show usId ++ "\n"
+logStrForGetObj (AboutObj usId _ _ txt fwds attachs Nothing) = "Get AttachmentMsg: " ++ show attachs ++ addInfoAboutTxt txt ++ ", with ForwardParts: " ++ show fwds ++ "  from user " ++ show usId ++ "\n"
+logStrForGetObj (AboutObj usId _ _ txt [] attachs (Just geo)) = "Get AttachmentMsg: " ++ show attachs ++ addInfoAboutTxt txt ++ ", with Geo: " ++ show geo ++ "  from user " ++ show usId ++ "\n"
+logStrForGetObj (AboutObj usId _ _ txt fwds [] (Just geo)) = "Get ForwardMsg: " ++ show fwds ++ addInfoAboutTxt txt ++ ", with Geo: " ++ show geo ++ "  from user " ++ show usId ++ "\n"
+logStrForGetObj (AboutObj usId _ _ txt fwds attachs (Just geo)) = "Get AttachmentMsg: " ++ show attachs ++ addInfoAboutTxt txt ++ ", with Geo: " ++ show geo ++ ", with ForwardParts: " ++ show fwds ++ "  from user " ++ show usId ++ "\n"
 
+addInfoAboutTxt :: T.Text -> String
+addInfoAboutTxt "" = ""
+addInfoAboutTxt txt = " with text: " ++ show txt  

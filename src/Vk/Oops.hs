@@ -1,27 +1,14 @@
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 
 module Vk.Oops where
 
-import           Vk.Logger
 import           Vk.Api.Response
-import           Vk.Api.Request
-import           Network.HTTP.Client            ( urlEncodedBody, parseRequest, responseBody, httpLbs, method, requestBody, requestHeaders, RequestBody(..) )
-import           Network.HTTP.Client.TLS        (newTlsManager)
-import qualified Data.ByteString.Lazy           as LBS
-import qualified Data.ByteString                as BS
 import qualified Data.Text                      as T
-import           Data.Maybe                     ( fromJust )
-import           Control.Monad
-import           Control.Monad.State
-import           Data.List
 import           Control.Monad.Catch
-import qualified Control.Exception              as E
-import           Network.HTTP.Client.MultipartFormData
-import           Data.Binary.Builder
-import qualified System.IO                      as S
-import           Data.String                    ( fromString )
 import Vk.TypeSynonym
 
 data VKBotException 

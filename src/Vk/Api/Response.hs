@@ -3,7 +3,34 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Vk.Api.Response where
+module Vk.Api.Response (
+  Answer(AnswerOk,updates,FailAnswer,FailTSAnswer,tsFTSA,failFTSA,ErrorAnswer,errorEA),
+  Update(Update,objectUpd,UnknownUpdate),
+  AboutObj(AboutObj,from_id,text),
+  Attachment(PhotoAttachment,DocAttachment,AudioMesAttachment,VideoAttachment,StickerAttachment,AudioAttachment,MarketAttachment,WallAttachment,PollAttachment,UnknownAttachment),
+  Doc(Doc),
+  Audio(Audio),
+  Photo(Photo),
+  Size(height,url),
+  LoadDocResp(LoadDocResp),
+  LoadPhotoResp(LoadPhotoResp),
+  SavePhotoResp(SavePhotoResp),
+  StickerInfo(StickerInfo),
+  SaveDocResp(SaveDocResp),
+  ResponseSDR(ResponseSDR),
+  DocInfo(DocInfo),
+  WallInfo(WallInfo),
+  SaveDocAuMesResp(SaveDocAuMesResp),
+  ResponseSDAMR(ResponseSDAMR),
+  GetPollServerJSONBody(GetPollServerJSONBody,responseGPSJB,ErrorAnswerServ,errorEAS),
+  Response(Response,ErrorAnswerMsg,errorEAM),
+  ServerInfo(ServerInfo,tsSI,keySI,serverSI),
+  UploadServerResponse(UploadServerResponse),
+  UploadUrl(UploadUrl),
+  Geo(Geo),
+  Coordinates(Coordinates)
+  )  where
+
 
 import           Data.Aeson
 import           GHC.Generics
@@ -14,12 +41,12 @@ import Data.Foldable (asum)
 
 
 data Answer
-    = AnswerOk     { ts      :: T.Text,
+    = AnswerOk     { tsAOk   :: T.Text,
                      updates :: [Update] }
-    | FailAnswer   { fail'   :: Integer }               
-    | FailTSAnswer { fail''  :: Integer,
-                     ts''    :: Integer }  
-    | ErrorAnswer  { error' :: Value } deriving (Generic, Show)
+    | FailAnswer   { failFA   :: Integer }               
+    | FailTSAnswer { failFTSA  :: Integer,
+                     tsFTSA    :: Integer }  
+    | ErrorAnswer  { errorEA :: Value } deriving (Generic, Show)
          
 instance FromJSON Answer where
   parseJSON val = 
@@ -49,7 +76,7 @@ data AboutObj = AboutObj {
     , id  :: Integer
     , peer_id  :: Integer
     , text  :: T.Text
-    , fwd_messages :: [Object]
+    , fwd_messages :: [Value]
     , attachments :: [Attachment]
     , geo :: Maybe Geo
     } deriving (Generic, Show)
@@ -58,31 +85,31 @@ instance FromJSON AboutObj
 
 data Attachment 
     = PhotoAttachment 
-      { type' :: T.Text
+      { typeAtt :: T.Text
       , photoPA :: Photo }
     | DocAttachment
-      { type' :: T.Text
+      { typeAtt :: T.Text
       , docDA :: Doc }
     | AudioMesAttachment
-      { type' :: T.Text
+      { typeAtt :: T.Text
       , audio_message :: Audio }
     | VideoAttachment
-      { type' :: T.Text
+      { typeAtt :: T.Text
       , docVA :: DocInfo }
     | StickerAttachment
-      { type' :: T.Text
+      { typeAtt :: T.Text
       , sticker :: StickerInfo }
     | AudioAttachment
-      { type' :: T.Text
+      { typeAtt :: T.Text
       , audio :: DocInfo }
     | MarketAttachment
-      { type' :: T.Text
+      { typeAtt :: T.Text
       , market :: DocInfo }
     | WallAttachment
-      { type' :: T.Text
+      { typeAtt :: T.Text
       , wall :: WallInfo }
     | PollAttachment
-      { type' :: T.Text
+      { typeAtt :: T.Text
       , poll :: DocInfo }
     | UnknownAttachment Value 
      deriving (Generic, Show)
@@ -128,8 +155,8 @@ parseUnknownAtt = fmap UnknownAttachment . parseJSON
 data Doc 
     = Doc{
         urlD   :: T.Text
-       , ext   :: String
-       , title :: String
+       , extD   :: String
+       , titleD :: String
     } deriving (Show)
 
 instance FromJSON Doc where
@@ -266,8 +293,8 @@ instance FromJSON ResponseSDAMR where
 
 
 data GetPollServerJSONBody 
-    = GetPollServerJSONBody { response :: ServerInfo} 
-    | ErrorAnswerServ  { error'' :: Object } deriving (Generic, Show)
+    = GetPollServerJSONBody { responseGPSJB :: ServerInfo} 
+    | ErrorAnswerServ  { errorEAS :: Value } deriving (Generic, Show)
 
 instance FromJSON GetPollServerJSONBody where
   parseJSON = 
@@ -278,7 +305,7 @@ instance FromJSON GetPollServerJSONBody where
 
 
 data ServerInfo 
-    = ServerInfo { key :: T.Text,
+    = ServerInfo { keySI :: T.Text,
                    serverSI  :: T.Text,
                    tsSI  :: T.Text} deriving (Generic, Show)
 
@@ -290,8 +317,8 @@ instance FromJSON ServerInfo where
         <*> v .: "ts" 
 
 data Response 
-    = Response { response' :: Integer }
-    | ErrorAnswerMsg  { error''' :: Value } deriving (Generic, Show)
+    = Response { responseR :: Integer }
+    | ErrorAnswerMsg  { errorEAM :: Value } deriving (Generic, Show)
 
 instance FromJSON Response where
   parseJSON  = 
