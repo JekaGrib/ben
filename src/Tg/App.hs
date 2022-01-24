@@ -47,6 +47,8 @@ import Tg.Oops
   , handleExSendMsg
   , throwAndLogEx
   )
+import Tg.TypeSynonym
+
 
 data Handle m =
   Handle
@@ -60,9 +62,6 @@ data Handle m =
     , copyMsg :: Integer -> Integer -> m LBS.ByteString
     }
 
-newtype OpenRepeat =
-  OpenRepeat Int
-  deriving (Eq, Show)
 
 -- logic functions:
 startApp :: (Monad m, MonadCatch m) => Handle m -> m ()
@@ -79,7 +78,7 @@ startApp h = do
 run ::
      (Monad m, MonadCatch m)
   => Handle m
-  -> StateT [(Integer, Either OpenRepeat Int)] m ()
+  -> StateT UsersNs m ()
 run h = do
   lift $
     logDebug
@@ -96,7 +95,7 @@ chooseActionOfUpd ::
      (Monad m, MonadCatch m)
   => Handle m
   -> Update
-  -> StateT [(Integer, Either OpenRepeat Int)] m ()
+  -> StateT UsersNs m ()
 chooseActionOfUpd h upd = do
   lift $ logInfo (hLog h) "Analysis update from the list\n"
   case upd of
@@ -118,7 +117,7 @@ chooseActionOfDbState ::
   -> Message
   -> Integer
   -> Integer
-  -> StateT [(Integer, Either OpenRepeat Int)] m ()
+  -> StateT UsersNs m ()
 chooseActionOfDbState h msg msgId usId = do
   db <- get
   let nState = lookup usId db
@@ -141,7 +140,7 @@ chooseActionOfTryPullTxt ::
   -> Integer
   -> Integer
   -> Int
-  -> StateT [(Integer, Either OpenRepeat Int)] m ()
+  -> StateT UsersNs m ()
 chooseActionOfTryPullTxt h msg msgId usId currN =
   case tryPullTextMsg msg of
     Just txt -> do
@@ -160,7 +159,7 @@ chooseActionOfButton ::
   -> Message
   -> Integer
   -> Int
-  -> StateT [(Integer, Either OpenRepeat Int)] m ()
+  -> StateT UsersNs m ()
 chooseActionOfButton h msg usId oldN =
   case checkButton msg of
     Just newN -> do
@@ -197,7 +196,7 @@ chooseActionOfTxt ::
   -> Int
   -> Integer
   -> T.Text
-  -> StateT [(Integer, Either OpenRepeat Int)] m ()
+  -> StateT UsersNs m ()
 chooseActionOfTxt h currN usId txt =
   case filter (' ' /=) . T.unpack $ txt of
     "/help" -> do
@@ -212,7 +211,7 @@ chooseActionOfTxt h currN usId txt =
       lift $ replicateM_ currN $ sendMsgAndCheckResp h usId txt
 
 sendMsgAndCheckResp ::
-     (Monad m, MonadCatch m) => Handle m -> Integer -> T.Text -> m ()
+     (Monad m, MonadCatch m) => Handle m -> UserId -> T.Text -> m ()
 sendMsgAndCheckResp h usId msg = do
   logDebug
     (hLog h)
@@ -229,7 +228,7 @@ sendMsgAndCheckResp h usId msg = do
   checkSendMsgResponse h usId msg response
 
 copyMsgAndCheckResp ::
-     (Monad m, MonadCatch m) => Handle m -> Integer -> Integer -> m ()
+     (Monad m, MonadCatch m) => Handle m -> UserId -> MessageId -> m ()
 copyMsgAndCheckResp h usId msgId = do
   let logMsg =
         "Send request to send attachment msg_id: " ++
@@ -248,7 +247,7 @@ copyMsgAndCheckResp h usId msgId = do
   checkCopyMsgResponse h usId msgId response
 
 sendKeybAndCheckResp ::
-     (Monad m, MonadCatch m) => Handle m -> Integer -> Int -> m ()
+     (Monad m, MonadCatch m) => Handle m -> UserId -> N -> m ()
 sendKeybAndCheckResp h usId currN = do
   let infoMsg =
         T.pack $
@@ -299,7 +298,7 @@ checkAndConfirmUpdates h json =
 checkConfirmUpdatesResponse ::
      (Monad m, MonadCatch m)
   => Handle m
-  -> Integer
+  -> Offset
   -> LBS.ByteString
   -> LBS.ByteString
   -> m ()
@@ -329,7 +328,7 @@ checkConfirmUpdatesResponse h offsetArg confirmedJson responseJson =
 checkSendMsgResponse ::
      (Monad m, MonadCatch m)
   => Handle m
-  -> Integer
+  -> UserId
   -> T.Text
   -> LBS.ByteString
   -> m ()
@@ -355,8 +354,8 @@ checkSendMsgResponse h usId msg json =
 checkCopyMsgResponse ::
      (Monad m, MonadCatch m)
   => Handle m
-  -> Integer
-  -> Integer
+  -> UserId
+  -> MessageId
   -> LBS.ByteString
   -> m ()
 checkCopyMsgResponse h usId msgId json =
@@ -382,8 +381,8 @@ checkCopyMsgResponse h usId msgId json =
 checkSendKeybResponse ::
      (Monad m, MonadCatch m)
   => Handle m
-  -> Integer
-  -> Int
+  -> UserId
+  -> N
   -> T.Text
   -> LBS.ByteString
   -> m ()
@@ -423,7 +422,7 @@ getUpdates' h = do
   let req = addBodyToReq initReq (RequestBodyLBS . encode $ bodyTimeOut)
   sendReqAndGetRespBody manager req
 
-confirmUpdates' :: Handle IO -> Integer -> IO LBS.ByteString
+confirmUpdates' :: Handle IO -> UpdateId -> IO LBS.ByteString
 confirmUpdates' h nextUpdate = do
   let bodyOffset = JSONBodyOffset {offset = nextUpdate}
   manager <- newTlsManager
@@ -433,7 +432,7 @@ confirmUpdates' h nextUpdate = do
   let req = addBodyToReq initReq (RequestBodyLBS . encode $ bodyOffset)
   sendReqAndGetRespBody manager req
 
-sendMsg' :: Handle IO -> Integer -> T.Text -> IO LBS.ByteString
+sendMsg' :: Handle IO -> UserId -> T.Text -> IO LBS.ByteString
 sendMsg' h usId msg = do
   let msgBody = encode (SendMsgJSONBody {chat_id = usId, text = msg})
   manager <- newTlsManager
@@ -443,7 +442,7 @@ sendMsg' h usId msg = do
   let req = addBodyToReq initReq (RequestBodyLBS msgBody)
   sendReqAndGetRespBody manager req
 
-copyMsg' :: Handle IO -> Integer -> Integer -> IO LBS.ByteString
+copyMsg' :: Handle IO -> UserId -> MessageId -> IO LBS.ByteString
 copyMsg' h usId msgId = do
   let msgBody =
         encode
@@ -456,7 +455,7 @@ copyMsg' h usId msgId = do
   let req = addBodyToReq initReq (RequestBodyLBS msgBody)
   sendReqAndGetRespBody manager req
 
-sendKeyb' :: Handle IO -> Integer -> Int -> T.Text -> IO LBS.ByteString
+sendKeyb' :: Handle IO -> UserId -> N -> T.Text -> IO LBS.ByteString
 sendKeyb' h usId n msg = do
   manager <- newTlsManager
   initReq <-
@@ -470,7 +469,7 @@ sendReqAndGetRespBody :: Manager -> Request -> IO LBS.ByteString
 sendReqAndGetRespBody manager req = responseBody <$> httpLbs req manager
 
 -- clear functions:
-extractNextUpdate :: LBS.ByteString -> Integer
+extractNextUpdate :: LBS.ByteString -> UpdateId
 extractNextUpdate = succ . update_id . last . result . fromJust . decode
 
 extractUpdates :: LBS.ByteString -> [Update]
@@ -479,26 +478,26 @@ extractUpdates = result . fromJust . decode
 extractTextMsg :: Update -> T.Text
 extractTextMsg = textMsg . message
 
-extractUserId :: Update -> Integer
+extractUserId :: Update -> UserId
 extractUserId = idUser . fromUser . message
 
 changeDB ::
-     Integer
-  -> Either OpenRepeat Int
-  -> [(Integer, Either OpenRepeat Int)]
-  -> [(Integer, Either OpenRepeat Int)]
+     UserId
+  -> NState
+  -> UsersNs
+  -> UsersNs
 changeDB usId eitherN bd =
   case lookup usId bd of
     Just eitherX -> (:) (usId, eitherN) . delete (usId, eitherX) $ bd
     Nothing -> (:) (usId, eitherN) bd
 
-checkButton :: Message -> Maybe Int
+checkButton :: Message -> Maybe N
 checkButton msg =
   case tryPullTextMsg msg of
     Just txt -> checkTextButton txt
     Nothing -> Nothing
 
-checkTextButton :: T.Text -> Maybe Int
+checkTextButton :: T.Text -> Maybe N
 checkTextButton txt =
   case txt of
     "1" -> Just 1
@@ -520,7 +519,7 @@ addBodyToReq initReq reqBody =
     , requestHeaders = [("Content-Type", "application/json; charset=utf-8")]
     }
 
-makeKeybBody :: Integer -> T.Text -> Int -> KeybJSONBody
+makeKeybBody :: UserId -> T.Text -> N -> KeybJSONBody
 makeKeybBody usId msg n =
   KeybJSONBody
     { chat_idKeyb = usId

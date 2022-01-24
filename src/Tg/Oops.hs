@@ -9,6 +9,8 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Configurator.Types as C
 import qualified Data.Text as T
 import Tg.Logger (LogHandle(..), logError)
+import Tg.TypeSynonym
+
 
 data TGBotException
   = DuringGetUpdatesException String
@@ -34,11 +36,11 @@ newtype Msg =
   deriving (Eq, Show)
 
 newtype ToUserId =
-  ToUserId Integer
+  ToUserId UserId
   deriving (Eq, Show)
 
 newtype MsgId =
-  MsgId Integer
+  MsgId MessageId
   deriving (Eq, Show)
 
 throwAndLogEx :: (Monad m, MonadCatch m) => LogHandle m -> TGBotException -> m a
@@ -58,7 +60,7 @@ handleExGetUpd logH e = do
 handleExSendMsg ::
      (Monad m, MonadCatch m)
   => LogHandle m
-  -> Integer
+  -> UserId
   -> T.Text
   -> SomeException
   -> m LBS.ByteString
@@ -70,8 +72,8 @@ handleExSendMsg logH usId infoMsg e = do
 handleExCopyMsg ::
      (Monad m, MonadCatch m)
   => LogHandle m
-  -> Integer
-  -> Integer
+  -> UserId
+  -> MessageId
   -> SomeException
   -> m LBS.ByteString
 handleExCopyMsg logH usId msgId e = do
@@ -82,7 +84,7 @@ handleExCopyMsg logH usId msgId e = do
 handleExSendKeyb ::
      (Monad m, MonadCatch m)
   => LogHandle m
-  -> Integer
+  -> UserId
   -> SomeException
   -> m LBS.ByteString
 handleExSendKeyb logH usId e = do

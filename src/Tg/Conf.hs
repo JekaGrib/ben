@@ -16,6 +16,8 @@ import Tg.Oops
   , handleExParseConf
   , handleExPullConf
   )
+import Tg.TypeSynonym
+
 
 data Config =
   Config
@@ -25,6 +27,7 @@ data Config =
     , cRepeatQ :: String
     , cPriority :: Priority
     }
+
 
 parseConf :: IO Config
 parseConf = do
@@ -48,7 +51,7 @@ pullConfig =
   (\e -> print (e :: E.IOException) >> return C.empty)
 
 -- parse config functions:
-parseConfStartN :: C.Config -> IO Int
+parseConfStartN :: C.Config -> IO N
 parseConfStartN conf = do
   str <-
     (C.lookup conf "telegram.startN" :: IO (Maybe Int)) `E.catch`
@@ -108,7 +111,7 @@ parseConfRepeatQ conf = do
     Just n -> return n
 
 -- input functions:
-inputStartN :: IO Int
+inputStartN :: IO N
 inputStartN = do
   putStrLn
     "Can`t parse value \"startN\" from configuration file or command line\nPlease, enter start number of repeats. Number from 1 to 5"
