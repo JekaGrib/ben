@@ -8,6 +8,7 @@ import           Tg.App
 import           Tg.Logger
 import           Tg.Oops
 import           Tg.Conf
+import           Tg.TypeSynonym
 import qualified Data.Text                      as T
 import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State

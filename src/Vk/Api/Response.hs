@@ -10,11 +10,11 @@ import           Control.Applicative
 
 
 data Answer 
-    = Answer       { ts       :: T.Text,
-                     updates  :: [Update] }
-    | FailAnswer   { fail'    :: Int }               
-    | FailTSAnswer { fail''   :: Int,
-                     ts''     :: Int }  
+    = Answer       { ts      :: T.Text,
+                     updates :: [Update] }
+    | FailAnswer   { fail'   :: Integer }               
+    | FailTSAnswer { fail''  :: Integer,
+                     ts''    :: Integer }  
     | ErrorAnswer  { error' :: Object } deriving (Generic, Show)
          
 instance FromJSON Answer where
@@ -42,9 +42,9 @@ instance FromJSON Update where
 
 
 data AboutObj = AboutObj {
-      from_id  :: Int
-    , id  :: Int
-    , peer_id  :: Int
+      from_id  :: Integer
+    , id  :: Integer
+    , peer_id  :: Integer
     , text  :: T.Text
     , fwd_messages :: [Object]
     , attachments :: [Attachment]
@@ -145,7 +145,7 @@ data LoadDocResp = LoadDocResp {
 instance FromJSON LoadDocResp
 
 data LoadPhotoResp = LoadPhotoResp {
-      server :: Int
+      server :: Integer
     , hash :: String
     , photo :: String
     } deriving (Generic, Show)
@@ -159,8 +159,8 @@ instance FromJSON SavePhotoResp where
         <$> v .: "response"
 
 data PhotoInfo = PhotoInfo {
-      idPI :: Int
-    , owner_id :: Int
+      idPI :: Integer
+    , owner_id :: Integer
     , access_key :: String
     } deriving (Generic, Show)
 
@@ -171,8 +171,8 @@ instance FromJSON PhotoInfo where
         <*> v .: "access_key"
 
 data AudioMesInfo = AudioMesInfo {
-      idAMI :: Int
-    , owner_idAMI :: Int
+      idAMI :: Integer
+    , owner_idAMI :: Integer
     , access_keyAMI :: String
     } deriving (Generic, Show)
 
@@ -183,7 +183,7 @@ instance FromJSON AudioMesInfo where
         <*> v .: "access_key"
 
 data StickerInfo = StickerInfo {
-      sticker_id :: Int
+      sticker_id :: Integer
     } deriving (Generic, Show)
 
 instance FromJSON StickerInfo
@@ -205,8 +205,8 @@ instance FromJSON ResponseSDR where
         <*> v .: "doc"
 
 data DocInfo = DocInfo {
-      idDI :: Int
-    , owner_idDI :: Int
+      idDI :: Integer
+    , owner_idDI :: Integer
     } deriving (Generic, Show)
 
 instance FromJSON DocInfo where
@@ -215,8 +215,8 @@ instance FromJSON DocInfo where
         <*> v .: "owner_id"
 
 data WallInfo = WallInfo {
-      idWI :: Int
-    , from_idWI :: Int
+      idWI :: Integer
+    , from_idWI :: Integer
     } deriving (Generic, Show)
 
 instance FromJSON WallInfo where

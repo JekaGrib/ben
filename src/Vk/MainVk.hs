@@ -16,6 +16,8 @@ import           Control.Exception
 import           System.IO
 import           Data.Time.Clock
 import           Data.Time.LocalTime
+import Vk.Oops
+import Vk.TypeSynonym
 
 
 pullConfig :: IO C.Config
@@ -54,7 +56,7 @@ getTime = (do
     `catch` (\e -> ((putStrLn $ show (e :: SomeException)) >> inputLocalTime) )
 
 
-parseConfStartN :: C.Config -> IO Int
+parseConfStartN :: C.Config -> IO N
 parseConfStartN conf = (do
   str <- ((C.lookup conf "VK.startN") :: IO (Maybe Int))
     `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe Int) )
@@ -113,11 +115,11 @@ parseConfRepeatQ conf = (do
     Just n  -> return n)
       `catch` (\e -> throw $ DuringParseConfigException $ "repeatQuestion\n" ++ show (e :: SomeException))
 
-parseConfGroupId :: C.Config -> IO Int
+parseConfGroupId :: C.Config -> IO GroupId
 parseConfGroupId conf = (do
-  str <- ((C.lookup conf "VK.group_id") :: IO (Maybe Int))
-    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe Int) )
-    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe Int) ) 
+  str <- ((C.lookup conf "VK.group_id") :: IO (Maybe GroupId))
+    `catch` ( (\e -> return Nothing) :: C.KeyError  -> IO (Maybe GroupId) )
+    `catch` ( (\e -> return Nothing) :: IOException -> IO (Maybe GroupId) ) 
   case str of
     Nothing -> inputGroupId
     Just n  -> return n)
@@ -125,7 +127,7 @@ parseConfGroupId conf = (do
 
 
 
-inputStartN :: IO Int
+inputStartN :: IO N
 inputStartN = do
   putStrLn "Can`t parse value \"startN\" from configuration file or command line\nPlease, enter start number of repeats. Number from 1 to 5"
   input <- getLine
@@ -163,7 +165,7 @@ inputRepeatQ = do
   putStrLn "Can`t parse value \"/repeat Info Question\" from configuration file or command line\nPlease, enter \"/repeat Info Question\"\nExample: How many times to repeat message in the future?"
   getLine
 
-inputGroupId :: IO Int
+inputGroupId :: IO GroupId
 inputGroupId = do
   putStrLn "Can`t parse value \"group id\" from configuration file or command line\nPlease, enter NUMBER of group id\nExample: 123456789"
   str <- getLine

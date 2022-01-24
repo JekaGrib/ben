@@ -54,9 +54,9 @@ pullConfig =
 parseConfStartN :: C.Config -> IO N
 parseConfStartN conf = do
   str <-
-    (C.lookup conf "telegram.startN" :: IO (Maybe Int)) `E.catch`
-    ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe Int)) `E.catch`
-    ((\_ -> return Nothing) :: E.IOException -> IO (Maybe Int))
+    (C.lookup conf "telegram.startN" :: IO (Maybe N)) `E.catch`
+    ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe N)) `E.catch`
+    ((\_ -> return Nothing) :: E.IOException -> IO (Maybe N))
   case str of
     Nothing -> inputStartN `E.catch` handleExInput "startN"
     Just 1 -> return 1

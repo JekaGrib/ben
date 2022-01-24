@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 25e6418722bb643075553f090adc13df0873b6ac15ccb378ce098f05ef9be2bb
+-- hash: bdf7fda8ab61259988896023188da7fe2e820cb6ffe29d45b376682a576c26e7
 
 name:           ben
 version:        0.1.0.0
@@ -40,6 +40,8 @@ library
       Vk.App
       Vk.Logger
       Vk.MainVk
+      Vk.Oops
+      Vk.TypeSynonym
   other-modules:
       Paths_ben
   hs-source-dirs:

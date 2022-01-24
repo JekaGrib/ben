@@ -24,27 +24,8 @@ import           Network.HTTP.Client.MultipartFormData
 import           Data.Binary.Builder
 import qualified System.IO                      as S
 import           Data.String                    ( fromString )
-
-
-
-
-data ToUserId      = ToUserId   Int               deriving (Eq,Show)
-
-data VKBotException 
-  = DuringGetLongPollServerException String
-  | CheckGetServerResponseException String 
-  | DuringGetUpdatesException String
-  | CheckGetUpdatesResponseException String
-  | DuringSendMsgException MSG ToUserId String
-  | CheckSendMsgResponseException MSG ToUserId String
-  | DuringSendKeybException ToUserId String
-  | CheckSendKeybResponseException ToUserId String
-  | DuringGetTimeException String
-  | DuringPullConfigException String
-  | DuringParseConfigException String
-    deriving (Eq,Show)
-
-instance Exception VKBotException 
+import Vk.TypeSynonym
+import Vk.Oops
 
 
 data Handle m = Handle
@@ -52,39 +33,32 @@ data Handle m = Handle
     hLog              :: LogHandle m,
     getLongPollServer :: m LBS.ByteString,
     getUpdates        :: T.Text -> T.Text -> T.Text -> m LBS.ByteString,
-    sendMsg           :: Int -> T.Text -> [Int] -> [String] -> String -> (String,String) -> m LBS.ByteString,
-    sendKeyb          :: Int -> Int -> T.Text -> m LBS.ByteString,
-    getPhotoServer    :: Int -> m LBS.ByteString,
+    sendMsg           :: UserId -> T.Text -> [Integer] -> [String] -> String -> (String,String) -> m LBS.ByteString,
+    sendKeyb          :: UserId -> N -> T.Text -> m LBS.ByteString,
+    getPhotoServer    :: UserId -> m LBS.ByteString,
     loadPhotoToServ   :: T.Text -> T.Text -> BS.ByteString -> m LBS.ByteString,
     savePhotoOnServ   :: LoadPhotoResp -> m LBS.ByteString,
-    getDocServer      :: Int -> String -> m LBS.ByteString,
+    getDocServer      :: UserId -> String -> m LBS.ByteString,
     loadDocToServ     :: T.Text -> T.Text -> BS.ByteString -> String -> m LBS.ByteString,
     saveDocOnServ     :: LoadDocResp -> String -> m LBS.ByteString,
     goToUrl           :: T.Text -> m BS.ByteString
     }
 
 data Config = Config 
-  { cStartN   :: Int,
+  { cStartN   :: N,
     cBotToken :: String,
     cHelpMsg  :: String,
     cRepeatQ  :: String,
-    cGroupId  :: Int
+    cGroupId  :: GroupId
     }
 
-data OpenRepeat = OpenRepeat Int
-                        deriving (Eq,Show)
 
-data MSG = TextMsg T.Text | AttachmentMsg T.Text [String] (Maybe Geo) | StickerMsg Int 
-  deriving (Eq,Show)
-
-
-
-run :: (Monad m, MonadCatch m) => Handle m -> StateT (ServerInfo,[(Int , Either OpenRepeat Int)]) m ()
+run :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndUsersNs m ()
 run h = do
   getServer h
   forever $ runServ h
 
-getServer :: (Monad m, MonadCatch m) => Handle m -> StateT (ServerInfo,[(Int , Either OpenRepeat Int)]) m ()
+getServer :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndUsersNs m ()
 getServer h = do
   lift $ logDebug (hLog h) $ "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=" ++ show (cGroupId (hConf h)) ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n"
   jsonServ <- lift $ getLongPollServer h `catch` (\e -> do
@@ -97,7 +71,7 @@ getServer h = do
   let server = extractServ $ jsonServ
   modify $ changeServerInfo (ServerInfo key server ts)
   
-getUpdAndLog :: (Monad m, MonadCatch m) => Handle m -> StateT (ServerInfo,[(Int , Either OpenRepeat Int)]) m LBS.ByteString     
+getUpdAndLog :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndUsersNs m LBS.ByteString     
 getUpdAndLog h = do
   ServerInfo key server ts <- gets fst
   lift $ logDebug (hLog h) $ "Send request to getUpdates: " ++ T.unpack server ++ "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=25\n"
@@ -107,13 +81,13 @@ getUpdAndLog h = do
   lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
   return json
 
-runServ :: (Monad m, MonadCatch m) => Handle m -> StateT (ServerInfo,[(Int , Either OpenRepeat Int)]) m ()   
+runServ :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndUsersNs m ()   
 runServ h = do
   json <- getUpdAndLog h
   upds <- checkUpdates h json
   mapM_ (chooseAction h) upds
 
-chooseAction :: (Monad m, MonadCatch m) => Handle m -> Update -> StateT (ServerInfo,[(Int , Either OpenRepeat Int)]) m ()
+chooseAction :: (Monad m, MonadCatch m) => Handle m -> Update -> StateT ServerAndUsersNs m ()
 chooseAction h upd = do
   lift $ logInfo (hLog h) ("Analysis update from the list\n")
   case upd of   
@@ -126,7 +100,7 @@ chooseAction h upd = do
           case checkButton obj of
             Just newN -> do
               lift $ logInfo (hLog h) ("Change number of repeats to " ++ show newN ++ " for user " ++ show usId ++ "\n")
-              modify $ func $ changeDB usId $ Right newN
+              modify $ func $ changeUsersNs usId $ Right newN
               let infoMsg = T.pack $ "Number of repeats successfully changed from " ++ show oldN ++ " to " ++ show newN ++ "\n"
               lift $ logDebug (hLog h) ("Send request to send msg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&message=" ++ T.unpack infoMsg ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
               response <- lift $ sendTxtMsg h usId infoMsg `catch` (\e -> do
@@ -136,7 +110,7 @@ chooseAction h upd = do
               lift $ checkSendMsgResponse h usId (TextMsg infoMsg) response
             Nothing -> do
               lift $ logWarning (hLog h) ("User " ++ show usId ++ " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: " ++ show oldN ++ "\n")
-              modify $ func $ changeDB usId $ Right oldN
+              modify $ func $ changeUsersNs usId $ Right oldN
               let infoMsg = T.pack $ "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++ show oldN ++ "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n"
               lift $ logDebug (hLog h) ("Send request to send msg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&message=" ++ T.unpack infoMsg ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
               response <- lift $ sendTxtMsg h usId infoMsg `catch` (\e -> do
@@ -182,7 +156,7 @@ chooseAction h upd = do
     _ -> do
       lift $ logWarning (hLog h) ("There is UNKNOWN UPDATE. BOT WILL IGNORE IT. " ++ show upd ++ "\n")
 
-chooseActionOfTxt :: (Monad m, MonadCatch m) => Handle m -> Int -> Int -> T.Text -> StateT (ServerInfo,[(Int , Either OpenRepeat Int)]) m ()
+chooseActionOfTxt :: (Monad m, MonadCatch m) => Handle m -> N -> UserId -> T.Text -> StateT ServerAndUsersNs m ()
 chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
   "/help" -> do
     let infoMsg = T.pack $ cHelpMsg (hConf h) 
@@ -200,7 +174,7 @@ chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
                                 throwM $ DuringSendKeybException (ToUserId usId) $ show (e :: SomeException))
     lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
     lift $ checkSendKeybResponse h usId currN infoMsg response
-    modify $ func $ changeDB usId $ Left $ OpenRepeat currN 
+    modify $ func $ changeUsersNs usId $ Left $ OpenRepeat currN 
   _ -> do 
     lift $ replicateM_ currN $ do
       logDebug (hLog h) ("Send request to send msg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&message=" ++ T.unpack txt ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
@@ -211,7 +185,7 @@ chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
       checkSendMsgResponse h usId (TextMsg txt) response
 
 
-getAttachmentString :: (Monad m, MonadCatch m) => Handle m -> Int -> Attachment -> m (Either String String)
+getAttachmentString :: (Monad m, MonadCatch m) => Handle m -> UserId -> Attachment -> m (Either String String)
 getAttachmentString h usId (PhotoAttachment "photo" (Photo [])) = do
   return $ Left $ "Unknown photo attachment, empty sizes\n"
 getAttachmentString h usId (PhotoAttachment "photo" (Photo sizes)) = do
@@ -257,10 +231,10 @@ getAttachmentString h usId (StickerAttachment "sticker" (StickerInfo id)) =
 getAttachmentString h usId (UnknownAttachment obj) = return $ Left $ "Unknown attachment" ++ show obj ++ "\n"
 
 
-sendTxtMsg :: (Monad m, MonadCatch m) => Handle m -> Int -> T.Text -> m LBS.ByteString
+sendTxtMsg :: (Monad m, MonadCatch m) => Handle m -> UserId -> T.Text -> m LBS.ByteString
 sendTxtMsg h usId txt = sendMsg h usId txt [] [] "" ("","")
 
-sendAttachMaybeGeoMsg :: (Monad m, MonadCatch m) => Handle m -> Int -> T.Text -> [String] -> Maybe Geo -> m LBS.ByteString
+sendAttachMaybeGeoMsg :: (Monad m, MonadCatch m) => Handle m -> UserId -> T.Text -> [String] -> Maybe Geo -> m LBS.ByteString
 sendAttachMaybeGeoMsg h usId txt attachStrs maybeGeo = case maybeGeo of 
   Nothing -> sendMsg h usId txt [] attachStrs "" ("","")
   Just (Geo "point" (Coordinates lat long)) -> 
@@ -269,7 +243,7 @@ sendAttachMaybeGeoMsg h usId txt attachStrs maybeGeo = case maybeGeo of
     logError (hLog h) $ "UNKNOWN GEO type\n" ++ show maybeGeo
     throwM $ DuringGetUpdatesException $ "UNKNOWN GEO type\n" ++ show maybeGeo
 
-sendStickMsg :: (Monad m, MonadCatch m) => Handle m -> Int -> Int -> m LBS.ByteString
+sendStickMsg :: (Monad m, MonadCatch m) => Handle m -> UserId -> StickerId -> m LBS.ByteString
 sendStickMsg  h usId stickerId  = sendMsg h usId "" [] [] (show stickerId) ("","")
 
 
@@ -285,7 +259,7 @@ checkGetServResponse h json = do
       Just _ -> do
         logInfo (hLog h) $ "Work with received server\n"
 
-checkUpdates :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> StateT (ServerInfo,[(Int , Either OpenRepeat Int)]) m [Update]
+checkUpdates :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> StateT ServerAndUsersNs m [Update]
 checkUpdates h json = do
   case decode json of
       Nothing                      -> do
@@ -325,7 +299,7 @@ checkUpdates h json = do
         lift $ logInfo (hLog h) ("There is new updates list\n")
         return upds
 
-checkSendMsgResponse :: (Monad m, MonadCatch m) => Handle m -> Int -> MSG -> LBS.ByteString -> m ()
+checkSendMsgResponse :: (Monad m, MonadCatch m) => Handle m -> UserId -> MSG -> LBS.ByteString -> m ()
 checkSendMsgResponse h usId msg json = do
   case decode json of
       Nothing                      -> do
@@ -343,7 +317,7 @@ checkSendMsgResponse h usId msg json = do
         AttachmentMsg txt attachStrings (Just geo) -> do
           logInfo (hLog h) ("AttachmentAndGeoMsg was sent to user " ++ show usId ++ ". Text: " ++ show txt ++ "; attachments: " ++ show attachStrings ++ "; geo: " ++ show geo ++ "\n")
 
-checkSendKeybResponse :: (Monad m, MonadCatch m) => Handle m -> Int -> Int -> T.Text -> LBS.ByteString -> m ()
+checkSendKeybResponse :: (Monad m, MonadCatch m) => Handle m -> UserId -> N -> T.Text -> LBS.ByteString -> m ()
 checkSendKeybResponse h usId n msg json = do
   case decode json of
       Nothing                      -> do
@@ -420,7 +394,7 @@ getUpdates' key server ts = do
   res <- httpLbs req manager
   return (responseBody res)
 
-sendMsg' :: Handle IO -> Int -> T.Text -> [Int] -> [String] -> String -> (String,String) -> IO LBS.ByteString
+sendMsg' :: Handle IO -> UserId -> T.Text -> [Integer] -> [String] -> String -> (String,String) -> IO LBS.ByteString
 sendMsg' h usId txt fwds attachStrings stickerId (lat,long)  = do
   manager <- newTlsManager
   let param1  = "user_id=" ++ show usId
@@ -438,7 +412,7 @@ sendMsg' h usId txt fwds attachStrings stickerId (lat,long)  = do
   res <- httpLbs req manager
   return (responseBody res)
 
-sendKeyb' :: Handle IO -> Int -> Int -> T.Text -> IO LBS.ByteString
+sendKeyb' :: Handle IO -> UserId -> N -> T.Text -> IO LBS.ByteString
 sendKeyb' h usId n msg = do
   manager <- newTlsManager
   initReq <- parseRequest $ "https://api.vk.com/method/messages.send"
@@ -453,7 +427,7 @@ sendKeyb' h usId n msg = do
   res <- httpLbs req manager
   return (responseBody res)
 
-getDocServer' :: Handle IO -> Int -> String -> IO LBS.ByteString
+getDocServer' :: Handle IO -> UserId -> String -> IO LBS.ByteString
 getDocServer' h usId type' = do
   manager <- newTlsManager
   req <- parseRequest $ "https://api.vk.com/method/docs.getMessagesUploadServer?type=" ++ type' ++ "&peer_id=" ++ show usId ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103"
@@ -482,7 +456,7 @@ saveDocOnServ' h (LoadDocResp file) title = do
   res <- httpLbs req manager
   return (responseBody res)
 
-getPhotoServer' :: Handle IO -> Int -> IO LBS.ByteString
+getPhotoServer' :: Handle IO -> UserId -> IO LBS.ByteString
 getPhotoServer' h usId = do
   manager <- newTlsManager
   req <- parseRequest $ "https://api.vk.com/method/photos.getMessagesUploadServer?peer_id=" ++ show usId ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103"
@@ -535,37 +509,37 @@ extractServ = serverSI . response . fromJust . decode
 extractTextMsg :: Update -> T.Text
 extractTextMsg = text . objectUpd 
 
-extractUserId :: Update -> Int
+extractUserId :: Update -> UserId
 extractUserId = from_id . objectUpd
 
-changeServerInfo :: ServerInfo -> (ServerInfo,a) -> (ServerInfo,a)
-changeServerInfo newInfo (oldInfo,a) = (newInfo,a)
+changeServerInfo :: ServerInfo -> ServerAndUsersNs -> ServerAndUsersNs
+changeServerInfo newInfo (oldInfo,usersNs) = (newInfo,usersNs)
 
-changeTs :: T.Text -> (ServerInfo,a) -> (ServerInfo,a)
-changeTs newTs ((ServerInfo key serv oldTs),a) = ((ServerInfo key serv newTs),a)
+changeTs :: T.Text -> ServerAndUsersNs -> ServerAndUsersNs
+changeTs newTs ((ServerInfo key serv oldTs),usersNs) = ((ServerInfo key serv newTs),usersNs)
 
 func :: (b -> b) -> (a,b) -> (a,b)
 func f (a,b) = (a, f b)
 
-changeDB :: Int -> Either OpenRepeat Int -> [(Int , Either OpenRepeat Int)] -> [(Int,Either OpenRepeat Int)]
-changeDB usId eitherN bd = 
-    case lookup usId bd of
-        Just eitherX -> (:) (usId,eitherN) . delete (usId, eitherX) $ bd
-        Nothing -> (:) (usId,eitherN) $ bd
+changeUsersNs :: UserId -> NState -> UsersNs -> UsersNs
+changeUsersNs usId nState usersNs = 
+    case lookup usId usersNs of
+        Just eitherX -> (:) (usId,nState) . delete (usId, nState) $ usersNs
+        Nothing -> (:) (usId,nState) $ usersNs
 
 
-checkButton :: AboutObj -> Maybe Int
+checkButton :: AboutObj -> Maybe N
 checkButton obj =
   case obj of
     AboutObj usId id peerId txt [] [] Nothing -> checkTextButton txt
     _  -> Nothing
 
-checkTextButton :: T.Text -> Maybe Int
+checkTextButton :: T.Text -> Maybe N
 checkTextButton text =
     case text of 
       { "1" -> Just 1 ; "2" -> Just 2 ; "3" -> Just 3 ; "4" -> Just 4 ; "5" -> Just 5 ; _ -> Nothing }
   
-prettyMsgInfo :: Int -> T.Text -> [Object] -> [Attachment] -> Maybe Geo -> String
+prettyMsgInfo :: UserId -> T.Text -> [Object] -> [Attachment] -> Maybe Geo -> String
 prettyMsgInfo usId txt [] [] Nothing = "Get TextMsg: " ++ show txt ++ " from user " ++ show usId ++ "\n"
 prettyMsgInfo usId txt objs [] Nothing = "Get ForwardMsg: " ++ show objs ++ " from user " ++ show usId ++ "\n"
 prettyMsgInfo usId txt [] [] (Just geo) = "Get GeoMsg: " ++ show geo ++ " from user " ++ show usId ++ "\n"
