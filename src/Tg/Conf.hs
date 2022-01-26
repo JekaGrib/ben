@@ -50,7 +50,7 @@ pullConfig =
   (\e -> print (e :: C.KeyError) >> return C.empty) `E.catch`
   (\e -> print (e :: E.IOException) >> return C.empty)
 
--- parse config functions:
+-- parse config values functions:
 parseConfStartN :: C.Config -> IO N
 parseConfStartN conf = do
   str <-

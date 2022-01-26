@@ -6,7 +6,7 @@
 module Vk.Api.Request where
 
 import           Data.Aeson
-import           GHC.Generics
+import           GHC.Generics (Generic())
 import qualified Data.Text                      as T
 
 data KeyBoard = KeyBoard

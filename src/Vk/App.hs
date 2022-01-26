@@ -25,6 +25,7 @@ import           Data.String                    ( fromString )
 import Vk.TypeSynonym
 import Vk.Oops
 import Control.Applicative (liftA3)
+import Vk.Conf (Config(..))
 
 data Handle m = Handle
   { hConf             :: Config,
@@ -40,14 +41,6 @@ data Handle m = Handle
     loadDocToServ     :: T.Text -> T.Text -> BS.ByteString -> String -> m LBS.ByteString,
     saveDocOnServ     :: LoadDocResp -> String -> m LBS.ByteString,
     goToUrl           :: T.Text -> m BS.ByteString
-    }
-
-data Config = Config 
-  { cStartN   :: N,
-    cBotToken :: String,
-    cHelpMsg  :: String,
-    cRepeatQ  :: String,
-    cGroupId  :: GroupId
     }
 
 

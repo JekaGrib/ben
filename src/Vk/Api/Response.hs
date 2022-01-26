@@ -83,6 +83,7 @@ data AboutObj = AboutObj {
 
 instance FromJSON AboutObj
 
+
 data Attachment 
     = PhotoAttachment 
       { typeAtt :: T.Text
@@ -115,16 +116,20 @@ data Attachment
      deriving (Generic, Show)
 
 instance FromJSON Attachment where
-    parseJSON v = asum [parsePhotoAtt v,parseAudioMesAtt v,parseVideoAtt v,parseStickerAtt v,parseAudioAtt v,parseMarketAtt v,parseWallAtt v,parsePollAtt v,parseUnknownAtt v]
+    parseJSON v = asum [parsePhotoAtt v,parseDocAtt v,parseAudioMesAtt v,parseVideoAtt v,parseStickerAtt v,parseAudioAtt v,parseMarketAtt v,parseWallAtt v,parsePollAtt v,parseUnknownAtt v]
 
-parsePhotoAtt, parseAudioMesAtt, parseVideoAtt, parseStickerAtt, parseAudioAtt, parseMarketAtt, parseWallAtt, parsePollAtt, parseUnknownAtt :: Value -> Parser Attachment
+parsePhotoAtt, parseDocAtt, parseAudioMesAtt, parseVideoAtt, parseStickerAtt, parseAudioAtt, parseMarketAtt, parseWallAtt, parsePollAtt, parseUnknownAtt :: Value -> Parser Attachment
 parsePhotoAtt =  withObject "PhotoAttachment" $ \v -> PhotoAttachment
         <$> v .: "type"
         <*> v .: "photo"
 
-parseAudioMesAtt = withObject "DocAttachment" $ \v -> DocAttachment
+parseDocAtt = withObject "DocAttachment" $ \v -> DocAttachment
         <$> v .: "type"
         <*> v .: "doc"
+
+parseAudioMesAtt = withObject "AudioMesAttachment" $ \v -> AudioMesAttachment
+        <$> v .: "type"
+        <*> v .: "audio_message"
 
 parseVideoAtt = withObject "VideoAttachment" $ \v -> VideoAttachment
         <$> v .: "type"
