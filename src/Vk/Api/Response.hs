@@ -7,7 +7,7 @@ module Vk.Api.Response (
   Answer(AnswerOk,updates,FailAnswer,FailTSAnswer,tsFTSA,failFTSA,ErrorAnswer,errorEA),
   Update(Update,objectUpd,UnknownUpdate),
   AboutObj(AboutObj,from_id,text),
-  Attachment(PhotoAttachment,DocAttachment,AudioMesAttachment,VideoAttachment,StickerAttachment,AudioAttachment,MarketAttachment,WallAttachment,PollAttachment,UnknownAttachment),
+  SomeAttachment(..),
   Doc(Doc),
   Audio(Audio),
   Photo(Photo),
@@ -36,9 +36,6 @@ import           Data.Aeson
 import           GHC.Generics
 import qualified Data.Text                      as T
 import           Control.Applicative         
-import Data.Aeson.Types (Parser)
-import Data.Foldable (asum)
-
 
 data Answer
     = AnswerOk     { tsAOk   :: T.Text,
@@ -77,92 +74,50 @@ data AboutObj = AboutObj {
     , peer_id  :: Integer
     , text  :: T.Text
     , fwd_messages :: [Value]
-    , attachments :: [Attachment]
+    , attachments :: [SomeAttachment]
     , geo :: Maybe Geo
     } deriving (Generic, Show)
 
 instance FromJSON AboutObj
 
+data SomeAttachment 
+  = SomeAttachment
+    {typeSA :: T.Text
+    , photoSA :: Maybe Photo
+    , docSA :: Maybe Doc 
+    , audio_msgSA :: Maybe Audio 
+    , videoSA :: Maybe DocInfo 
+    , stickerSA :: Maybe StickerInfo 
+    , audioSA :: Maybe DocInfo 
+    , marketSA :: Maybe DocInfo 
+    , wallSA :: Maybe WallInfo 
+    , pollSA :: Maybe DocInfo }  
+  | UnknownAttachment Value 
+     deriving (Eq, Show)
 
-data Attachment 
-    = PhotoAttachment 
-      { typeAtt :: T.Text
-      , photoPA :: Photo }
-    | DocAttachment
-      { typeAtt :: T.Text
-      , docDA :: Doc }
-    | AudioMesAttachment
-      { typeAtt :: T.Text
-      , audio_message :: Audio }
-    | VideoAttachment
-      { typeAtt :: T.Text
-      , docVA :: DocInfo }
-    | StickerAttachment
-      { typeAtt :: T.Text
-      , sticker :: StickerInfo }
-    | AudioAttachment
-      { typeAtt :: T.Text
-      , audio :: DocInfo }
-    | MarketAttachment
-      { typeAtt :: T.Text
-      , market :: DocInfo }
-    | WallAttachment
-      { typeAtt :: T.Text
-      , wall :: WallInfo }
-    | PollAttachment
-      { typeAtt :: T.Text
-      , poll :: DocInfo }
-    | UnknownAttachment Value 
-     deriving (Generic, Show)
+instance FromJSON SomeAttachment where
+  parseJSON = liftA2 
+    (<|>)
+      (withObject "SomeAttachment" $ \v -> SomeAttachment
+        <$> v .:  "type"
+        <*> v .:? "photo"
+        <*> v .:? "doc"
+        <*> v .:? "audio_message"
+        <*> v .:? "video"
+        <*> v .:? "sticker"
+        <*> v .:? "audio"
+        <*> v .:? "market"
+        <*> v .:? "wall"
+        <*> v .:? "poll")
+      (fmap UnknownAttachment . parseJSON )
 
-instance FromJSON Attachment where
-    parseJSON v = asum [parsePhotoAtt v,parseDocAtt v,parseAudioMesAtt v,parseVideoAtt v,parseStickerAtt v,parseAudioAtt v,parseMarketAtt v,parseWallAtt v,parsePollAtt v,parseUnknownAtt v]
-
-parsePhotoAtt, parseDocAtt, parseAudioMesAtt, parseVideoAtt, parseStickerAtt, parseAudioAtt, parseMarketAtt, parseWallAtt, parsePollAtt, parseUnknownAtt :: Value -> Parser Attachment
-parsePhotoAtt =  withObject "PhotoAttachment" $ \v -> PhotoAttachment
-        <$> v .: "type"
-        <*> v .: "photo"
-
-parseDocAtt = withObject "DocAttachment" $ \v -> DocAttachment
-        <$> v .: "type"
-        <*> v .: "doc"
-
-parseAudioMesAtt = withObject "AudioMesAttachment" $ \v -> AudioMesAttachment
-        <$> v .: "type"
-        <*> v .: "audio_message"
-
-parseVideoAtt = withObject "VideoAttachment" $ \v -> VideoAttachment
-        <$> v .: "type"
-        <*> v .: "video"
-
-parseStickerAtt = withObject "StickerAttachment" $ \v -> StickerAttachment
-        <$> v .: "type"
-        <*> v .: "sticker"
-
-parseAudioAtt = withObject "AudioAttachment" $ \v -> AudioAttachment
-        <$> v .: "type"
-        <*> v .: "audio"
-
-parseMarketAtt = withObject "MarketAttachment" $ \v -> MarketAttachment
-        <$> v .: "type"
-        <*> v .: "market"
-
-parseWallAtt = withObject "WallAttachment" $ \v -> WallAttachment
-        <$> v .: "type"
-        <*> v .: "wall"
-
-parsePollAtt = withObject "PollAttachment" $ \v -> PollAttachment
-        <$> v .: "type"
-        <*> v .: "poll"
-
-parseUnknownAtt = fmap UnknownAttachment . parseJSON 
 
 data Doc 
     = Doc{
         urlD   :: T.Text
        , extD   :: String
        , titleD :: String
-    } deriving (Show)
+    } deriving (Eq,Show)
 
 instance FromJSON Doc where
     parseJSON = 
@@ -173,13 +128,13 @@ instance FromJSON Doc where
 
 data Audio = Audio {
       link_ogg :: T.Text
-    } deriving (Generic, Show)
+    } deriving (Generic, Eq, Show)
 
 instance FromJSON Audio
 
 data Photo = Photo {
       sizes :: [Size]
-    } deriving (Generic, Show)
+    } deriving (Generic, Eq, Show)
 
 instance FromJSON Photo
 
@@ -187,7 +142,7 @@ data Size = Size {
       height :: Integer
     , width :: Integer
     , url :: T.Text
-    } deriving (Generic, Show)
+    } deriving (Generic, Eq, Show)
 
 instance FromJSON Size
 
@@ -237,7 +192,7 @@ instance FromJSON AudioMesInfo where
 
 data StickerInfo = StickerInfo {
       sticker_id :: Integer
-    } deriving (Generic, Show)
+    } deriving (Generic, Eq, Show)
 
 instance FromJSON StickerInfo
 
@@ -260,7 +215,7 @@ instance FromJSON ResponseSDR where
 data DocInfo = DocInfo {
       idDI :: Integer
     , owner_idDI :: Integer
-    } deriving (Generic, Show)
+    } deriving (Generic, Eq, Show)
 
 instance FromJSON DocInfo where
       parseJSON =  withObject "DocInfo" $ \v -> DocInfo
@@ -270,7 +225,7 @@ instance FromJSON DocInfo where
 data WallInfo = WallInfo {
       idWI :: Integer
     , from_idWI :: Integer
-    } deriving (Generic, Show)
+    } deriving (Generic, Eq, Show)
 
 instance FromJSON WallInfo where
       parseJSON = withObject "WallInfo" $ \v -> WallInfo

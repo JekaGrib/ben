@@ -132,7 +132,7 @@ chooseActionOfObject h obj currN =
   case obj of
     AboutObj usId _ _ txt [] [] Nothing -> do
       chooseActionOfTxt h currN usId txt
-    AboutObj usId _ _ "" [] [StickerAttachment "sticker" (StickerInfo idSt)] Nothing -> do
+    AboutObj usId _ _ "" [] [SomeAttachment "sticker" _ _ _ _ (Just (StickerInfo idSt)) _ _ _ _] Nothing -> do
       lift $ replicateM_ currN $ do
         logDebug (hLog h) ("Send request to send StickerMsg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&sticker_id=" ++ show idSt ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
         response <- sendStickMsg h usId idSt `catch` (\e -> do
@@ -181,7 +181,7 @@ chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
 
 chooseActionOfAttachs :: (Monad m, MonadCatch m) => Handle m -> N -> AboutObj -> StateT ServerAndUsersNs m () 
 chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
-  eitherAttachStrings <- lift $ mapM (getAttachmentString h usId) attachs
+  eitherAttachStrings <- lift $ mapM (getSomeAttachmentString h usId) attachs
   case sequence eitherAttachStrings of
     Right attachStrings -> do
       lift $ replicateM_ currN $ do
@@ -193,10 +193,49 @@ chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
     Left str ->
       lift $ logWarning (hLog h) ("There is UNKNOWN ATTACMENT in updateList. BOT WILL IGNORE IT. " ++ show attachs ++ ". " ++ str ++ "\n")
 
+data Attachment = PhotoAttachment  Photo 
+    | DocAttachment Doc 
+    | AudioMesAttachment Audio
+    | VideoAttachment DocInfo 
+    | StickerAttachment StickerInfo 
+    | AudioAttachment DocInfo 
+    | MarketAttachment DocInfo 
+    | WallAttachment WallInfo 
+    | PollAttachment DocInfo 
+     deriving (Eq, Show)
+
+getSomeAttachmentString :: (Monad m, MonadCatch m) => Handle m -> UserId -> SomeAttachment -> m (Either String String)
+getSomeAttachmentString h usId someAtt = case chooseAttType someAtt of
+  Left str -> return . Left $ str
+  Right att -> getAttachmentString h usId att
+
+chooseAttType :: SomeAttachment -> Either String Attachment
+chooseAttType sAtt = case sAtt of
+  SomeAttachment "photo" (Just (Photo [])) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing ->  
+    Left $ "Unknown photo attachment, empty sizes\n"
+  SomeAttachment "photo" (Just photo) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing ->
+    Right $ PhotoAttachment photo
+  SomeAttachment "doc" Nothing (Just doc) Nothing Nothing Nothing Nothing Nothing Nothing Nothing ->
+    Right $ DocAttachment doc
+  SomeAttachment "audio_message" Nothing Nothing (Just auMes) Nothing Nothing Nothing Nothing Nothing Nothing ->
+    Right $ AudioMesAttachment auMes
+  SomeAttachment "video" Nothing Nothing Nothing (Just docInf) Nothing Nothing Nothing Nothing Nothing ->
+    Right $ VideoAttachment docInf
+  SomeAttachment "sticker" Nothing Nothing Nothing Nothing (Just sticker) Nothing Nothing Nothing Nothing ->
+    Right $ StickerAttachment sticker 
+  SomeAttachment "audio" Nothing Nothing Nothing Nothing Nothing (Just docInf) Nothing Nothing Nothing ->
+    Right $ AudioAttachment docInf
+  SomeAttachment "market" Nothing Nothing Nothing Nothing Nothing Nothing (Just docInf) Nothing Nothing ->
+    Right $ MarketAttachment docInf
+  SomeAttachment "wall" Nothing Nothing Nothing Nothing Nothing Nothing Nothing (Just wall) Nothing ->
+    Right $ WallAttachment wall
+  SomeAttachment "poll" Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing (Just docInf) ->
+    Right $ PollAttachment docInf
+  _ -> Left $ "Unknown attachment:" ++ show sAtt ++ "\n"
+
+
 getAttachmentString :: (Monad m, MonadCatch m) => Handle m -> UserId -> Attachment -> m (Either String String)
-getAttachmentString _ _ (PhotoAttachment "photo" (Photo [])) = do
-  return $ Left $ "Unknown photo attachment, empty sizes\n"
-getAttachmentString h usId (PhotoAttachment "photo" (Photo sizes)) = do
+getAttachmentString h usId (PhotoAttachment (Photo sizes)) = do
   let picUrl = url . head . reverse . sortOn height $ sizes
   serRespJson <- getPhotoServer h usId
   serUrl <- checkGetUploadServResponse h serRespJson
@@ -206,9 +245,7 @@ getAttachmentString h usId (PhotoAttachment "photo" (Photo sizes)) = do
   savePhotoJson <- savePhotoOnServ h loadPhotoResp
   (DocInfo idDoc owner_id) <- checkSavePhotoResponse h savePhotoJson
   return $ Right $ "photo" ++ show owner_id ++ "_" ++ show idDoc 
-getAttachmentString _ _ (PhotoAttachment attType _) = do
-  return $ Left $ "WrongType for photoMessage attachment: " ++ show attType ++ "\n"
-getAttachmentString h usId (DocAttachment "doc" (Doc docUrl ext title)) = do
+getAttachmentString h usId (DocAttachment (Doc docUrl ext title)) = do
   serRespJson <- getDocServer h usId "doc"
   serUrl <- checkGetUploadServResponse h serRespJson
   bsDoc <- goToUrl h docUrl
@@ -217,9 +254,7 @@ getAttachmentString h usId (DocAttachment "doc" (Doc docUrl ext title)) = do
   saveDocJson <- saveDocOnServ h loadDocResp title
   (DocInfo idDoc owner_id) <- checkSaveDocResponse h saveDocJson
   return $ Right $ "doc" ++ show owner_id ++ "_" ++ show idDoc 
-getAttachmentString _ _ (DocAttachment attType _) = do
-  return $ Left $ "WrongType for docMessage attachment: " ++ show attType ++ "\n" 
-getAttachmentString h usId (AudioMesAttachment "audio_message" (Audio docUrl)) = do
+getAttachmentString h usId (AudioMesAttachment (Audio docUrl)) = do
   serRespJson <- getDocServer h usId "audio_message"
   serUrl <- checkGetUploadServResponse h serRespJson
   bsDoc <- goToUrl h docUrl
@@ -228,33 +263,18 @@ getAttachmentString h usId (AudioMesAttachment "audio_message" (Audio docUrl)) =
   saveDocJson <- saveDocOnServ h loadDocResp "audio_message"
   (DocInfo idDoc owner_id) <- checkSaveDocAuMesResponse h saveDocJson
   return $ Right $ "doc" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (AudioMesAttachment attType _) = do
-  return $ Left $ "WrongType for audioMessage attachment: " ++ show attType ++ "\n"
-getAttachmentString _ _ (VideoAttachment "video" (DocInfo idDoc owner_id)) = do
+getAttachmentString _ _ (VideoAttachment (DocInfo idDoc owner_id)) = do
   return $ Right $ "video" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (VideoAttachment attType _) = do
-  return $ Left $ "WrongType for videoMessage attachment: " ++ show attType ++ "\n"
-getAttachmentString _ _ (AudioAttachment "audio" (DocInfo idDoc owner_id)) = do
+getAttachmentString _ _ (AudioAttachment (DocInfo idDoc owner_id)) = do
   return $ Right $ "audio" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (AudioAttachment attType _) = do
-  return $ Left $ "WrongType for audio attachment: " ++ show attType ++ "\n"  
-getAttachmentString _ _ (MarketAttachment "market" (DocInfo idDoc owner_id)) = do
+getAttachmentString _ _ (MarketAttachment (DocInfo idDoc owner_id)) = do
   return $ Right $ "market" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (MarketAttachment attType _) = do
-  return $ Left $ "WrongType for marketMessage attachment: " ++ show attType ++ "\n"
-getAttachmentString _ _ (WallAttachment "wall" (WallInfo idWall owner_id)) = do
+getAttachmentString _ _ (WallAttachment (WallInfo idWall owner_id)) = do
   return $ Right $ "wall" ++ show owner_id ++ "_" ++ show idWall
-getAttachmentString _ _ (WallAttachment attType _) = do
-  return $ Left $ "WrongType for marketMessage attachment: " ++ show attType ++ "\n"
-getAttachmentString _ _ (PollAttachment "poll" (DocInfo idDoc owner_id)) = do
+getAttachmentString _ _ (PollAttachment (DocInfo idDoc owner_id)) = do
   return $ Right $ "poll" ++ show owner_id ++ "_" ++ show idDoc  
-getAttachmentString _ _ (PollAttachment attType _) = do
-  return $ Left $ "WrongType for marketMessage attachment: " ++ show attType ++ "\n"
-getAttachmentString _ usId (StickerAttachment "sticker" (StickerInfo _)) = 
+getAttachmentString _ usId (StickerAttachment _) = 
   return $ Left $ "Wrong sticker attachment from user: " ++ show usId  ++ ". Sticker not alone in msg.\n"
-getAttachmentString _ _ (StickerAttachment attType _) = do
-  return $ Left $ "WrongType for stickerMessage attachment: " ++ show attType ++ "\n"
-getAttachmentString _ usId (UnknownAttachment obj) = return $ Left $ "Unknown attachment from user: " ++ show usId  ++ ". " ++ show obj ++ "\n"
   
 
 
