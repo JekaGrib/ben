@@ -37,7 +37,7 @@ data Handle m = Handle
   { hConf             :: Config,
     hLog              :: LogHandle m,
     getLongPollServer :: m LBS.ByteString,
-    getUpdates        :: T.Text -> T.Text -> T.Text -> m LBS.ByteString,
+    getUpdates        :: ServerInfo -> m LBS.ByteString,
     sendMsg           :: UserId -> T.Text -> [Integer] -> [String] -> String -> (String,String) -> m LBS.ByteString,
     sendKeyb          :: UserId -> N -> T.Text -> m LBS.ByteString,
     getPhotoServer    :: UserId -> m LBS.ByteString,
@@ -66,9 +66,9 @@ getServer h = do
   
 getUpdAndLog :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m LBS.ByteString     
 getUpdAndLog h = do
-  ServerInfo key server ts <- gets fst
+  sI@(ServerInfo key server ts) <- gets fst
   lift $ logDebug (hLog h) $ "Send request to getUpdates: " ++ T.unpack server ++ "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20\n"
-  json <- lift $ getUpdates h key server ts `catch` handleExGetUpd (hLog h)
+  json <- lift $ getUpdates h sI `catch` handleExGetUpd (hLog h)
   lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
   return json
 
@@ -407,8 +407,8 @@ getLongPollServer' h = do
   res <- httpLbs req manager
   return (responseBody res)
 
-getUpdates' :: T.Text -> T.Text -> T.Text -> IO LBS.ByteString
-getUpdates' key server ts = do
+getUpdates' :: ServerInfo -> IO LBS.ByteString
+getUpdates' (ServerInfo key server ts) = do
   manager <- newTlsManager  
   req <- parseRequest $ T.unpack server ++ "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20"
   res <- httpLbs req manager
@@ -527,17 +527,8 @@ goToUrl' urlTxt = do
 extractUpdates :: LBS.ByteString -> [Update]
 extractUpdates = updates . fromJust . decode 
 
-extractTs :: LBS.ByteString -> T.Text
-extractTs = tsSI . responseGPSJB . fromJust . decode
-
-extractKey :: LBS.ByteString -> T.Text
-extractKey = keySI . responseGPSJB . fromJust . decode
-
-extractServ :: LBS.ByteString -> T.Text
-extractServ = serverSI . responseGPSJB . fromJust . decode
-
 extractServerInfo :: LBS.ByteString -> ServerInfo
-extractServerInfo = liftA3 ServerInfo extractKey extractServ extractTs
+extractServerInfo = liftA3 ServerInfo keySI serverSI tsSI . (responseGPSJB . fromJust . decode)
 
 extractTextMsg :: Update -> T.Text
 extractTextMsg = text . objectUpd 
