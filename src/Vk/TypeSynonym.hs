@@ -4,7 +4,9 @@
 
 module Vk.TypeSynonym where
 
-import Vk.Api.Response (ServerInfo(..))
+import Vk.Api.Response (ServerInfo(..),Geo,Photo,Doc,Audio,DocInfo,StickerInfo,WallInfo)
+import qualified Data.Text                      as T
+
 
 type N = Int
 type UserId = Integer
@@ -21,3 +23,17 @@ type GroupId = Integer
 newtype OpenRepeat =
   OpenRepeat N
   deriving (Eq, Show)
+
+data MSG = TextMsg T.Text | AttachmentMsg T.Text [String] (Maybe Geo) | StickerMsg StickerId 
+  deriving (Eq,Show)
+
+data Attachment = PhotoAttachment  Photo 
+    | DocAttachment Doc 
+    | AudioMesAttachment Audio
+    | VideoAttachment DocInfo 
+    | StickerAttachment StickerInfo 
+    | AudioAttachment DocInfo 
+    | MarketAttachment DocInfo 
+    | WallAttachment WallInfo 
+    | PollAttachment DocInfo 
+     deriving (Eq, Show)

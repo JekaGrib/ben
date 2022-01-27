@@ -54,8 +54,7 @@ handleExGetUpd ::
      (Monad m, MonadCatch m) => LogHandle m -> SomeException -> m LBS.ByteString
 handleExGetUpd logH e = do
   let ex = DuringGetUpdatesException $ show e
-  logError logH $ show ex
-  throwM ex
+  throwAndLogEx logH ex
 
 handleExSendMsg ::
      (Monad m, MonadCatch m)
@@ -66,8 +65,7 @@ handleExSendMsg ::
   -> m LBS.ByteString
 handleExSendMsg logH usId infoMsg e = do
   let ex = DuringSendMsgException (Msg infoMsg) (ToUserId usId) $ show e
-  logError logH $ show ex
-  throwM ex
+  throwAndLogEx logH ex
 
 handleExCopyMsg ::
      (Monad m, MonadCatch m)
@@ -78,8 +76,7 @@ handleExCopyMsg ::
   -> m LBS.ByteString
 handleExCopyMsg logH usId msgId e = do
   let ex = DuringCopyMsgException (MsgId msgId) (ToUserId usId) $ show e
-  logError logH $ show ex
-  throwM ex
+  throwAndLogEx logH ex
 
 handleExSendKeyb ::
      (Monad m, MonadCatch m)
@@ -89,8 +86,7 @@ handleExSendKeyb ::
   -> m LBS.ByteString
 handleExSendKeyb logH usId e = do
   let ex = DuringSendKeybException (ToUserId usId) $ show e
-  logError logH $ show ex
-  throwM ex
+  throwAndLogEx logH ex
 
 handleExConfUpd ::
      (Monad m, MonadCatch m)
@@ -102,8 +98,7 @@ handleExConfUpd logH json e = do
   let ex =
         DuringConfirmUpdatesException $
         show e ++ "\nWhen try to confirm old updates: " ++ show json
-  logError logH $ show ex
-  throwM ex
+  throwAndLogEx logH ex
 
 -- handles to catch exceptions in IO configuration functions:
 handleExPullConf :: E.SomeException -> IO C.Config

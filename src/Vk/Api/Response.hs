@@ -47,10 +47,10 @@ data Answer
          
 instance FromJSON Answer where
   parseJSON val = 
-      (withObject "AnswerOk" (\v -> AnswerOk <$> v .: "ts" <*> v .: "updates")) val <|>
-      (withObject "FailTSAnswer" (\v -> FailTSAnswer <$> v .: "fail" <*> v .: "ts")) val <|>
-      (withObject "FailAnswer" (\v -> FailAnswer <$> v .: "fail")) val <|>
-      (withObject "ErrorAnswer" (\v -> ErrorAnswer <$> v .: "error")) val 
+      withObject "AnswerOk" (\v -> AnswerOk <$> v .: "ts" <*> v .: "updates") val <|>
+      withObject "FailTSAnswer" (\v -> FailTSAnswer <$> v .: "fail" <*> v .: "ts") val <|>
+      withObject "FailAnswer" (\v -> FailAnswer <$> v .: "fail") val <|>
+      withObject "ErrorAnswer" (\v -> ErrorAnswer <$> v .: "error") val 
 
 
 data Update 
@@ -126,13 +126,13 @@ instance FromJSON Doc where
         <*> v .: "ext"
         <*> v .: "title"
 
-data Audio = Audio {
+newtype Audio = Audio {
       link_ogg :: T.Text
     } deriving (Generic, Eq, Show)
 
 instance FromJSON Audio
 
-data Photo = Photo {
+newtype Photo = Photo {
       sizes :: [Size]
     } deriving (Generic, Eq, Show)
 
@@ -146,7 +146,7 @@ data Size = Size {
 
 instance FromJSON Size
 
-data LoadDocResp = LoadDocResp {
+newtype LoadDocResp = LoadDocResp {
       file :: String
     } deriving (Generic, Show)
 
@@ -160,7 +160,7 @@ data LoadPhotoResp = LoadPhotoResp {
 
 instance FromJSON LoadPhotoResp
 
-data SavePhotoResp = SavePhotoResp {responseSPR :: [DocInfo]} deriving (Generic, Show)
+newtype SavePhotoResp = SavePhotoResp {responseSPR :: [DocInfo]} deriving (Generic, Show)
 
 instance FromJSON SavePhotoResp where
     parseJSON = withObject "SavePhotoResp" $ \v -> SavePhotoResp
@@ -190,13 +190,13 @@ instance FromJSON AudioMesInfo where
         <*> v .: "owner_id"
         <*> v .: "access_key"
 
-data StickerInfo = StickerInfo {
+newtype StickerInfo = StickerInfo {
       sticker_id :: Integer
     } deriving (Generic, Eq, Show)
 
 instance FromJSON StickerInfo
 
-data SaveDocResp = SaveDocResp {responseSDR :: ResponseSDR} deriving (Generic, Show)
+newtype SaveDocResp = SaveDocResp {responseSDR :: ResponseSDR} deriving (Generic, Show)
 
 instance FromJSON SaveDocResp where
     parseJSON = withObject "SaveDocResp" $ \v -> SaveDocResp
@@ -232,7 +232,7 @@ instance FromJSON WallInfo where
         <$> v .: "id"
         <*> v .: "from_id"
 
-data SaveDocAuMesResp = SaveDocAuMesResp {responseSDAMR :: ResponseSDAMR} deriving (Generic, Show)
+newtype SaveDocAuMesResp = SaveDocAuMesResp {responseSDAMR :: ResponseSDAMR} deriving (Generic, Show)
 
 instance FromJSON SaveDocAuMesResp where
     parseJSON = withObject "SaveDocAuMesResp" $ \v -> SaveDocAuMesResp
@@ -287,17 +287,17 @@ instance FromJSON Response where
       (withObject "Response" $ \v -> Response <$> v .: "response")
       (withObject "ErrorAnswerMsg" $ \v -> ErrorAnswerMsg <$> v .: "error")
 
-data ErrorInfo = ErrorInfo { error_code :: Integer} deriving (Generic, Show)
+newtype ErrorInfo = ErrorInfo { error_code :: Integer} deriving (Generic, Show)
 
 instance FromJSON ErrorInfo
 
-data UploadServerResponse = UploadServerResponse {responsePSR :: UploadUrl} deriving (Generic, Show)
+newtype UploadServerResponse = UploadServerResponse {responsePSR :: UploadUrl} deriving (Generic, Show)
 
 instance FromJSON UploadServerResponse where
     parseJSON = withObject "UploadServerResponse" $ \v -> UploadServerResponse 
       <$> v .: "response"
 
-data UploadUrl = UploadUrl {upload_url :: T.Text} deriving (Generic, Show)
+newtype UploadUrl = UploadUrl {upload_url :: T.Text} deriving (Generic, Show)
 
 instance FromJSON UploadUrl
 

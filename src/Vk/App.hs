@@ -52,9 +52,7 @@ run h = do
 getServer :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndUsersNs m ()
 getServer h = do
   lift $ logDebug (hLog h) $ "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=" ++ show (cGroupId (hConf h)) ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n"
-  jsonServ <- lift $ getLongPollServer h `catch` (\e -> do
-                                logError (hLog h) $ show e ++ " GetLongPollServer fail\n"
-                                throwM $ DuringGetLongPollServerException $ show (e :: SomeException))
+  jsonServ <- lift $ getLongPollServer h `catch` handleExGetServ (hLog h)
   lift $ logDebug (hLog h) ("Get response: " ++ show jsonServ ++ "\n")
   lift $ checkGetServResponse h jsonServ
   let servInf = extractServerInfo jsonServ
@@ -64,9 +62,7 @@ getUpdAndLog :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndUsersNs m
 getUpdAndLog h = do
   ServerInfo key server ts <- gets fst
   lift $ logDebug (hLog h) $ "Send request to getUpdates: " ++ T.unpack server ++ "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20\n"
-  json <- lift $ getUpdates h key server ts `catch` (\e -> do
-                                logError (hLog h) $ show e ++ " GetUpdates fail\n"
-                                throwM $ DuringGetUpdatesException $ show (e :: SomeException))
+  json <- lift $ getUpdates h key server ts `catch` handleExGetUpd (hLog h)
   lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
   return json
 
@@ -110,22 +106,14 @@ chooseActionOfButton h obj@(AboutObj usId _ _ _ _ _ _) oldN =
       lift $ logInfo (hLog h) ("Change number of repeats to " ++ show newN ++ " for user " ++ show usId ++ "\n")
       modify $ func $ changeUsersNs usId $ Right newN
       let infoMsg = T.pack $ "Number of repeats successfully changed from " ++ show oldN ++ " to " ++ show newN ++ "\n"
-      lift $ logDebug (hLog h) ("Send request to send msg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&message=" ++ T.unpack infoMsg ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
-      response <- lift $ sendTxtMsg h usId infoMsg `catch` (\e -> do
-                            logError (hLog h) $ show e ++ " SendMessage fail\n"    
-                            throwM $ DuringSendMsgException (TextMsg infoMsg) (ToUserId usId) $ show (e :: SomeException))
-      lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-      lift $ checkSendMsgResponse h usId (TextMsg infoMsg) response
+      let msg = TextMsg infoMsg
+      lift $ sendMsgAndCheckResp h usId msg
     Nothing -> do
       lift $ logWarning (hLog h) ("User " ++ show usId ++ " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: " ++ show oldN ++ "\n")
       modify $ func $ changeUsersNs usId $ Right oldN
       let infoMsg = T.pack $ "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++ show oldN ++ "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n"
-      lift $ logDebug (hLog h) ("Send request to send msg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&message=" ++ T.unpack infoMsg ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
-      response <- lift $ sendTxtMsg h usId infoMsg `catch` (\e -> do
-                            logError (hLog h) $ show e ++ " SendMessage fail\n"    
-                            throwM $ DuringSendMsgException (TextMsg infoMsg) (ToUserId usId) $ show (e :: SomeException))
-      lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-      lift $ checkSendMsgResponse h usId (TextMsg infoMsg) response
+      let msg = TextMsg infoMsg
+      lift $ sendMsgAndCheckResp h usId msg
 
 chooseActionOfObject :: (Monad m, MonadCatch m) => Handle m -> AboutObj -> N -> StateT ServerAndUsersNs m ()
 chooseActionOfObject h obj currN =
@@ -134,50 +122,31 @@ chooseActionOfObject h obj currN =
       chooseActionOfTxt h currN usId txt
     AboutObj usId _ _ "" [] [SomeAttachment "sticker" _ _ _ _ (Just (StickerInfo idSt)) _ _ _ _] Nothing -> do
       lift $ replicateM_ currN $ do
-        logDebug (hLog h) ("Send request to send StickerMsg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&sticker_id=" ++ show idSt ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
-        response <- sendStickMsg h usId idSt `catch` (\e -> do
-                            logError (hLog h) $ show e ++ " SendMessage fail\n"    
-                            throwM $ DuringSendMsgException (StickerMsg idSt) (ToUserId usId) $ show (e :: SomeException))
-        checkSendMsgResponse h usId (StickerMsg idSt) response
+        let msg = StickerMsg idSt
+        sendMsgAndCheckResp h usId msg
     AboutObj _ _ _ _ [] _ _ -> do
       chooseActionOfAttachs h currN obj
     AboutObj usId _ _ _ _ _ _ -> do
       lift $ logWarning (hLog h) ("There is forward message. BOT WILL IGNORE IT. " ++ show obj ++ "\n")
       let infoMsg = T.pack $ "I`m sorry, I can`t work with forward messages, so I will ignore this message\n"
-      lift $ logDebug (hLog h) ("Send request to send msg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&message=" ++ T.unpack infoMsg ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
-      response <- lift $ sendTxtMsg h usId infoMsg `catch` (\e -> do
-                            logError (hLog h) $ show e ++ " SendMessage fail\n"    
-                            throwM $ DuringSendMsgException (TextMsg infoMsg) (ToUserId usId) $ show (e :: SomeException))
-      lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-      lift $ checkSendMsgResponse h usId (TextMsg infoMsg) response
+      let msg = TextMsg infoMsg
+      lift $ sendMsgAndCheckResp h usId msg
 
 chooseActionOfTxt :: (Monad m, MonadCatch m) => Handle m -> N -> UserId -> T.Text -> StateT ServerAndUsersNs m ()
 chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
   "/help" -> do
     let infoMsg = T.pack $ cHelpMsg (hConf h) 
     lift $ logDebug (hLog h) ("Send request to send msg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&message=" ++ T.unpack infoMsg ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
-    response <- lift $ sendTxtMsg h usId infoMsg `catch` (\e -> do
-                          logError (hLog h) $ show e ++ " SendMessage fail\n"    
-                          throwM $ DuringSendMsgException (TextMsg infoMsg) (ToUserId usId) $ show (e :: SomeException))
-    lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-    lift $ checkSendMsgResponse h usId (TextMsg infoMsg) response
+    let msg = TextMsg infoMsg
+    lift $ sendMsgAndCheckResp h usId msg
   "/repeat" -> do
     let infoMsg = T.pack $ " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
-    lift $ logDebug (hLog h) $ "Send request to send keyboard: https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&message=" ++ show currN ++ T.unpack infoMsg ++ "&keyboard=default_keyboard&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103"
-    response <- lift $ sendKeyb h usId currN infoMsg `catch` (\e -> do
-                                logError (hLog h) $ show e ++ " SendKeyb fail\n" 
-                                throwM $ DuringSendKeybException (ToUserId usId) $ show (e :: SomeException))
-    lift $ logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-    lift $ checkSendKeybResponse h usId currN infoMsg response
+    lift $ sendKeybAndCheckResp h usId currN infoMsg
     modify $ func $ changeUsersNs usId $ Left $ OpenRepeat currN 
   _ -> do 
     lift $ replicateM_ currN $ do
-      logDebug (hLog h) ("Send request to send msg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&message=" ++ T.unpack txt ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n" )
-      response <- sendTxtMsg h usId txt `catch` (\e -> do
-                          logError (hLog h) $ show e ++ " SendMessage fail\n"    
-                          throwM $ DuringSendMsgException (TextMsg txt) (ToUserId usId) $ show (e :: SomeException))
-      logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
-      checkSendMsgResponse h usId (TextMsg txt) response
+      let msg = TextMsg txt
+      sendMsgAndCheckResp h usId msg
 
 chooseActionOfAttachs :: (Monad m, MonadCatch m) => Handle m -> N -> AboutObj -> StateT ServerAndUsersNs m () 
 chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
@@ -185,24 +154,10 @@ chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
   case sequence eitherAttachStrings of
     Right attachStrings -> do
       lift $ replicateM_ currN $ do
-        logDebug (hLog h) ("Send request to send AttachmentMsg https://api.vk.com/method/messages.send?user_id=" ++ show usId ++ "&random_id=0&message=" ++ T.unpack txt ++ "&attachment=" ++ intercalate "," attachStrings ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103 . MaybeGeo = " ++ show maybeGeo ++ " \n" )
-        response <- sendAttachMaybeGeoMsg h usId txt attachStrings maybeGeo `catch` (\e -> do
-                        logError (hLog h) $ show e ++ " SendMessage fail\n"    
-                        throwM $ DuringSendMsgException (AttachmentMsg txt attachStrings maybeGeo) (ToUserId usId) $ show (e :: SomeException))
-        checkSendMsgResponse h usId (AttachmentMsg txt attachStrings maybeGeo) response
+        let msg = AttachmentMsg txt attachStrings maybeGeo
+        sendMsgAndCheckResp h usId msg
     Left str ->
       lift $ logWarning (hLog h) ("There is UNKNOWN ATTACMENT in updateList. BOT WILL IGNORE IT. " ++ show attachs ++ ". " ++ str ++ "\n")
-
-data Attachment = PhotoAttachment  Photo 
-    | DocAttachment Doc 
-    | AudioMesAttachment Audio
-    | VideoAttachment DocInfo 
-    | StickerAttachment StickerInfo 
-    | AudioAttachment DocInfo 
-    | MarketAttachment DocInfo 
-    | WallAttachment WallInfo 
-    | PollAttachment DocInfo 
-     deriving (Eq, Show)
 
 getSomeAttachmentString :: (Monad m, MonadCatch m) => Handle m -> UserId -> SomeAttachment -> m (Either String String)
 getSomeAttachmentString h usId someAtt = case chooseAttType someAtt of
@@ -211,25 +166,25 @@ getSomeAttachmentString h usId someAtt = case chooseAttType someAtt of
 
 chooseAttType :: SomeAttachment -> Either String Attachment
 chooseAttType sAtt = case sAtt of
-  SomeAttachment "photo" (Just (Photo [])) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing ->  
+  SomeAttachment "photo" (Just (Photo [])) _ _ _ _ _ _ _ _ ->  
     Left $ "Unknown photo attachment, empty sizes\n"
-  SomeAttachment "photo" (Just photo) Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing ->
+  SomeAttachment "photo" (Just photo) _ _ _ _ _ _ _ _ ->
     Right $ PhotoAttachment photo
-  SomeAttachment "doc" Nothing (Just doc) Nothing Nothing Nothing Nothing Nothing Nothing Nothing ->
+  SomeAttachment "doc" _ (Just doc) _ _ _ _ _ _ _ ->
     Right $ DocAttachment doc
-  SomeAttachment "audio_message" Nothing Nothing (Just auMes) Nothing Nothing Nothing Nothing Nothing Nothing ->
+  SomeAttachment "audio_message" _ _ (Just auMes) _ _ _ _ _ _ ->
     Right $ AudioMesAttachment auMes
-  SomeAttachment "video" Nothing Nothing Nothing (Just docInf) Nothing Nothing Nothing Nothing Nothing ->
+  SomeAttachment "video" _ _ _ (Just docInf) _ _ _ _ _ ->
     Right $ VideoAttachment docInf
-  SomeAttachment "sticker" Nothing Nothing Nothing Nothing (Just sticker) Nothing Nothing Nothing Nothing ->
+  SomeAttachment "sticker" _ _ _ _ (Just sticker) _ _ _ _ ->
     Right $ StickerAttachment sticker 
-  SomeAttachment "audio" Nothing Nothing Nothing Nothing Nothing (Just docInf) Nothing Nothing Nothing ->
+  SomeAttachment "audio" _ _ _ _ _ (Just docInf) _ _ _ ->
     Right $ AudioAttachment docInf
-  SomeAttachment "market" Nothing Nothing Nothing Nothing Nothing Nothing (Just docInf) Nothing Nothing ->
+  SomeAttachment "market" _ _ _ _ _ _ (Just docInf) _ _ ->
     Right $ MarketAttachment docInf
-  SomeAttachment "wall" Nothing Nothing Nothing Nothing Nothing Nothing Nothing (Just wall) Nothing ->
+  SomeAttachment "wall" _ _ _ _ _ _ _ (Just wall) _ ->
     Right $ WallAttachment wall
-  SomeAttachment "poll" Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing (Just docInf) ->
+  SomeAttachment "poll" _ _ _ _ _ _ _ _ (Just docInf) ->
     Right $ PollAttachment docInf
   _ -> Left $ "Unknown attachment:" ++ show sAtt ++ "\n"
 
@@ -275,34 +230,36 @@ getAttachmentString _ _ (PollAttachment (DocInfo idDoc owner_id)) = do
   return $ Right $ "poll" ++ show owner_id ++ "_" ++ show idDoc  
 getAttachmentString _ usId (StickerAttachment _) = 
   return $ Left $ "Wrong sticker attachment from user: " ++ show usId  ++ ". Sticker not alone in msg.\n"
-  
 
+sendMsgAndCheckResp :: (Monad m, MonadCatch m) => Handle m -> UserId -> MSG -> m ()
+sendMsgAndCheckResp h usId msg = do
+  logDebug (hLog h) ("Send request to send msg: " ++ show msg ++ "\n" )
+  response <- sendSpecMsg h usId msg `catch` handleExSendMsg (hLog h) usId msg 
+  logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+  checkSendMsgResponse h usId msg response
 
-sendTxtMsg :: (Monad m, MonadCatch m) => Handle m -> UserId -> T.Text -> m LBS.ByteString
-sendTxtMsg h usId txt = sendMsg h usId txt [] [] "" ("","")
-
-sendAttachMaybeGeoMsg :: (Monad m, MonadCatch m) => Handle m -> UserId -> T.Text -> [String] -> Maybe Geo -> m LBS.ByteString
-sendAttachMaybeGeoMsg h usId txt attachStrs maybeGeo = case maybeGeo of 
+sendSpecMsg :: (Monad m, MonadCatch m) => Handle m -> UserId -> MSG -> m LBS.ByteString
+sendSpecMsg h usId (TextMsg txt) = sendMsg h usId txt [] [] "" ("","")
+sendSpecMsg h usId (AttachmentMsg txt attachStrs maybeGeo) = case maybeGeo of 
   Nothing -> sendMsg h usId txt [] attachStrs "" ("","")
   Just (Geo "point" (Coordinates lat long)) -> 
     sendMsg h usId txt [] attachStrs "" (show lat,show long)
   _ -> do
-    logError (hLog h) $ "UNKNOWN GEO type\n" ++ show maybeGeo
-    throwM $ DuringGetUpdatesException $ "UNKNOWN GEO type\n" ++ show maybeGeo
+    let ex = DuringGetUpdatesException $ "UNKNOWN GEO type\n" ++ show maybeGeo
+    throwAndLogEx (hLog h) ex
+sendSpecMsg h usId (StickerMsg stId) = sendMsg h usId "" [] [] (show stId) ("","")
 
-sendStickMsg :: (Monad m, MonadCatch m) => Handle m -> UserId -> StickerId -> m LBS.ByteString
-sendStickMsg  h usId stickerId  = sendMsg h usId "" [] [] (show stickerId) ("","")
 
 
 checkGetServResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m ()
 checkGetServResponse h json = do
   case decode json of
       Nothing                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to getLongPollServer:\n" ++ show json
-        throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogEx (hLog h) ex
       Just (ErrorAnswerServ { errorEAS =  _ } ) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to getLongPollServer:\n" ++ show json
-        throwM $ CheckGetServerResponseException $ "NEGATIVE RESPONSE:\n"   ++ show json
+        let ex = CheckGetServerResponseException $ "NEGATIVE RESPONSE:\n"   ++ show json
+        throwAndLogEx (hLog h) ex
       Just _ -> do
         logInfo (hLog h) $ "Work with received server\n"
 
@@ -310,11 +267,11 @@ checkUpdates :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> StateT 
 checkUpdates h json = do
   case decode json of
       Nothing                      -> do
-        lift $ logError (hLog h) $ "UNKNOWN RESPONSE to getUpdates:\n" ++ show json
-        throwM $ CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        let ex = CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        lift $ throwAndLogEx (hLog h) ex
       Just (ErrorAnswer { errorEA = _ } ) -> do
-        lift $ logError (hLog h) $ "NEGATIVE RESPONSE to getUpdates:\n" ++ show json
-        throwM $ CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"   ++ show json
+        let ex = CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"   ++ show json
+        lift $ throwAndLogEx (hLog h) ex
       Just (FailAnswer 2 ) -> do
         lift $ logWarning (hLog h) ("FAIL. Long poll server key expired, need to request new key\n")
         getServer h
@@ -336,8 +293,8 @@ checkUpdates h json = do
         json2 <- getUpdAndLog h
         checkUpdates h json2
       Just (FailAnswer _ ) -> do
-        lift $ logError (hLog h) $ "NEGATIVE RESPONSE to getUpdates:\n" ++ show json
-        throwM $ CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"   ++ show json
+        let ex = CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n"   ++ show json
+        lift $ throwAndLogEx (hLog h) ex
       Just (AnswerOk { updates = [] }) -> do
         lift $ logInfo (hLog h) ("No new updates\n")
         return []
@@ -350,11 +307,11 @@ checkSendMsgResponse :: (Monad m, MonadCatch m) => Handle m -> UserId -> MSG -> 
 checkSendMsgResponse h usId msg json = do
   case decode json of
       Nothing                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to sendMessage:\n" ++ show json
-        throwM $ CheckSendMsgResponseException msg (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"  
+        let ex = CheckSendMsgResponseException msg (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"  
+        throwAndLogEx (hLog h) ex
       Just (ErrorAnswerMsg { errorEAM = _ } ) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to sendMessage:\n" ++ show json
-        throwM $ CheckSendMsgResponseException msg (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+        let ex = CheckSendMsgResponseException msg (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+        throwAndLogEx (hLog h) ex
       Just _                       -> case msg of
         TextMsg txt -> logInfo (hLog h) ("Msg " ++ show txt  ++ " was sent to user " ++ show usId ++ "\n")
         StickerMsg idSt -> logInfo (hLog h) ("Sticker_id " ++ show idSt  ++ " was sent to user " ++ show usId ++ "\n")
@@ -364,65 +321,75 @@ checkSendMsgResponse h usId msg json = do
         AttachmentMsg txt attachStrings (Just geo) -> do
           logInfo (hLog h) ("AttachmentAndGeoMsg was sent to user " ++ show usId ++ ". Text: " ++ show txt ++ "; attachments: " ++ show attachStrings ++ "; geo: " ++ show geo ++ "\n")
 
+sendKeybAndCheckResp :: (Monad m, MonadCatch m) => Handle m -> UserId -> N -> T.Text -> m ()
+sendKeybAndCheckResp h usId currN txt = do
+    logDebug (hLog h) $ "Send request to send keyboard to user: " ++ show usId ++ " with message: " ++ show currN ++ show txt
+    response <- sendKeyb h usId currN txt `catch` handleExSendKeyb (hLog h) usId 
+    logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+    checkSendKeybResponse h usId currN txt response
+
 checkSendKeybResponse :: (Monad m, MonadCatch m) => Handle m -> UserId -> N -> T.Text -> LBS.ByteString -> m ()
-checkSendKeybResponse h usId n msg json = do
+checkSendKeybResponse h usId n txt json = do
   case decode json of
       Nothing                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to sendKeyboard:\n" ++ show json
-        throwM $ CheckSendKeybResponseException (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"  
+        let ex = CheckSendKeybResponseException (ToUserId usId) $ "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"  
+        throwAndLogEx (hLog h) ex
       Just (ErrorAnswerMsg { errorEAM = _ } ) -> do
-        logError (hLog h) $ "NEGATIVE RESPONSE to sendKeyboard:\n" ++ show json
-        throwM $ CheckSendKeybResponseException (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
+        let ex = CheckSendKeybResponseException (ToUserId usId) $ "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
+        throwAndLogEx (hLog h) ex
       Just _                       -> do
-        logInfo (hLog h) ("Keyboard with message: " ++ show n ++ show msg ++ " was sent to user " ++ show usId ++ "\n")
+        logInfo (hLog h) ("Keyboard with message: " ++ show n ++ show txt ++ " was sent to user " ++ show usId ++ "\n")
 
 checkGetUploadServResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m T.Text
 checkGetUploadServResponse h json = do
   case decode json of
       Just (UploadServerResponse (UploadUrl serUrl)) -> return serUrl
       _                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to getPhotoServer:\n" ++ show json
-        throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogEx (hLog h) ex
+
 
 checkLoadDocResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m LoadDocResp
 checkLoadDocResponse h json = do
   case decode json of
       Just loadDocResp@(LoadDocResp _) -> return loadDocResp
       _                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to loadDocToServer:\n" ++ show json
-        throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogEx (hLog h) ex
 
 checkSaveDocResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m DocInfo
 checkSaveDocResponse h json = do
   case decode json of
       Just (SaveDocResp (ResponseSDR "doc" docInf )) -> return docInf
       _                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to saveDocOnServer:\n" ++ show json
-        throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogEx (hLog h) ex
 
 checkSaveDocAuMesResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m DocInfo
 checkSaveDocAuMesResponse h json = do
   case decode json of
       Just (SaveDocAuMesResp (ResponseSDAMR "audio_message" docInf )) -> return docInf
       _                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to saveDocAudioMesOnServer:\n" ++ show json
-        throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogEx (hLog h) ex
 
 checkLoadPhotoResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m LoadPhotoResp
 checkLoadPhotoResponse h json = do
   case decode json of
       Just loadPhotoResp@(LoadPhotoResp _ _ _) -> return loadPhotoResp
       _                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to loadPhotoToServer:\n" ++ show json
-        throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogEx (hLog h) ex
+
 
 checkSavePhotoResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m DocInfo
 checkSavePhotoResponse h json = do
   case decode json of
       Just (SavePhotoResp [DocInfo id' ownerId ]) -> return (DocInfo id' ownerId )
       _                      -> do
-        logError (hLog h) $ "UNKNOWN RESPONSE to savePhotoOnServer:\n" ++ show json
-        throwM $ CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogEx (hLog h) ex
+
 
 
 
@@ -440,6 +407,16 @@ getUpdates' key server ts = do
   req <- parseRequest $ T.unpack server ++ "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20"
   res <- httpLbs req manager
   return (responseBody res)
+
+{-chooseParamsForMsg botToken h usId (TextMsg txt) =
+  let param1  = "user_id=" ++ show usId
+  let param2  = "random_id=0"
+  let param3  = "message=" ++ T.unpack txt
+  param4  = "access_token=" ++ cBotToken (hConf h)
+   param5 = "v=5.103"
+  in params  = intercalate "&" (param1:param2:param3:param4:param5:[])-}
+
+
 
 sendMsg' :: Handle IO -> UserId -> T.Text -> [Integer] -> [String] -> String -> (String,String) -> IO LBS.ByteString
 sendMsg' h usId txt fwds attachStrings stickerId (lat,long)  = do
@@ -460,12 +437,12 @@ sendMsg' h usId txt fwds attachStrings stickerId (lat,long)  = do
   return (responseBody res)
 
 sendKeyb' :: Handle IO -> UserId -> N -> T.Text -> IO LBS.ByteString
-sendKeyb' h usId n msg = do
+sendKeyb' h usId n txt = do
   manager <- newTlsManager
   initReq <- parseRequest $ "https://api.vk.com/method/messages.send"
   let param1 = ("user_id"     , fromString . show $ usId) 
   let param2 = ("random_id"   ,"0")
-  let param3 = ("message"     , fromString (show  n ++ T.unpack msg))
+  let param3 = ("message"     , fromString (show  n ++ T.unpack txt))
   let param4 = ("keyboard"    , LBS.toStrict . encode $ kB)
   let param5 = ("access_token", fromString (cBotToken $ (hConf h))) 
   let param6 = ("v"           ,"5.103")
