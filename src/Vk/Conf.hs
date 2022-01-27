@@ -17,7 +17,7 @@ import Vk.Oops
   , handleExParseConf
   , handleExPullConf
   )
-import Vk.TypeSynonym
+import Vk.Types
 
 data Config = Config 
   { cStartN   :: N,

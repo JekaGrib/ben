@@ -16,12 +16,12 @@ import Tg.Oops
   , handleExParseConf
   , handleExPullConf
   )
-import Tg.TypeSynonym
+import Tg.Types
 
 
 data Config =
   Config
-    { cStartN :: Int
+    { cStartN :: N
     , cBotToken :: String
     , cHelpMsg :: String
     , cRepeatQ :: String

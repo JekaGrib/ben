@@ -9,7 +9,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Data.Configurator.Types as C
 import qualified Data.Text as T
 import Tg.Logger (LogHandle(..), logError)
-import Tg.TypeSynonym
+import Tg.Types
 
 
 data TGBotException

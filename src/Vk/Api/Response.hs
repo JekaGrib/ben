@@ -23,7 +23,7 @@ module Vk.Api.Response (
   SaveDocAuMesResp(SaveDocAuMesResp),
   ResponseSDAMR(ResponseSDAMR),
   GetPollServerJSONBody(GetPollServerJSONBody,responseGPSJB,ErrorAnswerServ,errorEAS),
-  Response(Response,ErrorAnswerMsg,errorEAM),
+  ResponseOk(ResponseOk,ErrorAnswerMsg,errorEAM),
   ServerInfo(ServerInfo,tsSI,keySI,serverSI),
   UploadServerResponse(UploadServerResponse),
   UploadUrl(UploadUrl),
@@ -35,7 +35,7 @@ module Vk.Api.Response (
 import           Data.Aeson  (FromJSON(parseJSON),Value,(.:),(.:?),withObject)
 import           GHC.Generics (Generic)
 import qualified Data.Text                      as T
-import           Control.Applicative ((<|>),liftA2)        
+import           Control.Applicative ((<|>),liftA2)
 
 data Answer
     = AnswerOk     { tsAOk   :: T.Text,
@@ -276,15 +276,15 @@ instance FromJSON ServerInfo where
         <*> v .: "server"
         <*> v .: "ts" 
 
-data Response 
-    = Response { responseR :: Integer }
+data ResponseOk 
+    = ResponseOk { responseR :: Integer }
     | ErrorAnswerMsg  { errorEAM :: Value } deriving (Generic, Show)
 
-instance FromJSON Response where
+instance FromJSON ResponseOk where
   parseJSON  = 
     liftA2
       (<|>) 
-      (withObject "Response" $ \v -> Response <$> v .: "response")
+      (withObject "ResponseOk" $ \v -> ResponseOk <$> v .: "response")
       (withObject "ErrorAnswerMsg" $ \v -> ErrorAnswerMsg <$> v .: "error")
 
 newtype ErrorInfo = ErrorInfo { error_code :: Integer} deriving (Generic, Show)

@@ -7,7 +7,7 @@
 module Vk.Oops where
 
 import           Control.Monad.Catch (Exception,MonadCatch,SomeException,throwM)
-import Vk.TypeSynonym
+import Vk.Types
 import qualified Data.ByteString.Lazy           as LBS
 import Vk.Logger (LogHandle(..), logError)
 import qualified Control.Exception as E

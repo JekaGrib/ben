@@ -5,6 +5,7 @@
 
 module Tg.Api.Request where
 
+import Tg.Types
 import Data.Aeson
   ( ToJSON(toEncoding,toJSON)
   , (.=)
@@ -13,12 +14,11 @@ import Data.Aeson
   , object
   , pairs
   )
-import qualified Data.Text as T
 import GHC.Generics (Generic)
 
 newtype JSONBodyOffset =
   JSONBodyOffset
-    { offset :: Integer
+    { offset :: Offset
     }
   deriving (Generic, Show)
 
@@ -36,8 +36,8 @@ instance ToJSON JSONBodyTimeOut where
 
 data SendMsgJSONBody =
   SendMsgJSONBody
-    { chat_id :: Integer
-    , text :: T.Text
+    { chat_id :: UserId
+    , text :: TextOfMsg
     }
   deriving (Generic, Show)
 
@@ -46,9 +46,9 @@ instance ToJSON SendMsgJSONBody where
 
 data CopyMsgJSONBody =
   CopyMsgJSONBody
-    { chat_idCM :: Integer
-    , from_chat_idCM :: Integer
-    , msg_idCM :: Integer
+    { chat_idCM :: UserId
+    , from_chat_idCM :: UserId
+    , msg_idCM :: MessageId
     }
   deriving (Generic, Show)
 
@@ -60,8 +60,8 @@ instance ToJSON CopyMsgJSONBody where
 
 data KeybJSONBody =
   KeybJSONBody
-    { chat_idKeyb :: Integer
-    , textKeyb :: T.Text
+    { chat_idKeyb :: UserId
+    , textKeyb :: TextOfKeyb
     , reply_markup :: KeyBoard
     }
   deriving (Generic, Show)
@@ -86,7 +86,7 @@ instance ToJSON KeyBoard where
 
 newtype KeyButton =
   KeyButton
-    { textBtn :: T.Text
+    { textBtn :: TextOfButton
     }
   deriving (Generic, Show)
 

@@ -7,6 +7,8 @@ module Tg.Api.Response where
 import Control.Applicative ((<|>), liftA2)
 import Data.Aeson (FromJSON(parseJSON), (.:), withObject)
 import qualified Data.Text as T
+import Tg.Types
+
 
 data Answer
   = Answer
@@ -26,11 +28,11 @@ instance FromJSON Answer where
 
 data Update
   = Update
-      { update_id :: Integer
+      { update_id :: UpdateId
       , message :: Message
       }
   | UnknownUpdate
-      { update_id :: Integer
+      { update_id :: UpdateId
       }
 
 instance FromJSON Update where
@@ -44,17 +46,17 @@ instance FromJSON Update where
 
 data Message
   = TxtMessage
-      { message_id :: Integer
+      { message_id :: MessageId
       , fromUser :: From
       , chat :: Chat
-      , date :: Int
+      , date :: Integer
       , textMsg :: T.Text
       }
   | Message
       { message_id :: Integer
       , fromUser :: From
       , chat :: Chat
-      , date :: Int
+      , date :: Integer
       }
 
 instance FromJSON Message where
@@ -75,7 +77,7 @@ instance FromJSON Message where
 
 data From =
   From
-    { idUser :: Integer
+    { idUser :: UserId
     , is_bot :: Bool
     , first_name :: T.Text
     , last_name :: T.Text
