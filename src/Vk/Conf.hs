@@ -5,13 +5,13 @@
 
 module Vk.Conf where
 
-import           Vk.Logger
+import           Vk.Logger (Priority(..))
 import qualified Data.Configurator              as C
 import qualified Data.Configurator.Types        as C
-import           Data.Char
+import           Data.Char (toUpper,isNumber)
 import           Control.Exception              (IOException, SomeException, throw, catch)
-import           Data.Time.LocalTime
-import Vk.Oops
+import           Data.Time.LocalTime (getZonedTime)
+import Vk.Oops 
 import Vk.TypeSynonym
 
 data Config = Config 

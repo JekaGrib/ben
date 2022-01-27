@@ -32,10 +32,10 @@ module Vk.Api.Response (
   )  where
 
 
-import           Data.Aeson
-import           GHC.Generics
+import           Data.Aeson  (FromJSON(parseJSON),Value,(.:),(.:?),withObject)
+import           GHC.Generics (Generic)
 import qualified Data.Text                      as T
-import           Control.Applicative         
+import           Control.Applicative ((<|>),liftA2)        
 
 data Answer
     = AnswerOk     { tsAOk   :: T.Text,

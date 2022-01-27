@@ -6,9 +6,9 @@
 
 module Vk.App where
 
-import           Vk.Logger
-import           Vk.Api.Response
-import           Vk.Api.Request
+import           Vk.Logger (LogHandle(..), logDebug, logInfo, logWarning)
+import           Vk.Api.Response 
+import           Vk.Api.Request (keyBoard)
 import           Network.HTTP.Client            (urlEncodedBody, parseRequest, responseBody, httpLbs, RequestBody(..) )
 import           Network.HTTP.Client.TLS        (newTlsManager)
 import qualified Data.ByteString.Lazy           as LBS
@@ -16,14 +16,19 @@ import qualified Data.ByteString                as BS
 import           Data.Aeson (decode,encode)
 import qualified Data.Text                      as T
 import           Data.Maybe                     ( fromJust )
-import           Control.Monad
-import           Control.Monad.State
-import           Data.List
-import           Control.Monad.Catch
-import           Network.HTTP.Client.MultipartFormData
+import           Control.Monad.State            (StateT,lift,modify,replicateM_,forever,gets)
+import           Data.List                      (sortOn,intercalate,delete)
+import           Control.Monad.Catch (MonadCatch(catch))
+import           Network.HTTP.Client.MultipartFormData (formDataBody,partFileRequestBody)
 import           Data.String                    ( fromString )
 import Vk.TypeSynonym
-import Vk.Oops
+import Vk.Oops (VKBotException(..)
+  , handleExGetServ
+  , handleExGetUpd
+  , handleExSendMsg
+  , handleExSendKeyb
+  , throwAndLogEx
+  )
 import Control.Applicative (liftA3)
 import Vk.Conf (Config(..))
 
@@ -443,7 +448,7 @@ sendKeyb' h usId n txt = do
   let param1 = ("user_id"     , fromString . show $ usId) 
   let param2 = ("random_id"   ,"0")
   let param3 = ("message"     , fromString (show  n ++ T.unpack txt))
-  let param4 = ("keyboard"    , LBS.toStrict . encode $ kB)
+  let param4 = ("keyboard"    , LBS.toStrict . encode $ keyBoard)
   let param5 = ("access_token", fromString (cBotToken $ (hConf h))) 
   let param6 = ("v"           ,"5.103")
   let params = param1 : param2 : param3 : param4 : param5 : param6 : [] 

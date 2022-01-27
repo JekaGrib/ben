@@ -31,17 +31,7 @@ data TGBotException
 
 instance Exception TGBotException
 
-newtype Msg =
-  Msg T.Text
-  deriving (Eq, Show)
 
-newtype ToUserId =
-  ToUserId UserId
-  deriving (Eq, Show)
-
-newtype MsgId =
-  MsgId MessageId
-  deriving (Eq, Show)
 
 throwAndLogEx :: (Monad m, MonadCatch m) => LogHandle m -> TGBotException -> m a
 throwAndLogEx logH ex = do

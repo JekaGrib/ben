@@ -37,3 +37,5 @@ data Attachment = PhotoAttachment  Photo
     | WallAttachment WallInfo 
     | PollAttachment DocInfo 
      deriving (Eq, Show)
+
+data ToUserId      = ToUserId   UserId               deriving (Eq,Show)

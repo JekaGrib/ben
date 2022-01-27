@@ -5,10 +5,10 @@
 
 module Vk.MainVk where
 
-import           Vk.App
-import           Vk.Logger
-import           Vk.Api.Response
-import           Control.Monad.State
+import           Vk.App (Handle(..),run,getLongPollServer',getUpdates',sendMsg',sendKeyb',getPhotoServer',loadPhotoToServ',savePhotoOnServ',getDocServer',loadDocToServ',saveDocOnServ',goToUrl')
+import           Vk.Logger (LogHandle(..),LogConfig(..),logger)
+import           Vk.Api.Response (ServerInfo(ServerInfo))
+import           Control.Monad.State (evalStateT,forever)
 import Vk.Conf (getTime,parseConf,Config(..))
 
 

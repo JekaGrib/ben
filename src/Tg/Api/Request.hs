@@ -6,14 +6,12 @@
 module Tg.Api.Request where
 
 import Data.Aeson
-  ( ToJSON
+  ( ToJSON(toEncoding,toJSON)
   , (.=)
   , defaultOptions
   , genericToEncoding
   , object
   , pairs
-  , toEncoding
-  , toJSON
   )
 import qualified Data.Text as T
 import GHC.Generics (Generic)

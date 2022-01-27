@@ -5,8 +5,8 @@
 
 module Vk.Api.Request where
 
-import           Data.Aeson
-import           GHC.Generics (Generic())
+import           Data.Aeson   (ToJSON(toJSON,toEncoding),object,pairs, (.=), defaultOptions,genericToEncoding)
+import           GHC.Generics (Generic)
 import qualified Data.Text                      as T
 
 data KeyBoard = KeyBoard
@@ -37,8 +37,8 @@ instance ToJSON Action where
   toEncoding (Action a  b) =
     pairs ("type" .= a  <> "label" .= b)
 
-kB :: KeyBoard
-kB = KeyBoard True [[button "1"],[button "2"],[button "3"],[button "4"],[button "5"]] False
+keyBoard :: KeyBoard
+keyBoard = KeyBoard True [[button "1"],[button "2"],[button "3"],[button "4"],[button "5"]] False
 
 button :: T.Text -> Button
 button txt = Button (Action "text" txt) "positive"

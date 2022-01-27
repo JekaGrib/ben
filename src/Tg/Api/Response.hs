@@ -5,7 +5,7 @@
 module Tg.Api.Response where
 
 import Control.Applicative ((<|>), liftA2)
-import Data.Aeson (FromJSON, (.:), parseJSON, withObject)
+import Data.Aeson (FromJSON(parseJSON), (.:), withObject)
 import qualified Data.Text as T
 
 data Answer

@@ -28,7 +28,6 @@ data VKBotException
 
 instance Exception VKBotException 
 
-data ToUserId      = ToUserId   UserId               deriving (Eq,Show)
 
 
 throwAndLogEx :: (Monad m, MonadCatch m) => LogHandle m -> VKBotException -> m a

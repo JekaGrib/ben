@@ -4,7 +4,7 @@
 
 module Tg.App where
 
-import Control.Monad.Catch (MonadCatch(..))
+import Control.Monad.Catch (MonadCatch(catch))
 import Control.Monad.State (StateT, get, lift, modify, replicateM_)
 import Data.Aeson (decode, encode)
 import qualified Data.ByteString.Lazy as LBS
@@ -36,10 +36,7 @@ import Tg.Api.Response (Answer(..), From(..), Message(..), Update(..))
 import Tg.Conf (Config(..))
 import Tg.Logger (LogHandle(..), logDebug, logInfo, logWarning)
 import Tg.Oops
-  ( Msg(..)
-  , MsgId(..)
-  , TGBotException(..)
-  , ToUserId(..)
+  ( TGBotException(..)
   , handleExConfUpd
   , handleExCopyMsg
   , handleExGetUpd
