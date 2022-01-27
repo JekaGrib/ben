@@ -4,11 +4,11 @@
 
 module Tg.App where
 
+import qualified Data.Map as Map(lookup,insert) 
 import Control.Monad.Catch (MonadCatch(catch))
 import Control.Monad.State (StateT, get, lift, modify, replicateM_)
 import Data.Aeson (decode, encode)
 import qualified Data.ByteString.Lazy as LBS
-import Data.List (delete)
 import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import Network.HTTP.Client
@@ -75,7 +75,7 @@ startApp h = do
 run ::
      (Monad m, MonadCatch m)
   => Handle m
-  -> StateT UsersNs m ()
+  -> StateT MapUserN m ()
 run h = do
   lift $
     logDebug
@@ -92,7 +92,7 @@ chooseActionOfUpd ::
      (Monad m, MonadCatch m)
   => Handle m
   -> Update
-  -> StateT UsersNs m ()
+  -> StateT MapUserN m ()
 chooseActionOfUpd h upd = do
   lift $ logInfo (hLog h) "Analysis update from the list\n"
   case upd of
@@ -106,18 +106,18 @@ chooseActionOfUpd h upd = do
         logInfo
           (hLog h)
           ("Get msg_id: " ++ show msgId ++ " from user " ++ show usId ++ "\n")
-      chooseActionOfDbState h msg msgId usId
+      chooseActionOfMapUserN h msg msgId usId
 
-chooseActionOfDbState ::
+chooseActionOfMapUserN ::
      (Monad m, MonadCatch m)
   => Handle m
   -> Message
   -> Integer
   -> Integer
-  -> StateT UsersNs m ()
-chooseActionOfDbState h msg msgId usId = do
-  db <- get
-  let nState = lookup usId db
+  -> StateT MapUserN m ()
+chooseActionOfMapUserN h msg msgId usId = do
+  mapUN <- get
+  let nState = Map.lookup usId mapUN
   case nState of
     Just (Left (OpenRepeat oldN)) -> do
       lift $
@@ -137,7 +137,7 @@ chooseActionOfTryPullTxt ::
   -> Integer
   -> Integer
   -> Int
-  -> StateT UsersNs m ()
+  -> StateT MapUserN m ()
 chooseActionOfTryPullTxt h msg msgId usId currN =
   case tryPullTextMsg msg of
     Just txt -> do
@@ -156,7 +156,7 @@ chooseActionOfButton ::
   -> Message
   -> Integer
   -> Int
-  -> StateT UsersNs m ()
+  -> StateT MapUserN m ()
 chooseActionOfButton h msg usId oldN =
   case checkButton msg of
     Just newN -> do
@@ -165,7 +165,7 @@ chooseActionOfButton h msg usId oldN =
           (hLog h)
           ("Change number of repeats to " ++
            show newN ++ " for user " ++ show usId ++ "\n")
-      modify (changeDB usId (Right newN))
+      modify (changeMapUserN usId (Right newN))
       let infoMsg =
             T.pack $
             "Number of repeats successfully changed from " ++
@@ -179,7 +179,7 @@ chooseActionOfButton h msg usId oldN =
            show usId ++
            " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: " ++
            show oldN ++ "\n")
-      modify (changeDB usId (Right oldN))
+      modify (changeMapUserN usId (Right oldN))
       let infoMsg =
             T.pack $
             "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++
@@ -193,7 +193,7 @@ chooseActionOfTxt ::
   -> Int
   -> Integer
   -> T.Text
-  -> StateT UsersNs m ()
+  -> StateT MapUserN m ()
 chooseActionOfTxt h currN usId txt =
   case filter (' ' /=) . T.unpack $ txt of
     "/help" -> do
@@ -203,7 +203,7 @@ chooseActionOfTxt h currN usId txt =
       lift $ sendKeybAndCheckResp h usId currN
       lift $
         logInfo (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode\n")
-      modify (changeDB usId (Left $ OpenRepeat currN))
+      modify (changeMapUserN usId (Left $ OpenRepeat currN))
     _ -> do
       lift $ replicateM_ currN $ sendMsgAndCheckResp h usId txt
 
@@ -478,15 +478,13 @@ extractTextMsg = textMsg . message
 extractUserId :: Update -> UserId
 extractUserId = idUser . fromUser . message
 
-changeDB ::
+changeMapUserN ::
      UserId
   -> NState
-  -> UsersNs
-  -> UsersNs
-changeDB usId eitherN bd =
-  case lookup usId bd of
-    Just eitherX -> (:) (usId, eitherN) . delete (usId, eitherX) $ bd
-    Nothing -> (:) (usId, eitherN) bd
+  -> MapUserN
+  -> MapUserN
+changeMapUserN usId nState mapUN = Map.insert usId nState mapUN
+
 
 checkButton :: Message -> Maybe N
 checkButton msg =

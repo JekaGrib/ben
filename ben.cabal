@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c8b6e494c05a31794e7ee1b7fa0f2f115e024e00ad8a33800a375348b900cd16
+-- hash: 2964cce51b1db469976aa11780bd93d864b3aec6ee891a654ba019ec4748a35a
 
 name:           ben
 version:        0.1.0.0
@@ -53,6 +53,7 @@ library
     , binary
     , bytestring
     , configurator
+    , containers
     , exceptions
     , hspec
     , http-client
@@ -77,6 +78,7 @@ executable ben-exe
     , binary
     , bytestring
     , configurator
+    , containers
     , exceptions
     , hspec
     , http-client
@@ -104,6 +106,7 @@ test-suite ben-test
     , binary
     , bytestring
     , configurator
+    , containers
     , exceptions
     , hspec
     , http-client

@@ -6,6 +6,7 @@
 
 module Vk.App where
 
+import qualified Data.Map as Map(lookup,insert) 
 import           Vk.Logger (LogHandle(..), logDebug, logInfo, logWarning)
 import           Vk.Api.Response 
 import           Vk.Api.Request (keyBoard)
@@ -17,7 +18,7 @@ import           Data.Aeson (decode,encode)
 import qualified Data.Text                      as T
 import           Data.Maybe                     ( fromJust )
 import           Control.Monad.State            (StateT,lift,modify,replicateM_,forever,gets)
-import           Data.List                      (sortOn,intercalate,delete)
+import           Data.List                      (sortOn,intercalate)
 import           Control.Monad.Catch (MonadCatch(catch))
 import           Network.HTTP.Client.MultipartFormData (formDataBody,partFileRequestBody)
 import           Data.String                    ( fromString )
@@ -49,12 +50,12 @@ data Handle m = Handle
     }
 
 
-run :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndUsersNs m ()
+run :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m ()
 run h = do
   getServer h
   forever $ runServ h
 
-getServer :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndUsersNs m ()
+getServer :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m ()
 getServer h = do
   lift $ logDebug (hLog h) $ "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=" ++ show (cGroupId (hConf h)) ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n"
   jsonServ <- lift $ getLongPollServer h `catch` handleExGetServ (hLog h)
@@ -63,7 +64,7 @@ getServer h = do
   let servInf = extractServerInfo jsonServ
   modify $ changeServerInfo servInf
   
-getUpdAndLog :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndUsersNs m LBS.ByteString     
+getUpdAndLog :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m LBS.ByteString     
 getUpdAndLog h = do
   ServerInfo key server ts <- gets fst
   lift $ logDebug (hLog h) $ "Send request to getUpdates: " ++ T.unpack server ++ "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20\n"
@@ -71,13 +72,13 @@ getUpdAndLog h = do
   lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
   return json
 
-runServ :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndUsersNs m ()   
+runServ :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m ()   
 runServ h = do
   json <- getUpdAndLog h
   upds <- checkUpdates h json
   mapM_ (chooseActionOfUpd h) upds
 
-chooseActionOfUpd :: (Monad m, MonadCatch m) => Handle m -> Update -> StateT ServerAndUsersNs m ()
+chooseActionOfUpd :: (Monad m, MonadCatch m) => Handle m -> Update -> StateT ServerAndMapUserN m ()
 chooseActionOfUpd h upd = do
   lift $ logInfo (hLog h) ("Analysis update from the list\n")
   case upd of   
@@ -89,10 +90,10 @@ chooseActionOfUpd h upd = do
     _ -> do
       lift $ logWarning (hLog h) ("There is UNKNOWN UPDATE. BOT WILL IGNORE IT. " ++ show upd ++ "\n")
 
-chooseActionOfNState :: (Monad m, MonadCatch m) => Handle m -> AboutObj -> StateT ServerAndUsersNs m ()
+chooseActionOfNState :: (Monad m, MonadCatch m) => Handle m -> AboutObj -> StateT ServerAndMapUserN m ()
 chooseActionOfNState h obj@(AboutObj usId _ _ _ _ _ _) = do
-  usersNs <- gets snd
-  let nState = lookup usId usersNs
+  mapUN <- gets snd
+  let nState = Map.lookup usId mapUN
   case nState of
     Just (Left (OpenRepeat oldN)) -> do
       lift $ logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode\n")
@@ -104,23 +105,23 @@ chooseActionOfNState h obj@(AboutObj usId _ _ _ _ _ _) = do
       let currN = cStartN (hConf h)
       chooseActionOfObject h obj currN
 
-chooseActionOfButton :: (Monad m, MonadCatch m) => Handle m -> AboutObj -> N -> StateT ServerAndUsersNs m ()
+chooseActionOfButton :: (Monad m, MonadCatch m) => Handle m -> AboutObj -> N -> StateT ServerAndMapUserN m ()
 chooseActionOfButton h obj@(AboutObj usId _ _ _ _ _ _) oldN =
   case checkButton obj of
     Just newN -> do
       lift $ logInfo (hLog h) ("Change number of repeats to " ++ show newN ++ " for user " ++ show usId ++ "\n")
-      modify $ func $ changeUsersNs usId $ Right newN
+      modify $ changeSecond $ changeMapUserN usId $ Right newN
       let infoMsg = T.pack $ "Number of repeats successfully changed from " ++ show oldN ++ " to " ++ show newN ++ "\n"
       let msg = TextMsg infoMsg
       lift $ sendMsgAndCheckResp h usId msg
     Nothing -> do
       lift $ logWarning (hLog h) ("User " ++ show usId ++ " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: " ++ show oldN ++ "\n")
-      modify $ func $ changeUsersNs usId $ Right oldN
+      modify $ changeSecond $ changeMapUserN usId $ Right oldN
       let infoMsg = T.pack $ "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++ show oldN ++ "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n"
       let msg = TextMsg infoMsg
       lift $ sendMsgAndCheckResp h usId msg
 
-chooseActionOfObject :: (Monad m, MonadCatch m) => Handle m -> AboutObj -> N -> StateT ServerAndUsersNs m ()
+chooseActionOfObject :: (Monad m, MonadCatch m) => Handle m -> AboutObj -> N -> StateT ServerAndMapUserN m ()
 chooseActionOfObject h obj currN =
   case obj of
     AboutObj usId _ _ txt [] [] Nothing -> do
@@ -137,7 +138,7 @@ chooseActionOfObject h obj currN =
       let msg = TextMsg infoMsg
       lift $ sendMsgAndCheckResp h usId msg
 
-chooseActionOfTxt :: (Monad m, MonadCatch m) => Handle m -> N -> UserId -> T.Text -> StateT ServerAndUsersNs m ()
+chooseActionOfTxt :: (Monad m, MonadCatch m) => Handle m -> N -> UserId -> T.Text -> StateT ServerAndMapUserN m ()
 chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
   "/help" -> do
     let infoMsg = T.pack $ cHelpMsg (hConf h) 
@@ -147,13 +148,13 @@ chooseActionOfTxt h currN usId txt = case filter ((/=) ' ') . T.unpack $ txt of
   "/repeat" -> do
     let infoMsg = T.pack $ " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
     lift $ sendKeybAndCheckResp h usId currN infoMsg
-    modify $ func $ changeUsersNs usId $ Left $ OpenRepeat currN 
+    modify $ changeSecond $ changeMapUserN usId $ Left $ OpenRepeat currN 
   _ -> do 
     lift $ replicateM_ currN $ do
       let msg = TextMsg txt
       sendMsgAndCheckResp h usId msg
 
-chooseActionOfAttachs :: (Monad m, MonadCatch m) => Handle m -> N -> AboutObj -> StateT ServerAndUsersNs m () 
+chooseActionOfAttachs :: (Monad m, MonadCatch m) => Handle m -> N -> AboutObj -> StateT ServerAndMapUserN m () 
 chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
   eitherAttachStrings <- lift $ mapM (getSomeAttachmentString h usId) attachs
   case sequence eitherAttachStrings of
@@ -268,7 +269,7 @@ checkGetServResponse h json = do
       Just _ -> do
         logInfo (hLog h) $ "Work with received server\n"
 
-checkUpdates :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> StateT ServerAndUsersNs m [Update]
+checkUpdates :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> StateT ServerAndMapUserN m [Update]
 checkUpdates h json = do
   case decode json of
       Nothing                      -> do
@@ -544,20 +545,17 @@ extractTextMsg = text . objectUpd
 extractUserId :: Update -> UserId
 extractUserId = from_id . objectUpd
 
-changeServerInfo :: ServerInfo -> ServerAndUsersNs -> ServerAndUsersNs
-changeServerInfo newInfo (_,usersNs) = (newInfo,usersNs)
+changeServerInfo :: ServerInfo -> ServerAndMapUserN -> ServerAndMapUserN
+changeServerInfo newInfo (_,mapUN) = (newInfo,mapUN)
 
-changeTs :: T.Text -> ServerAndUsersNs -> ServerAndUsersNs
-changeTs newTs (serverInfo,usersNs) = (serverInfo {tsSI = newTs}, usersNs)
+changeTs :: T.Text -> ServerAndMapUserN -> ServerAndMapUserN
+changeTs newTs (serverInfo,mapUN) = (serverInfo {tsSI = newTs}, mapUN)
 
-func :: (b -> b) -> (a,b) -> (a,b)
-func f (a,b) = (a, f b)
+changeSecond :: (b -> b) -> (a,b) -> (a,b)
+changeSecond f (a,b) = (a, f b)
 
-changeUsersNs :: UserId -> NState -> UsersNs -> UsersNs
-changeUsersNs usId nState usersNs = 
-    case lookup usId usersNs of
-        Just oldNState -> (:) (usId,nState) . delete (usId, oldNState) $ usersNs
-        Nothing -> (:) (usId,nState) $ usersNs
+changeMapUserN :: UserId -> NState -> MapUserN -> MapUserN
+changeMapUserN usId nState mapUN = Map.insert usId nState mapUN
 
 
 checkButton :: AboutObj -> Maybe N

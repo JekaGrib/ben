@@ -158,11 +158,10 @@ inputLocalTime :: IO String
 inputLocalTime =
   (do putStrLn
         "Local time not found\nPlease, enter your local time in any form\nExample: 06.07.2020 16:21"
-      getLine) `E.catch`
-  handleExGetTime
+      getLine) 
 
 -- getTime function:
 getTime :: IO String
-getTime =
-  (show <$> getZonedTime) `E.catch`
-  (\e -> print (e :: E.SomeException) >> inputLocalTime)
+getTime = (show <$> getZonedTime) `E.catch`
+  (\e -> print (e :: E.SomeException) >> inputLocalTime `E.catch` handleExInput "local_time") `E.catch`
+    handleExGetTime

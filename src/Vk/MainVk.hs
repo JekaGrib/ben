@@ -10,6 +10,7 @@ import           Vk.Logger (LogHandle(..),LogConfig(..),logger)
 import           Vk.Api.Response (ServerInfo(ServerInfo))
 import           Control.Monad.State (evalStateT,forever)
 import Vk.Conf (getTime,parseConf,Config(..))
+import qualified Data.Map as Map(fromList) 
 
 
 mainVk :: IO ()
@@ -21,5 +22,5 @@ mainVk = do
   let handleLog = LogHandle (LogConfig (cPriority config)) (logger handleLog currLogPath)
   let handle = Handle config handleLog (getLongPollServer' handle) getUpdates' (sendMsg' handle) (sendKeyb' handle) (getPhotoServer' handle) loadPhotoToServ' (savePhotoOnServ' handle) (getDocServer' handle) loadDocToServ' (saveDocOnServ' handle) goToUrl'
   putStrLn "App started"
-  evalStateT (forever $ run handle) (ServerInfo "A" "A" "1" ,[])
+  evalStateT (forever $ run handle) (ServerInfo "A" "A" "1" ,Map.fromList [])
   

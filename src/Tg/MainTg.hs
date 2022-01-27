@@ -17,6 +17,8 @@ import Tg.App
   )
 import Tg.Conf (Config(..), getTime, parseConf)
 import Tg.Logger (LogConfig(..), LogHandle(..), logger)
+import qualified Data.Map as Map(fromList) 
+
 
 mainTg :: IO ()
 mainTg = do
@@ -37,4 +39,4 @@ mainTg = do
           (sendKeyb' handle)
           (copyMsg' handle)
   startApp handle
-  evalStateT (forever $ run handle) []
+  evalStateT (forever $ run handle) $ Map.fromList []

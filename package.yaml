@@ -33,6 +33,7 @@ dependencies:
 - hspec
 - exceptions
 - binary
+- containers
 
 
 library:

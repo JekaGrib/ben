@@ -9,9 +9,14 @@ import           Vk.Logger (Priority(..))
 import qualified Data.Configurator              as C
 import qualified Data.Configurator.Types        as C
 import           Data.Char (toUpper,isNumber)
-import           Control.Exception              (IOException, SomeException, throw, catch)
+import           Control.Exception              as E
 import           Data.Time.LocalTime (getZonedTime)
 import Vk.Oops 
+  ( handleExGetTime
+  , handleExInput
+  , handleExParseConf
+  , handleExPullConf
+  )
 import Vk.TypeSynonym
 
 data Config = Config 
@@ -25,94 +30,86 @@ data Config = Config
 
 parseConf :: IO Config
 parseConf = do
-  conf <- pullConfig
-  startN         <- parseConfStartN   conf 
-  botToken       <- parseConfBotToken conf
-  prio           <- parseConfPrio     conf  
-  helpMsg        <- parseConfHelpMsg  conf 
-  repeatQuestion <- parseConfRepeatQ  conf
-  groupId        <- parseConfGroupId  conf
+  conf <- pullConfig `E.catch` handleExPullConf
+  startN         <- parseConfStartN   conf `E.catch` handleExParseConf "VK.startN"
+  botToken       <- parseConfBotToken conf `E.catch` handleExParseConf "VK.botToken"
+  prio           <- parseConfPrio     conf `E.catch` handleExParseConf "VK.logLevel"
+  helpMsg        <- parseConfHelpMsg  conf `E.catch` handleExParseConf "VK.help_Info_Msg"
+  repeatQuestion <- parseConfRepeatQ  conf `E.catch` handleExParseConf "VK.repeat_Info_Question"
+  groupId        <- parseConfGroupId  conf `E.catch` handleExParseConf "VK.group_id"
   let config = Config startN botToken helpMsg repeatQuestion groupId prio
   return config
 
 pullConfig :: IO C.Config
-pullConfig = do
-  C.load [C.Required "./bot.config"] 
-    `catch` (\e -> putStrLn (show (e :: C.ConfigError)) >> return C.empty)
-    `catch` (\e -> putStrLn (show (e :: C.KeyError   )) >> return C.empty)
-    `catch` (\e -> putStrLn (show (e :: IOException  )) >> return C.empty)
-    `catch` (\e -> throw $ DuringPullConfigException  $ show (e :: SomeException))
+pullConfig = C.load [C.Required "./bot.config"] `E.catch`
+  (\e -> print (e :: C.ConfigError) >> return C.empty) `E.catch`
+  (\e -> print (e :: C.KeyError) >> return C.empty) `E.catch`
+  (\e -> print (e :: E.IOException) >> return C.empty)
 
 
 -- parse config values functions:
 parseConfStartN :: C.Config -> IO N
-parseConfStartN conf = (do
-  str <- ((C.lookup conf "VK.startN") :: IO (Maybe Int))
-    `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe Int) )
-    `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe Int) ) 
+parseConfStartN conf = do
+  str <- ((C.lookup conf "VK.startN") :: IO (Maybe N))
+    `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe N) )
+    `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe N) ) 
   case str of
-    Nothing -> inputStartN
+    Nothing -> inputStartN `E.catch` handleExInput "startN"
     Just 1  -> return 1
     Just 2  -> return 2
     Just 3  -> return 3
     Just 4  -> return 4
     Just 5  -> return 5
-    Just _  -> inputStartN)
-      `catch` (\e -> throw $ DuringParseConfigException $ "startN\n" ++ show (e :: SomeException))
+    Just _  -> inputStartN `E.catch` handleExInput "startN"
 
 parseConfBotToken :: C.Config -> IO String
-parseConfBotToken conf = (do
+parseConfBotToken conf = do
   str <- ((C.lookup conf "VK.botToken") :: IO (Maybe String))
     `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
     `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
-    Nothing -> inputBotToken
-    Just n  -> return n)
-      `catch` (\e -> throw $ DuringParseConfigException $ "botToken\n" ++ show (e :: SomeException))
+    Nothing -> inputBotToken `E.catch` handleExInput "botToken"
+    Just n  -> return n
          
 parseConfPrio :: C.Config -> IO Priority
-parseConfPrio conf = (do
+parseConfPrio conf = do
   str <- (C.lookup conf "VK.logLevel" :: IO (Maybe String))
     `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
     `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
-    Nothing        -> inputLogLevel
+    Nothing        -> inputLogLevel `E.catch` handleExInput "logLevel"
     Just "DEBUG"   -> return DEBUG
     Just "INFO"    -> return INFO
     Just "WARNING" -> return WARNING
     Just "ERROR"   -> return ERROR
-    Just _         -> inputLogLevel)
-      `catch` (\e -> throw $ DuringParseConfigException $ "logLevel\n" ++ show (e :: SomeException))
+    Just _         -> inputLogLevel `E.catch` handleExInput "logLevel"
 
 parseConfHelpMsg :: C.Config -> IO String
-parseConfHelpMsg conf = (do
+parseConfHelpMsg conf = do
   str <- ((C.lookup conf "VK.help_Info_Msg") :: IO (Maybe String))
     `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
     `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
-    Nothing -> inputHelpMsg
-    Just n  -> return n)
-      `catch` (\e -> throw $ DuringParseConfigException $ "helpMsg\n" ++ show (e :: SomeException))
+    Nothing -> inputHelpMsg `E.catch` handleExInput "help_Info_Msg"
+    Just n  -> return n
 
 parseConfRepeatQ :: C.Config -> IO String
-parseConfRepeatQ conf = (do
+parseConfRepeatQ conf = do
   str <- ((C.lookup conf "VK.repeat_Info_Question") :: IO (Maybe String))
     `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
     `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
-    Nothing -> inputRepeatQ
-    Just n  -> return n)
-      `catch` (\e -> throw $ DuringParseConfigException $ "repeatQuestion\n" ++ show (e :: SomeException))
+    Nothing -> inputRepeatQ `E.catch` handleExInput "repeat_Info_Question"
+    Just n  -> return n
 
 parseConfGroupId :: C.Config -> IO GroupId
-parseConfGroupId conf = (do
+parseConfGroupId conf = do
   str <- ((C.lookup conf "VK.group_id") :: IO (Maybe GroupId))
     `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe GroupId) )
     `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe GroupId) ) 
   case str of
-    Nothing -> inputGroupId
-    Just n  -> return n)
-      `catch` (\e -> throw $ DuringParseConfigException $ "repeatQuestion\n" ++ show (e :: SomeException))
+    Nothing -> inputGroupId  `E.catch` handleExInput "group_id"
+    Just n  -> return n
 
 
 -- input functions:
@@ -126,7 +123,7 @@ inputStartN = do
     "3" -> return 3
     "4" -> return 4
     "5" -> return 5
-    _   -> inputStartN
+    _   -> inputStartN  `E.catch` handleExInput "startN"
 
 inputBotToken :: IO String
 inputBotToken = do
@@ -142,7 +139,7 @@ inputLogLevel = do
     "INFO"    -> return INFO
     "WARNING" -> return WARNING
     "ERROR"   -> return ERROR
-    _         -> inputLogLevel
+    _         -> inputLogLevel  `E.catch` handleExInput "logLevel"
 
 inputHelpMsg :: IO String
 inputHelpMsg = do
@@ -162,17 +159,15 @@ inputGroupId = do
       True -> do
         let grId = read str 
         return grId
-      _ -> inputGroupId
+      _ -> inputGroupId  `E.catch` handleExInput "group_id"
 
 inputLocalTime :: IO String
-inputLocalTime = (do
+inputLocalTime = do
   putStrLn "Local time not found\nPlease, enter your local time in any form\nExample: 06.07.2020 16:21"
-  getLine) 
-    `catch` (\e -> throw $ DuringGetTimeException $ show (e :: SomeException))
+  getLine 
 
 -- getTime function:
 getTime :: IO String
-getTime = (do
-  time    <- getZonedTime
-  return $ show time)     
-    `catch` (\e -> ((putStrLn $ show (e :: SomeException)) >> inputLocalTime) )
+getTime = (show <$> getZonedTime) `E.catch`
+  (\e -> print (e :: E.SomeException) >> inputLocalTime `E.catch` handleExInput "local_time") `E.catch`
+    handleExGetTime 

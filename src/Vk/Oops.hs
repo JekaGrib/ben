@@ -6,10 +6,13 @@
 
 module Vk.Oops where
 
-import           Control.Monad.Catch
+import           Control.Monad.Catch (Exception,MonadCatch,SomeException,throwM)
 import Vk.TypeSynonym
 import qualified Data.ByteString.Lazy           as LBS
 import Vk.Logger (LogHandle(..), logError)
+import qualified Control.Exception as E
+import qualified Data.Configurator.Types              as C
+
 
 
 data VKBotException 
@@ -24,6 +27,7 @@ data VKBotException
   | DuringGetTimeException String
   | DuringPullConfigException String
   | DuringParseConfigException String
+  | DuringInputException String
     deriving (Eq,Show)
 
 instance Exception VKBotException 
@@ -60,3 +64,24 @@ handleExSendKeyb ::
 handleExSendKeyb logH usId e = do
   let ex = DuringSendKeybException (ToUserId usId) $ show e 
   throwAndLogEx logH ex
+
+-- handles to catch exceptions in IO configuration functions:
+handleExPullConf :: E.SomeException -> IO C.Config
+handleExPullConf e = do
+  print e
+  E.throw $ DuringPullConfigException $ show e
+
+handleExParseConf :: String -> E.SomeException -> IO a
+handleExParseConf str e = do
+  print e
+  E.throw $ DuringParseConfigException $ str ++ "\n" ++ show e
+
+handleExGetTime :: E.SomeException -> IO String
+handleExGetTime e = do
+  print e
+  E.throw $ DuringGetTimeException $ show e
+
+handleExInput :: String -> E.SomeException -> IO a
+handleExInput str e = do
+  print e
+  E.throw $ DuringInputException $ str ++ "\n" ++ show e

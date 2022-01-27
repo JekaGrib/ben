@@ -5,13 +5,14 @@
 module Tg.TypeSynonym where
 
 import qualified Data.Text as T
+import Data.Map (Map)
 
 
 type N = Int
 type UserId = Integer
 type NState = Either OpenRepeat N
-type UserN  = (UserId,NState)
-type UsersNs = [UserN]
+--type UserN  = (UserId,NState)
+type MapUserN = Map UserId NState
 type MessageId = Integer
 type UpdateId = Integer
 type Offset   = Integer
