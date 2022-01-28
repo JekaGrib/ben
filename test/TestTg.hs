@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module TestTg where
@@ -8,41 +7,46 @@ import           Tg.App
 import           Tg.Logger
 import           Tg.Oops
 import           Tg.Conf
-import           Tg.TypeSynonym
+import           Tg.Types
 import qualified Data.Text                      as T
 import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
+import qualified Data.Map as Map
 
-data MockAction = GOTUPDATES | SENDMSG Integer T.Text | COPYMSG Integer Integer | CONFIRMUPDATES Integer | SENDKEYB Integer Int T.Text | LOGMSG Priority String
+data MockAction = GOTUPDATES | SENDMSG UserId TextOfMsg | COPYMSG UserId MessageId | CONFIRMUPDATES Offset | SENDKEYB UserId N TextOfKeyb | LOG Priority | LOGMSG Priority String
                                        deriving (Eq,Show)
 
 
-getUpdatesTest:: LBS.ByteString -> StateT [MockAction] IO LBS.ByteString
+getUpdatesTest:: Response -> StateT [MockAction] IO Response
 getUpdatesTest json = StateT $ \s -> return ( json , GOTUPDATES : s)
 
-confirmUpdatesTest :: LBS.ByteString -> Integer -> StateT [MockAction] IO LBS.ByteString
+confirmUpdatesTest :: Response -> Offset -> StateT [MockAction] IO Response
 confirmUpdatesTest json offset = StateT $ \s -> 
-    return ( json , (CONFIRMUPDATES offset) : s)
+    return ( json , CONFIRMUPDATES offset : s)
 
-sendMsgTest :: LBS.ByteString -> Integer -> T.Text -> StateT [MockAction] IO LBS.ByteString
+sendMsgTest :: Response -> UserId -> TextOfMsg -> StateT [MockAction] IO Response
 sendMsgTest json usId msg = StateT $ \s -> 
-    return ( json , (SENDMSG usId msg) : s)
+    return ( json , SENDMSG usId msg : s)
 
-copyMsgTest :: LBS.ByteString -> Integer -> Integer -> StateT [MockAction] IO LBS.ByteString
+copyMsgTest :: Response -> UserId -> MessageId -> StateT [MockAction] IO Response
 copyMsgTest json usId msgId = StateT $ \s -> 
-    return ( json , (COPYMSG usId msgId) : s)
+    return ( json , COPYMSG usId msgId : s)
 
-sendKeybTest :: LBS.ByteString -> Integer -> Int -> T.Text-> StateT [MockAction] IO LBS.ByteString
+sendKeybTest :: Response -> Integer -> Int -> T.Text-> StateT [MockAction] IO Response
 sendKeybTest json usId currN msg = StateT $ \s -> 
-    return ( json , (SENDKEYB usId currN msg) : s)
+    return ( json , SENDKEYB usId currN msg : s)
 
 logTest :: Priority -> String -> StateT [MockAction] IO ()
-logTest prio text = StateT $ \s -> 
-    return (() , LOGMSG prio text : s)
+logTest prio _ = StateT $ \s -> 
+    return (() , LOG prio : s)
 
+logTest0 :: Priority -> String -> StateT [MockAction] IO ()
+logTest0 prio str = StateT $ \s -> 
+    return (() , LOGMSG prio str : s)
 
 config1 = Config { cStartN = 2 , cBotToken = "ABC123" , cHelpMsg = "Hello" , cRepeatQ = "Why?", cPriority = DEBUG}
 handleLog1 = LogHandle (LogConfig DEBUG) logTest
+handleLog0 = LogHandle (LogConfig DEBUG) logTest0
 handle1 = Handle { hConf = config1,
                    hLog = handleLog1,
                    getUpdates = getUpdatesTest json6,
@@ -52,25 +56,26 @@ handle1 = Handle { hConf = config1,
                    sendKeyb = sendKeybTest json4,
                    copyMsg = copyMsgTest json11}
 
+handle0  = handle1 { hLog = handleLog0 }
 handle2  = handle1 { getShortUpdates = getUpdatesTest json2}
 handle3  = handle1 { getShortUpdates = getUpdatesTest json3}
 handle4  = handle1 { getShortUpdates = getUpdatesTest json4}
-handle5  = handle1 { getShortUpdates = getUpdatesTest json5}
+handle5  = handle1 { getShortUpdates = getUpdatesTest json5,hLog = handleLog0}
 handle6  = handle1 { getUpdates = getUpdatesTest json2}
 handle7  = handle1 { getUpdates = getUpdatesTest json3}
 handle8  = handle1 { getUpdates = getUpdatesTest json4}
-handle9  = handle1 { getUpdates = getUpdatesTest json7}
+handle9  = handle1 { getUpdates = getUpdatesTest json7,hLog = handleLog0}
 handle10 = handle1 { getUpdates = getUpdatesTest json8}
 handle11 = handle1 { getUpdates = getUpdatesTest json9}
 handle12 = handle1 { getUpdates = getUpdatesTest json10}
 
-initialDB1 = []
+initialDB1 = Map.fromList []
 
 testTG :: IO ()
 testTG = hspec $ do
   describe "startApp" $ do
-    it "return [LOGMSG INFO, LOGMSG DEBUG, GOTUPDATES , LOGMSG INFO] when given empty update list" $ do
-      state <- execStateT (startApp handle1) []
+    it "return [LOG INFO, LOG DEBUG, GOTUPDATES , LOG INFO] when given empty update list" $ do
+      state <- execStateT (startApp handle0) []
       reverse state `shouldBe` 
         [LOGMSG INFO "App started\n",
         LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n",
@@ -78,7 +83,7 @@ testTG = hspec $ do
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
         LOGMSG INFO "No new updates\n"]
 
-    it "return [LOGMSG DEBUG, GOTUPDATES, CONFIRMUPDATES, LOGMSG DEBUG] when given unempty update list" $ do
+    it "return [LOG DEBUG, GOTUPDATES, CONFIRMUPDATES, LOG DEBUG] when given unempty update list" $ do
       state <- execStateT (startApp handle5) []
       reverse state `shouldBe` 
         [LOGMSG INFO "App started\n",
@@ -91,18 +96,18 @@ testTG = hspec $ do
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
         LOGMSG INFO "Received updates confirmed\n"]
     
-    it "throw Exception on negative getUpdates response" $ do
+    it "throw Exception on negative getUpdates response" $ 
       evalStateT (startApp handle2) [] `shouldThrow` ( == (CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show json2))
 
-    it "throw Exception on unknown getUpdates response" $ do
+    it "throw Exception on unknown getUpdates response" $ 
       evalStateT (startApp handle3) [] `shouldThrow` ( == (CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:\n" ++ show json3))
     
-    it "throw Exception on short getUpdates response" $ do
+    it "throw Exception on short getUpdates response" $ 
       evalStateT (startApp handle4) [] `shouldThrow` ( == (CheckGetUpdatesResponseException $ "Too short response:\n" ++ show json4))
 
   describe "run" $ do
     it "work with singleton update list with text msg" $ do
-      state <- execStateT (evalStateT (run handle1 ) initialDB1 ) []
+      state <- execStateT (evalStateT (run handle0 ) initialDB1 ) []
       reverse state `shouldBe`
         [LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n", 
         GOTUPDATES,
@@ -116,7 +121,7 @@ testTG = hspec $ do
         LOGMSG INFO "Get msg_id: 2112 from user 1118947329\n",
         LOGMSG INFO "Msg_id:2112 is text: \"love\"\n"] ++
         (concat . replicate 2 $ 
-          [LOGMSG DEBUG $ "Send request to send msg \"love\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118947329, text = \"love\"}\n",
+          [LOGMSG DEBUG "Send request to send msg \"love\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118947329, text = \"love\"}\n",
           SENDMSG 1118947329 "love",
           LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
           LOGMSG INFO "Msg \"love\" was sent to user 1118947329\n"])
@@ -137,149 +142,149 @@ testTG = hspec $ do
         LOGMSG INFO "Analysis update from the list\n",
         LOGMSG INFO "Get msg_id: 2113 from user 1118947329\n",
         LOGMSG INFO "Msg_id:2113 is text: \"/help\"\n",
-        LOGMSG DEBUG $ "Send request to send msg \"Hello\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118947329, text = \"Hello\"}\n",
+        LOGMSG DEBUG "Send request to send msg \"Hello\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118947329, text = \"Hello\"}\n",
         SENDMSG 1118947329 "Hello",
         LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
         LOGMSG INFO "Msg \"Hello\" was sent to user 1118947329\n"]
     
     it "work with singleton update list with /repeat msg" $ do
       dbState <- evalStateT (execStateT (run handle10 ) initialDB1 ) []
-      dbState `shouldBe` [(1118947329,Left (OpenRepeat 2))]
+      dbState `shouldBe` Map.fromList [(1118947329,Left (OpenRepeat 2))]
       state <- execStateT (evalStateT (run handle10 ) initialDB1 ) []
       reverse state `shouldBe`
-        [LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n", 
+        [LOG DEBUG , 
         GOTUPDATES,
-        LOGMSG DEBUG $ "Get response: " ++ show json8 ++ "\n",
-        LOGMSG INFO "There is new updates list\n",
-        LOGMSG DEBUG "Send request to confirmOldUpdates with offset:235800276 https://api.telegram.org/botABC123/getUpdates\n",
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG DEBUG ,
         CONFIRMUPDATES 235800276,
-        LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
-        LOGMSG INFO "Received updates confirmed\n",
-        LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg_id: 2114 from user 1118947329\n",
-        LOGMSG INFO "Msg_id:2114 is text: \"/repeat\"\n",
-        LOGMSG DEBUG "Send request to send keyboard with message: 2\" : Current number of repeats your message.\\nWhy?\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage\n",
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG DEBUG ,
         SENDKEYB 1118947329 2 " : Current number of repeats your message.\nWhy?",
-        LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
-        LOGMSG INFO "Keyboard with message: 2\" : Current number of repeats your message.\\nWhy?\" was sent to user 1118947329\n",
-        LOGMSG INFO "Put user 1118947329 to OpenRepeat mode\n"]
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG INFO ]
       
       
     
     it "work with sticker update" $ do
       state <- execStateT (evalStateT (run handle11 ) initialDB1 ) []
       reverse state `shouldBe`
-        [LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n", 
+        [LOG DEBUG , 
         GOTUPDATES,
-        LOGMSG DEBUG $ "Get response: " ++ show json9 ++ "\n",
-        LOGMSG INFO "There is new updates list\n",
-        LOGMSG DEBUG "Send request to confirmOldUpdates with offset:235800287 https://api.telegram.org/botABC123/getUpdates\n",
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG DEBUG ,
         CONFIRMUPDATES 235800287,
-        LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
-        LOGMSG INFO "Received updates confirmed\n",
-        LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg_id: 2140 from user 1267750993\n",
-        LOGMSG INFO "Msg_id:2140 is attachment\n",
-        LOGMSG DEBUG "Send request to send attachment msg_id: 2140 to userId 1267750993: https://api.telegram.org/botABC123/copyMessage   JSON body : {chat_id = 1267750993,from_chat_id = 1267750993, message_id = 2140}\n",
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG DEBUG ,
         COPYMSG 1267750993 2140,
-        LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true,\\\"result\\\":{\\\"message_id\\\":2141}}\"\n",
-        LOGMSG INFO "Attachment msg_id: 2140 was sent to user 1267750993\n",
-        LOGMSG DEBUG "Send request to send attachment msg_id: 2140 to userId 1267750993: https://api.telegram.org/botABC123/copyMessage   JSON body : {chat_id = 1267750993,from_chat_id = 1267750993, message_id = 2140}\n",
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG DEBUG ,
         COPYMSG 1267750993 2140,
-        LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true,\\\"result\\\":{\\\"message_id\\\":2141}}\"\n",
-        LOGMSG INFO "Attachment msg_id: 2140 was sent to user 1267750993\n"]
+        LOG DEBUG ,
+        LOG INFO ]
 
     it "work with msg:4 after /repeat" $ do
       dbState <- evalStateT (execStateT (run handle10 >> run handle12) initialDB1 ) []
-      dbState `shouldBe` [(1118947329,Right 4)]
+      dbState `shouldBe` Map.fromList [(1118947329,Right 4)]
       state <- execStateT (evalStateT (run handle10 >> run handle12) initialDB1 ) []
       reverse state `shouldBe`
-        [LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n", 
+        [LOG DEBUG , 
         GOTUPDATES,
-        LOGMSG DEBUG $ "Get response: " ++ show json8 ++ "\n",
-        LOGMSG INFO "There is new updates list\n",
-        LOGMSG DEBUG "Send request to confirmOldUpdates with offset:235800276 https://api.telegram.org/botABC123/getUpdates\n",
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG DEBUG ,
         CONFIRMUPDATES 235800276,
-        LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
-        LOGMSG INFO "Received updates confirmed\n",
-        LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg_id: 2114 from user 1118947329\n",
-        LOGMSG INFO "Msg_id:2114 is text: \"/repeat\"\n",
-        LOGMSG DEBUG "Send request to send keyboard with message: 2\" : Current number of repeats your message.\\nWhy?\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage\n",
+        LOG DEBUG,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG DEBUG ,
         SENDKEYB 1118947329 2 " : Current number of repeats your message.\nWhy?",
-        LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
-        LOGMSG INFO "Keyboard with message: 2\" : Current number of repeats your message.\\nWhy?\" was sent to user 1118947329\n",
-        LOGMSG INFO "Put user 1118947329 to OpenRepeat mode\n",
-        LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n", 
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG DEBUG , 
         GOTUPDATES,
-        LOGMSG DEBUG $ "Get response: " ++ show json10 ++ "\n",
-        LOGMSG INFO "There is new updates list\n",
-        LOGMSG DEBUG "Send request to confirmOldUpdates with offset:235800277 https://api.telegram.org/botABC123/getUpdates\n",
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG DEBUG ,
         CONFIRMUPDATES 235800277,
-        LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
-        LOGMSG INFO "Received updates confirmed\n",
-        LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg_id: 2117 from user 1118947329\n",
-        LOGMSG INFO "User 1118947329 is in OpenRepeat mode\n",
-        LOGMSG INFO "Change number of repeats to 4 for user 1118947329\n",
-        LOGMSG DEBUG $ "Send request to send msg \"Number of repeats successfully changed from 2 to 4\\n\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118947329, text = \"Number of repeats successfully changed from 2 to 4\\n\"}\n",
-        SENDMSG 1118947329 $ "Number of repeats successfully changed from 2 to 4\n",
-        LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
-        LOGMSG INFO "Msg \"Number of repeats successfully changed from 2 to 4\\n\" was sent to user 1118947329\n"
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG DEBUG ,
+        SENDMSG 1118947329 "Number of repeats successfully changed from 2 to 4\n",
+        LOG DEBUG ,
+        LOG INFO 
         ]
     
     it "warning with msg:love after /repeat" $ do
       dbState <- evalStateT (execStateT (run handle10 >> run handle1) initialDB1 ) []
-      dbState `shouldBe` [(1118947329,Right 2)]
+      dbState `shouldBe` Map.fromList [(1118947329,Right 2)]
       state <- execStateT (evalStateT (run handle10 >> run handle1) initialDB1 ) []
       reverse state `shouldBe`
-        [LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n", 
+        [LOG DEBUG , 
         GOTUPDATES,
-        LOGMSG DEBUG $ "Get response: " ++ show json8 ++ "\n",
-        LOGMSG INFO "There is new updates list\n",
-        LOGMSG DEBUG "Send request to confirmOldUpdates with offset:235800276 https://api.telegram.org/botABC123/getUpdates\n",
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG DEBUG ,
         CONFIRMUPDATES 235800276,
-        LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
-        LOGMSG INFO "Received updates confirmed\n",
-        LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg_id: 2114 from user 1118947329\n",
-        LOGMSG INFO "Msg_id:2114 is text: \"/repeat\"\n",
-        LOGMSG DEBUG "Send request to send keyboard with message: 2\" : Current number of repeats your message.\\nWhy?\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage\n",
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG DEBUG ,
         SENDKEYB 1118947329 2 " : Current number of repeats your message.\nWhy?",
-        LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
-        LOGMSG INFO "Keyboard with message: 2\" : Current number of repeats your message.\\nWhy?\" was sent to user 1118947329\n",
-        LOGMSG INFO "Put user 1118947329 to OpenRepeat mode\n",
-        LOGMSG DEBUG "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates\n", 
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG DEBUG , 
         GOTUPDATES,
-        LOGMSG DEBUG $ "Get response: " ++ show json6 ++ "\n",
-        LOGMSG INFO "There is new updates list\n",
-        LOGMSG DEBUG "Send request to confirmOldUpdates with offset:235800277 https://api.telegram.org/botABC123/getUpdates\n",
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG DEBUG ,
         CONFIRMUPDATES 235800277,
-        LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
-        LOGMSG INFO "Received updates confirmed\n",
-        LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get msg_id: 2112 from user 1118947329\n",
-        LOGMSG INFO "User 1118947329 is in OpenRepeat mode\n",
-        LOGMSG WARNING $ "User 1118947329 press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: 2\n",
-        LOGMSG DEBUG $ "Send request to send msg \"UNKNOWN NUMBER\\nI,m ssory, number of repeats has not changed, it is still 2\\nTo change it you may sent me command \\\"/repeat\\\" and then choose number from 1 to 5 on keyboard\\nPlease, try again later\\n\" to userId 1118947329: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118947329, text = \"UNKNOWN NUMBER\\nI,m ssory, number of repeats has not changed, it is still 2\\nTo change it you may sent me command \\\"/repeat\\\" and then choose number from 1 to 5 on keyboard\\nPlease, try again later\\n\"}\n",
-        SENDMSG 1118947329 $ "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still 2\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n",
-        LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"\n",
-        LOGMSG INFO "Msg \"UNKNOWN NUMBER\\nI,m ssory, number of repeats has not changed, it is still 2\\nTo change it you may sent me command \\\"/repeat\\\" and then choose number from 1 to 5 on keyboard\\nPlease, try again later\\n\" was sent to user 1118947329\n"]
+        LOG DEBUG ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG INFO ,
+        LOG WARNING ,
+        LOG DEBUG ,
+        SENDMSG 1118947329 "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still 2\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n",
+        LOG DEBUG ,
+        LOG INFO]
 
-    it "throw Exception on negative getUpdates response" $ do
+    it "throw Exception on negative getUpdates response" $ 
       evalStateT (evalStateT (run handle6) initialDB1 ) [] 
         `shouldThrow` ( == (CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show json2))
   
-    it "throw Exception on unknown getUpdates response" $ do
+    it "throw Exception on unknown getUpdates response" $ 
       evalStateT (evalStateT (run handle7) initialDB1 ) [] 
         `shouldThrow` ( == (CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:\n" ++ show json3))
     
-    it "throw Exception on short getUpdates response" $ do
+    it "throw Exception on short getUpdates response" $ 
       evalStateT (evalStateT (run handle8) initialDB1 ) [] 
         `shouldThrow` ( == (CheckGetUpdatesResponseException $ "Too short response:\n" ++ show json4))
       
 
-json1  :: LBS.ByteString
+json1  :: Response
 json1  = "{\"ok\":true,\"result\":[]}"
 json2  = "{\"ok\":false,\"result\":235}"
 json3  = "lalala"

@@ -250,7 +250,7 @@ getAttachmentString _ usId (StickerAttachment _) =
 
 sendMsgAndCheckResp :: (Monad m, MonadCatch m) => Handle m -> UserId -> MSG -> m ()
 sendMsgAndCheckResp h usId msg = do
-  logDebug (hLog h) ("Send request to send msg: " ++ show msg ++ "\n" )
+  logDebug (hLog h) ("Send request to send to user_id:" ++ show usId ++ " msg: " ++ show msg ++ "\n" )
   response <- sendMsg h usId msg `catch` handleExSendMsg (hLog h) usId msg 
   logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
   checkSendMsgResponse h usId msg response

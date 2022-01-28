@@ -1,4 +1,5 @@
-{-# LANGUAGE DeriveGeneric #-}
+--{-# OPTIONS_GHC -Werror #-}
+--{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module TestVk where
@@ -10,35 +11,40 @@ import           Vk.Api.Response                (ServerInfo(..))
 import qualified Data.Text                      as T
 import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
-import Vk.TypeSynonym
+import Vk.Types
 import Vk.Oops
+import Vk.Conf
+import qualified Data.Map as Map
 
 
-data MockAction = GOTSERVER | GOTUPDATES T.Text T.Text T.Text | SENDMSG UserId MSG | SENDKEYB UserId N T.Text | LOGMSG Priority String
+data MockAction = GOTSERVER | GOTUPDATES ServerInfo | SENDMSG UserId MSG | SENDKEYB UserId N TextOfKeyb | LOG Priority | LOGMSG Priority String
                                        deriving (Eq,Show)
 
-getServerTest:: LBS.ByteString -> StateT [MockAction] IO LBS.ByteString
+getServerTest:: Response -> StateT [MockAction] IO Response
 getServerTest json = StateT $ \s -> return ( json , GOTSERVER : s)
 
-getUpdatesTest:: LBS.ByteString -> T.Text -> T.Text -> T.Text -> StateT [MockAction] IO LBS.ByteString
-getUpdatesTest json key server ts = StateT $ \s -> return ( json , GOTUPDATES key server ts : s)
+getUpdatesTest:: Response -> ServerInfo -> StateT [MockAction] IO Response
+getUpdatesTest json sI = StateT $ \s -> return ( json , GOTUPDATES sI : s)
 
-sendMsgTest :: LBS.ByteString -> UserId -> T.Text -> [Integer] -> [String] -> String -> (String,String) -> StateT [MockAction] IO LBS.ByteString
-sendMsgTest json usId txt [] [] "" ("","") = StateT $ \s -> 
-    return ( json , (SENDMSG usId (TextMsg txt)) : s)
-sendMsgTest json usId "" [] [] stickerId ("","") = StateT $ \s -> 
-    return ( json , (SENDMSG usId (StickerMsg (read stickerId))) : s)    
+sendMsgTest :: Response -> UserId -> MSG -> StateT [MockAction] IO Response
+sendMsgTest json usId msg = StateT $ \s -> 
+    return ( json , SENDMSG usId msg : s)   
 
-sendKeybTest :: LBS.ByteString -> UserId -> N -> T.Text-> StateT [MockAction] IO LBS.ByteString
+sendKeybTest :: Response -> UserId -> N -> TextOfMsg-> StateT [MockAction] IO Response
 sendKeybTest json usId currN msg = StateT $ \s -> 
-    return ( json , (SENDKEYB usId currN msg) : s)
+    return ( json , SENDKEYB usId currN msg : s)
 
 logTest :: Priority -> String -> StateT [MockAction] IO ()
-logTest prio text = StateT $ \s -> 
-    return (() , LOGMSG prio text : s)
+logTest prio _ = StateT $ \s -> 
+    return (() , LOG prio : s)
 
-config1 = Config { cStartN = 2 , cBotToken = "ABC123" , cHelpMsg = "Hello" , cRepeatQ = "Why?", cGroupId = 321}
+logTest0 :: Priority -> String -> StateT [MockAction] IO ()
+logTest0 prio str = StateT $ \s -> 
+    return (() , LOGMSG prio str : s)
+
+config1 = Config { cStartN = 2 , cBotToken = "ABC123" , cHelpMsg = "Hello" , cRepeatQ = "Why?", cGroupId = 321, cPriority = DEBUG}
 handleLog1 = LogHandle (LogConfig DEBUG) logTest
+handleLog0 = LogHandle (LogConfig DEBUG) logTest0
 handle1 = Handle { hConf = config1,
                    hLog = handleLog1,
                    getLongPollServer = getServerTest json1,
@@ -46,36 +52,37 @@ handle1 = Handle { hConf = config1,
                    sendMsg = sendMsgTest json4,
                    sendKeyb = sendKeybTest json4}
 
-handle2 = handle1 {getUpdates = getUpdatesTest json3}
+handle0  = handle1 { hLog = handleLog0 }
+handle2 = handle1 {getUpdates = getUpdatesTest json3, hLog = handleLog0}
 handle3 = handle1 {getLongPollServer = getServerTest json5}
 handle4 = handle1 {getLongPollServer = getServerTest json6}
-handle5 = handle1 {getUpdates = getUpdatesTest json7}
+handle5 = handle1 {getUpdates = getUpdatesTest json7, hLog = handleLog0}
 handle6 = handle1 {getUpdates = getUpdatesTest json5}
 handle7 = handle1 {getUpdates = getUpdatesTest json6}
 
-initialDB1 = []
+initialDB1 = Map.fromList []
 
 testVk :: IO ()
 testVk = hspec $ do
   describe "getServer" $ do
-    it "throw Exception with error answer" $ do
+    it "throw Exception with error answer" $ 
       evalStateT (evalStateT (getServer handle3) (ServerInfo "A" "A" "1",initialDB1) ) [] 
         `shouldThrow` ( == (CheckGetServerResponseException $ "NEGATIVE RESPONSE:\n" ++ show json5))
 
-    it "throw CheckGetServerResponseException with unknown answer" $ do
+    it "throw CheckGetServerResponseException with unknown answer" $ 
       evalStateT (evalStateT (getServer handle4) (ServerInfo "A" "A" "1",initialDB1) ) [] 
         `shouldThrow` ( == (CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n" ++ show json6))    
   
   describe "(getServer >>= runServ)" $ do
     it "work with empty update list" $ do
-      state <- execStateT (evalStateT (getServer handle1 >> runServ handle1) (ServerInfo "A" "A" "1",initialDB1) ) []
+      state <- execStateT (evalStateT (getServer handle0 >> runServ handle0) (ServerInfo "A" "A" "1",initialDB1) ) []
       reverse state `shouldBe`
         [LOGMSG DEBUG "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=321&access_token=ABC123&v=5.103\n", 
         GOTSERVER,
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
-        LOGMSG INFO $ "Work with received server\n",
-        LOGMSG DEBUG $ "Send request to getUpdates: https://lp.vk.com/wh000?act=a_check&key=912481cc91cb3b0e119b9be5c75b383d6887438f&ts=289&wait=25\n",
-        GOTUPDATES "912481cc91cb3b0e119b9be5c75b383d6887438f" "https://lp.vk.com/wh000" "289",
+        LOGMSG INFO "Work with received server\n",
+        LOGMSG DEBUG "Send request to getUpdates: https://lp.vk.com/wh000?act=a_check&key=912481cc91cb3b0e119b9be5c75b383d6887438f&ts=289&wait=20\n",
+        GOTUPDATES $ ServerInfo "912481cc91cb3b0e119b9be5c75b383d6887438f" "https://lp.vk.com/wh000" "289",
         LOGMSG DEBUG $ "Get response: " ++ show json2 ++ "\n",
         LOGMSG INFO "No new updates\n"]
 
@@ -86,14 +93,14 @@ testVk = hspec $ do
         GOTSERVER,
         LOGMSG DEBUG "Get response: \"{\\\"response\\\":{\\\"key\\\":\\\"912481cc91cb3b0e119b9be5c75b383d6887438f\\\",\\\"server\\\":\\\"https:\\\\/\\\\/lp.vk.com\\\\/wh000\\\",\\\"ts\\\":\\\"289\\\"}}\"\n",
         LOGMSG INFO "Work with received server\n",
-        LOGMSG DEBUG "Send request to getUpdates: https://lp.vk.com/wh000?act=a_check&key=912481cc91cb3b0e119b9be5c75b383d6887438f&ts=289&wait=25\n",
-        GOTUPDATES "912481cc91cb3b0e119b9be5c75b383d6887438f" "https://lp.vk.com/wh000" "289",
+        LOGMSG DEBUG "Send request to getUpdates: https://lp.vk.com/wh000?act=a_check&key=912481cc91cb3b0e119b9be5c75b383d6887438f&ts=289&wait=20\n",
+        GOTUPDATES  $ ServerInfo "912481cc91cb3b0e119b9be5c75b383d6887438f" "https://lp.vk.com/wh000" "289",
         LOGMSG DEBUG "Get response: \"{\\\"ts\\\":\\\"290\\\",\\\"updates\\\":[{\\\"type\\\":\\\"message_new\\\",\\\"object\\\":{\\\"date\\\":1594911394,\\\"from_id\\\":123,\\\"id\\\":597,\\\"out\\\":0,\\\"peer_id\\\":16063921,\\\"text\\\":\\\"love\\\",\\\"conversation_message_id\\\":562,\\\"fwd_messages\\\":[],\\\"important\\\":false,\\\"random_id\\\":0,\\\"attachments\\\":[],\\\"is_hidden\\\":false},\\\"group_id\\\":194952914,\\\"event_id\\\":\\\"35ec397e45dfe993d365912ea32be41be5e77a0c\\\"}]}\\r\\n\"\n",
         LOGMSG INFO "There is new updates list\n",
         LOGMSG INFO "Analysis update from the list\n",
         LOGMSG INFO "Get TextMsg: \"love\" from user 123\n"] ++
         (concat . replicate 2 $ 
-          [LOGMSG DEBUG "Send request to send msg https://api.vk.com/method/messages.send?user_id=123&random_id=0&message=love&access_token=ABC123&v=5.103\n",
+          [LOGMSG DEBUG "Send request to send to user_id:123 msg: TextMsg \"love\"\n",
           SENDMSG 123 (TextMsg "love"),
           LOGMSG DEBUG "Get response: \"{\\\"response\\\":626}\"\n",
           LOGMSG INFO "Msg \"love\" was sent to user 123\n"])
@@ -104,23 +111,25 @@ testVk = hspec $ do
         [LOGMSG DEBUG "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=321&access_token=ABC123&v=5.103\n", 
         GOTSERVER,
         LOGMSG DEBUG $ "Get response: " ++ show json1 ++ "\n",
-        LOGMSG INFO $ "Work with received server\n",
-        LOGMSG DEBUG $ "Send request to getUpdates: https://lp.vk.com/wh000?act=a_check&key=912481cc91cb3b0e119b9be5c75b383d6887438f&ts=289&wait=25\n",
-        GOTUPDATES "912481cc91cb3b0e119b9be5c75b383d6887438f" "https://lp.vk.com/wh000" "289",
+        LOGMSG INFO "Work with received server\n",
+        LOGMSG DEBUG "Send request to getUpdates: https://lp.vk.com/wh000?act=a_check&key=912481cc91cb3b0e119b9be5c75b383d6887438f&ts=289&wait=20\n",
+        GOTUPDATES  $ ServerInfo "912481cc91cb3b0e119b9be5c75b383d6887438f" "https://lp.vk.com/wh000" "289",
         LOGMSG DEBUG $ "Get response: " ++ show json7 ++ "\n",
         LOGMSG INFO "There is new updates list\n",
         LOGMSG INFO "Analysis update from the list\n",
-        LOGMSG INFO "Get AttachmentMsg: [StickerAttachment {type' = \"sticker\", sticker = StickerInfo {sticker_id = 9014}}] from user 16063921\n"] ++
+        LOGMSG INFO "Get AttachmentMsg: [SomeAttachment {typeSA = \"sticker\", photoSA = Nothing, docSA = Nothing, audio_msgSA = Nothing, videoSA = Nothing, stickerSA = Just (StickerInfo {sticker_id = 9014}), audioSA = Nothing, marketSA = Nothing, wallSA = Nothing, pollSA = Nothing}] from user 16063921\n"
+        ] ++
         (concat . replicate 2 $ 
-          [LOGMSG DEBUG "Send request to send StickerMsg https://api.vk.com/method/messages.send?user_id=16063921&random_id=0&sticker_id=9014&access_token=ABC123&v=5.103\n",
+          [LOGMSG DEBUG "Send request to send to user_id:16063921 msg: StickerMsg 9014\n",
           SENDMSG 16063921 (StickerMsg 9014),
+          LOGMSG DEBUG "Get response: \"{\\\"response\\\":626}\"\n",
           LOGMSG INFO "Sticker_id 9014 was sent to user 16063921\n"])
     
-    it "throw CheckGetUpdatesException with error answer" $ do
+    it "throw CheckGetUpdatesException with error answer" $ 
       evalStateT (evalStateT (getServer handle6 >> runServ handle6) (ServerInfo "A" "A" "1",initialDB1) ) []
         `shouldThrow` ( == (CheckGetUpdatesResponseException $ "NEGATIVE RESPONSE:\n" ++ show json5))
     
-    it "throw CheckGetUpdatesException with unknown answer" $ do
+    it "throw CheckGetUpdatesException with unknown answer" $ 
       evalStateT (evalStateT (getServer handle7 >> runServ handle7) (ServerInfo "A" "A" "1",initialDB1) ) []
         `shouldThrow` ( == (CheckGetUpdatesResponseException $ "UNKNOWN RESPONSE:\n" ++ show json6))
 

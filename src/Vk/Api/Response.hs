@@ -267,7 +267,7 @@ instance FromJSON GetPollServerJSONBody where
 data ServerInfo 
     = ServerInfo { keySI :: T.Text,
                    serverSI  :: T.Text,
-                   tsSI  :: T.Text} deriving (Generic, Show)
+                   tsSI  :: T.Text} deriving (Eq, Generic, Show)
 
 
 instance FromJSON ServerInfo where
