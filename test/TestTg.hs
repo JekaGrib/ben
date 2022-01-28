@@ -1,16 +1,18 @@
+--{-# OPTIONS_GHC -Werror #-}
+--{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module TestTg where
 
-import           Test.Hspec
-import           Tg.App
-import           Tg.Logger
-import           Tg.Oops
-import           Tg.Conf
+import           Test.Hspec (it,shouldThrow,shouldBe,describe,hspec)
+import           Tg.App (Handle(..),run,startApp)
+import           Tg.Logger (LogHandle(..),Priority(..),LogConfig(..))
+import           Tg.Oops (TGBotException(..))
+import           Tg.Conf (Config(..))
 import           Tg.Types
 import qualified Data.Text                      as T
 import qualified Data.ByteString.Lazy           as LBS
-import           Control.Monad.State
+import           Control.Monad.State (StateT(..),evalStateT,execStateT)
 import qualified Data.Map as Map
 
 data MockAction = GOTUPDATES | SENDMSG UserId TextOfMsg | COPYMSG UserId MessageId | CONFIRMUPDATES Offset | SENDKEYB UserId N TextOfKeyb | LOG Priority | LOGMSG Priority String
@@ -32,7 +34,7 @@ copyMsgTest :: Response -> UserId -> MessageId -> StateT [MockAction] IO Respons
 copyMsgTest json usId msgId = StateT $ \s -> 
     return ( json , COPYMSG usId msgId : s)
 
-sendKeybTest :: Response -> Integer -> Int -> T.Text-> StateT [MockAction] IO Response
+sendKeybTest :: Response -> UserId -> N -> TextOfMsg -> StateT [MockAction] IO Response
 sendKeybTest json usId currN msg = StateT $ \s -> 
     return ( json , SENDKEYB usId currN msg : s)
 
