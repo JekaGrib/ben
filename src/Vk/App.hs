@@ -24,11 +24,17 @@ import           Network.HTTP.Client.MultipartFormData (formDataBody,partFileReq
 import           Data.String                    ( fromString )
 import Vk.Types
 import Vk.Oops (VKBotException(..)
-  , handleExGetServ
+  , PrependAttachmetException(..)
+  , handleExGetLongPollServ
   , handleExGetUpd
   , handleExSendMsg
   , handleExSendKeyb
+  , handleExGetUploadServ
+  , handleExLoadToServ
+  , handleExSaveOnServ
+  , handleExGoToUrl
   , throwAndLogEx
+  , throwAndLogPrepAttEx
   )
 import Control.Applicative (liftA3)
 import Vk.Conf (Config(..))
@@ -58,13 +64,13 @@ run h = do
 getServer :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m ()
 getServer h = do
   lift $ logDebug (hLog h) $ "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=" ++ show (cGroupId (hConf h)) ++ "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n"
-  jsonServ <- lift $ getLongPollServer h `catch` handleExGetServ (hLog h)
+  jsonServ <- lift $ getLongPollServer h `catch` handleExGetLongPollServ (hLog h)
   lift $ logDebug (hLog h) ("Get response: " ++ show jsonServ ++ "\n")
   lift $ checkGetServResponse h jsonServ
   let servInf = extractServerInfo jsonServ
   modify $ changeServerInfo servInf
   
-getUpdAndLog :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m LBS.ByteString     
+getUpdAndLog :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m Response     
 getUpdAndLog h = do
   sI@(ServerInfo key server ts) <- gets fst
   lift $ logDebug (hLog h) $ "Send request to getUpdates: " ++ T.unpack server ++ "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20\n"
@@ -166,12 +172,12 @@ chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
     Left str ->
       lift $ logWarning (hLog h) ("There is UNKNOWN ATTACMENT in updateList. BOT WILL IGNORE IT. " ++ show attachs ++ ". " ++ str ++ "\n")
 
-getSomeAttachmentString :: (Monad m, MonadCatch m) => Handle m -> UserId -> SomeAttachment -> m (Either String String)
+getSomeAttachmentString :: (Monad m, MonadCatch m) => Handle m -> UserId -> SomeAttachment -> m (Either SomethingWrong AttachmentString)
 getSomeAttachmentString h usId someAtt = case chooseAttType someAtt of
   Left str -> return . Left $ str
   Right att -> getAttachmentString h usId att
 
-chooseAttType :: SomeAttachment -> Either String Attachment
+chooseAttType :: SomeAttachment -> Either SomethingWrong Attachment
 chooseAttType sAtt = case sAtt of
   SomeAttachment "photo" (Just (Photo [])) _ _ _ _ _ _ _ _ ->  
     Left $ "Unknown photo attachment, empty sizes\n"
@@ -196,33 +202,33 @@ chooseAttType sAtt = case sAtt of
   _ -> Left $ "Unknown attachment:" ++ show sAtt ++ "\n"
 
 
-getAttachmentString :: (Monad m, MonadCatch m) => Handle m -> UserId -> Attachment -> m (Either String String)
+getAttachmentString :: (Monad m, MonadCatch m) => Handle m -> UserId -> Attachment -> m (Either SomethingWrong AttachmentString)
 getAttachmentString h usId (PhotoAttachment (Photo sizes)) = do
   let picUrl = url . head . reverse . sortOn height $ sizes
-  serRespJson <- getPhotoServer h usId
+  serRespJson <- getPhotoServer h usId `catch` handleExGetUploadServ (hLog h)
   serUrl <- checkGetUploadServResponse h serRespJson
-  bsPic <- goToUrl h picUrl
-  loadPhotoJson <- loadPhotoToServ h serUrl picUrl bsPic
+  bsPic <- goToUrl h picUrl  `catch`  handleExGoToUrl (hLog h)
+  loadPhotoJson <- loadPhotoToServ h serUrl picUrl bsPic `catch` handleExLoadToServ (hLog h)
   loadPhotoResp <- checkLoadPhotoResponse h loadPhotoJson
-  savePhotoJson <- savePhotoOnServ h loadPhotoResp
+  savePhotoJson <- savePhotoOnServ h loadPhotoResp `catch` handleExSaveOnServ (hLog h)
   (DocInfo idDoc owner_id) <- checkSavePhotoResponse h savePhotoJson
   return $ Right $ "photo" ++ show owner_id ++ "_" ++ show idDoc 
 getAttachmentString h usId (DocAttachment (Doc docUrl ext title)) = do
-  serRespJson <- getDocServer h usId "doc"
+  serRespJson <- getDocServer h usId "doc" `catch` handleExGetUploadServ (hLog h)
   serUrl <- checkGetUploadServResponse h serRespJson
-  bsDoc <- goToUrl h docUrl
-  loadDocJson <- loadDocToServ h serUrl docUrl bsDoc ext
+  bsDoc <- goToUrl h docUrl  `catch`  handleExGoToUrl (hLog h)
+  loadDocJson <- loadDocToServ h serUrl docUrl bsDoc ext `catch` handleExLoadToServ (hLog h)
   loadDocResp <- checkLoadDocResponse h loadDocJson
-  saveDocJson <- saveDocOnServ h loadDocResp title
+  saveDocJson <- saveDocOnServ h loadDocResp title `catch` handleExSaveOnServ (hLog h)
   (DocInfo idDoc owner_id) <- checkSaveDocResponse h saveDocJson
   return $ Right $ "doc" ++ show owner_id ++ "_" ++ show idDoc 
 getAttachmentString h usId (AudioMesAttachment (Audio docUrl)) = do
-  serRespJson <- getDocServer h usId "audio_message"
-  serUrl <- checkGetUploadServResponse h serRespJson
-  bsDoc <- goToUrl h docUrl
-  loadDocJson <- loadDocToServ h serUrl docUrl bsDoc "ogg"
+  serRespJson <- getDocServer h usId "audio_message" `catch` handleExGetUploadServ (hLog h)
+  serUrl <- checkGetUploadServResponse h serRespJson 
+  bsDoc <- goToUrl h docUrl  `catch`  handleExGoToUrl (hLog h)
+  loadDocJson <- loadDocToServ h serUrl docUrl bsDoc "ogg" `catch` handleExLoadToServ (hLog h)
   loadDocResp <- checkLoadDocResponse h loadDocJson
-  saveDocJson <- saveDocOnServ h loadDocResp "audio_message"
+  saveDocJson <- saveDocOnServ h loadDocResp "audio_message" `catch` handleExSaveOnServ (hLog h)
   (DocInfo idDoc owner_id) <- checkSaveDocAuMesResponse h saveDocJson
   return $ Right $ "doc" ++ show owner_id ++ "_" ++ show idDoc
 getAttachmentString _ _ (VideoAttachment (DocInfo idDoc owner_id)) = do
@@ -246,7 +252,7 @@ sendMsgAndCheckResp h usId msg = do
   checkSendMsgResponse h usId msg response
 
 
-checkGetServResponse :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> m ()
+checkGetServResponse :: (Monad m, MonadCatch m) => Handle m -> Response -> m ()
 checkGetServResponse h json = do
   case decode json of
       Nothing                      -> do
@@ -258,7 +264,7 @@ checkGetServResponse h json = do
       Just _ -> do
         logInfo (hLog h) $ "Work with received server\n"
 
-checkUpdates :: (Monad m, MonadCatch m) => Handle m -> LBS.ByteString -> StateT ServerAndMapUserN m [Update]
+checkUpdates :: (Monad m, MonadCatch m) => Handle m -> Response -> StateT ServerAndMapUserN m [Update]
 checkUpdates h json = do
   case decode json of
       Nothing                      -> do
@@ -303,11 +309,11 @@ pullLatLong h maybeGeo = case maybeGeo of
   Nothing -> return ("","")
   Just (Geo "point" (Coordinates lat long)) -> return (show lat,show long)
   _ -> do
-    let ex = DuringGetUpdatesException $ "UNKNOWN GEO type\n" ++ show maybeGeo
+    let ex = GetUpdatesException $ "UNKNOWN GEO type\n" ++ show maybeGeo
     throwAndLogEx (hLog h) ex
 
 
-checkSendMsgResponse :: (Monad m, MonadCatch m) => Handle m -> UserId -> MSG -> LBS.ByteString -> m ()
+checkSendMsgResponse :: (Monad m, MonadCatch m) => Handle m -> UserId -> MSG -> Response -> m ()
 checkSendMsgResponse h usId msg json = do
   case decode json of
       Nothing                      -> do
@@ -349,8 +355,8 @@ checkGetUploadServResponse h json = do
   case decode json of
       Just (UploadServerResponse (UploadUrl serUrl)) -> return serUrl
       _                      -> do
-        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
-        throwAndLogEx (hLog h) ex
+        let ex = CheckGetUploadServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogPrepAttEx (hLog h) ex
 
 
 checkLoadDocResponse :: (Monad m, MonadCatch m) => Handle m -> Response -> m LoadDocResp
@@ -358,32 +364,32 @@ checkLoadDocResponse h json = do
   case decode json of
       Just loadDocResp@(LoadDocResp _) -> return loadDocResp
       _                      -> do
-        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
-        throwAndLogEx (hLog h) ex
+        let ex = CheckLoadToServResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogPrepAttEx (hLog h) ex
 
 checkSaveDocResponse :: (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSaveDocResponse h json = do
   case decode json of
       Just (SaveDocResp (ResponseSDR "doc" docInf )) -> return docInf
       _                      -> do
-        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
-        throwAndLogEx (hLog h) ex
+        let ex = CheckSaveOnServResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogPrepAttEx (hLog h) ex
 
 checkSaveDocAuMesResponse :: (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSaveDocAuMesResponse h json = do
   case decode json of
       Just (SaveDocAuMesResp (ResponseSDAMR "audio_message" docInf )) -> return docInf
       _                      -> do
-        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
-        throwAndLogEx (hLog h) ex
+        let ex = CheckSaveOnServResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogPrepAttEx (hLog h) ex
 
 checkLoadPhotoResponse :: (Monad m, MonadCatch m) => Handle m -> Response -> m LoadPhotoResp
 checkLoadPhotoResponse h json = do
   case decode json of
       Just loadPhotoResp@(LoadPhotoResp _ _ _) -> return loadPhotoResp
       _                      -> do
-        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
-        throwAndLogEx (hLog h) ex
+        let ex = CheckLoadToServResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogPrepAttEx (hLog h) ex
 
 
 checkSavePhotoResponse :: (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
@@ -391,8 +397,8 @@ checkSavePhotoResponse h json = do
   case decode json of
       Just (SavePhotoResp [DocInfo id' ownerId ]) -> return (DocInfo id' ownerId )
       _                      -> do
-        let ex = CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
-        throwAndLogEx (hLog h) ex
+        let ex = CheckSaveOnServResponseException $ "UNKNOWN RESPONSE:\n"   ++ show json
+        throwAndLogPrepAttEx (hLog h) ex
 
 
 
@@ -477,25 +483,25 @@ getPhotoServer' h usId = do
   res <- httpLbs req manager
   return (responseBody res)
 
-loadPhotoToServ' :: T.Text -> T.Text -> BS.ByteString -> IO Response
+loadPhotoToServ' :: ServerUrl -> PicUrl -> BS.ByteString -> IO Response
 loadPhotoToServ' serUrl picUrl bs = do
   manager <- newTlsManager
   initReq <- parseRequest $ T.unpack serUrl
-  req     <- (formDataBody [partFileRequestBody "photo" (T.unpack picUrl) $ RequestBodyBS bs]
-                initReq)
+  req     <- formDataBody [partFileRequestBody "photo" (T.unpack picUrl) $ RequestBodyBS bs]
+                initReq
   res <- httpLbs req manager
   return (responseBody res)
 
 savePhotoOnServ' :: Handle IO -> LoadPhotoResp -> IO Response
 savePhotoOnServ' h (LoadPhotoResp server hash photo) = do
   manager <- newTlsManager
-  initReq <- parseRequest $ "https://api.vk.com/method/photos.saveMessagesPhoto"
+  initReq <- parseRequest "https://api.vk.com/method/photos.saveMessagesPhoto"
   let param1 = ("server"      , fromString . show $ server) 
   let param2 = ("hash"        , fromString hash)
   let param3 = ("photo"       , fromString photo)
-  let param4 = ("access_token", fromString (cBotToken $ (hConf h))) 
+  let param4 = ("access_token", fromString $ cBotToken (hConf h)) 
   let param5 = ("v"           ,"5.103")
-  let params = param1 : param2 : param3 : param4 : param5 : [] 
+  let params = [param1, param2, param3, param4, param5]
   let req = urlEncodedBody params initReq
   res <- httpLbs req manager
   return (responseBody res)
@@ -522,7 +528,7 @@ chooseParamsForMsg (AttachmentMsg txt attachStrings (latStr,longStr)) =
       param2  = "attachment=" ++ intercalate "," attachStrings
       param3  = "lat=" ++ latStr
       param4  = "long=" ++ longStr
-  in (param1:param2:param3:param4:[])
+  in [param1, param2, param3, param4]
 
 extractServerInfo :: Response -> ServerInfo
 extractServerInfo = liftA3 ServerInfo keySI serverSI tsSI . (responseGPSJB . fromJust . decode)
@@ -537,7 +543,7 @@ changeSecond :: (b -> b) -> (a,b) -> (a,b)
 changeSecond f (a,b) = (a, f b)
 
 changeMapUserN :: UserId -> NState -> MapUserN -> MapUserN
-changeMapUserN usId nState mapUN = Map.insert usId nState mapUN
+changeMapUserN = Map.insert 
 
 
 checkButton :: AboutObj -> Maybe N

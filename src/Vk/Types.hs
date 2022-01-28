@@ -34,6 +34,7 @@ type Extention = String
 type Title = String
 type LatLong = (String,String)
 type ParameterString = String
+type SomethingWrong = String
 
 newtype OpenRepeat =
   OpenRepeat N
