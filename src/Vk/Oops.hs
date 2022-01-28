@@ -3,17 +3,15 @@
 
 module Vk.Oops where
 
-import           Control.Monad.Catch (Exception,MonadCatch,SomeException,throwM)
-import Vk.Types
-import Vk.Logger (LogHandle(..), logError)
 import qualified Control.Exception as E
-import qualified Data.Configurator.Types              as C
+import Control.Monad.Catch (Exception, MonadCatch, SomeException, throwM)
+import qualified Data.Configurator.Types as C
+import Vk.Logger (LogHandle(..), logError)
+import Vk.Types
 
-
-
-data VKBotException 
+data VKBotException
   = GetLongPollServerException String
-  | CheckGetServerResponseException String 
+  | CheckGetServerResponseException String
   | GetUpdatesException String
   | CheckGetUpdatesResponseException String
   | SendMsgException MSG ToUserId String
@@ -22,30 +20,30 @@ data VKBotException
   | CheckSendKeybResponseException ToUserId String
   | PrependAttachmetToSendException PrependAttachmetException
   | ConfigException ConfigException
-    deriving (Eq,Show)
+  deriving (Eq, Show)
 
-instance Exception VKBotException 
+instance Exception VKBotException
 
 data PrependAttachmetException
   = GetUploadServerException String
-  | CheckGetUploadServerResponseException String 
+  | CheckGetUploadServerResponseException String
   | LoadToServException String
   | CheckLoadToServResponseException String
   | SaveOnServException String
   | CheckSaveOnServResponseException String
   | GoToUrlException String
-    deriving (Eq,Show)
+  deriving (Eq, Show)
 
-instance Exception PrependAttachmetException 
+instance Exception PrependAttachmetException
 
 data ConfigException
   = PullConfigException String
   | ParseConfigException String
   | GetTimeException String
   | InputException String
-    deriving (Eq,Show)
+  deriving (Eq, Show)
 
-instance Exception ConfigException 
+instance Exception ConfigException
 
 throwAndLogEx :: (Monad m, MonadCatch m) => LogHandle m -> VKBotException -> m a
 throwAndLogEx logH ex = do
@@ -53,12 +51,12 @@ throwAndLogEx logH ex = do
   logError logH info
   throwM ex
 
-throwAndLogPrepAttEx :: (Monad m, MonadCatch m) => LogHandle m -> PrependAttachmetException -> m a
-throwAndLogPrepAttEx logH ex = throwAndLogEx logH (PrependAttachmetToSendException ex)
+throwAndLogPrepAttEx ::
+     (Monad m, MonadCatch m) => LogHandle m -> PrependAttachmetException -> m a
+throwAndLogPrepAttEx logH ex =
+  throwAndLogEx logH (PrependAttachmetToSendException ex)
 
---throwAndLogConfEx :: (Monad m, MonadCatch m) => LogHandle m -> PrependAttachmetException -> m a
---throwAndLogConfEx logH ex = throwAndLogEx logH (ConfigException ex)
-
+-- handles to catch exceptions in logic functions:
 handleExGetLongPollServ ::
      (Monad m, MonadCatch m) => LogHandle m -> SomeException -> m Response
 handleExGetLongPollServ logH e = do
@@ -72,15 +70,24 @@ handleExGetUpd logH e = do
   throwAndLogEx logH ex
 
 handleExSendMsg ::
-     (Monad m, MonadCatch m) => LogHandle m -> UserId -> MSG -> SomeException -> m Response
+     (Monad m, MonadCatch m)
+  => LogHandle m
+  -> UserId
+  -> MSG
+  -> SomeException
+  -> m Response
 handleExSendMsg logH usId msg e = do
-  let ex = SendMsgException msg (ToUserId usId) $ show e 
+  let ex = SendMsgException msg (ToUserId usId) $ show e
   throwAndLogEx logH ex
 
 handleExSendKeyb ::
-     (Monad m, MonadCatch m) => LogHandle m -> UserId -> SomeException -> m Response
+     (Monad m, MonadCatch m)
+  => LogHandle m
+  -> UserId
+  -> SomeException
+  -> m Response
 handleExSendKeyb logH usId e = do
-  let ex = SendKeybException (ToUserId usId) $ show e 
+  let ex = SendKeybException (ToUserId usId) $ show e
   throwAndLogEx logH ex
 
 handleExGetUploadServ ::
@@ -92,19 +99,19 @@ handleExGetUploadServ logH e = do
 handleExLoadToServ ::
      (Monad m, MonadCatch m) => LogHandle m -> SomeException -> m Response
 handleExLoadToServ logH e = do
-  let ex = LoadToServException $ show e 
+  let ex = LoadToServException $ show e
   throwAndLogPrepAttEx logH ex
 
 handleExSaveOnServ ::
      (Monad m, MonadCatch m) => LogHandle m -> SomeException -> m Response
 handleExSaveOnServ logH e = do
-  let ex = SaveOnServException $ show e 
+  let ex = SaveOnServException $ show e
   throwAndLogPrepAttEx logH ex
 
 handleExGoToUrl ::
      (Monad m, MonadCatch m) => LogHandle m -> SomeException -> m ResponseS
 handleExGoToUrl logH e = do
-  let ex = GoToUrlException $ show e 
+  let ex = GoToUrlException $ show e
   throwAndLogPrepAttEx logH ex
 
 -- handles to catch exceptions in IO configuration functions:

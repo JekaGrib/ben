@@ -37,3 +37,4 @@ logDebug h = log h DEBUG
 logInfo h = log h INFO
 logWarning h = log h WARNING
 logError h = log h ERROR
+

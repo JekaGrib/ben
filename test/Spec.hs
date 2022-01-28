@@ -1,9 +1,8 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
 
-import           TestTg (testTG)
-import           TestVk (testVk)
-
+import TestTg (testTG)
+import TestVk (testVk)
 
 main :: IO ()
 main = do
