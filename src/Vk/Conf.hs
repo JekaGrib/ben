@@ -1,6 +1,5 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
-{-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Vk.Conf where
@@ -50,7 +49,7 @@ pullConfig = C.load [C.Required "./bot.config"] `E.catch`
 -- parse config values functions:
 parseConfStartN :: C.Config -> IO N
 parseConfStartN conf = do
-  str <- ((C.lookup conf "VK.startN") :: IO (Maybe N))
+  str <- (C.lookup conf "VK.startN" :: IO (Maybe N))
     `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe N) )
     `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe N) ) 
   case str of
@@ -64,7 +63,7 @@ parseConfStartN conf = do
 
 parseConfBotToken :: C.Config -> IO String
 parseConfBotToken conf = do
-  str <- ((C.lookup conf "VK.botToken") :: IO (Maybe String))
+  str <- (C.lookup conf "VK.botToken" :: IO (Maybe String))
     `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
     `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
@@ -86,7 +85,7 @@ parseConfPrio conf = do
 
 parseConfHelpMsg :: C.Config -> IO String
 parseConfHelpMsg conf = do
-  str <- ((C.lookup conf "VK.help_Info_Msg") :: IO (Maybe String))
+  str <- (C.lookup conf "VK.help_Info_Msg" :: IO (Maybe String))
     `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
     `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
@@ -95,7 +94,7 @@ parseConfHelpMsg conf = do
 
 parseConfRepeatQ :: C.Config -> IO String
 parseConfRepeatQ conf = do
-  str <- ((C.lookup conf "VK.repeat_Info_Question") :: IO (Maybe String))
+  str <- (C.lookup conf "VK.repeat_Info_Question" :: IO (Maybe String))
     `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe String) )
     `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe String) ) 
   case str of
@@ -104,7 +103,7 @@ parseConfRepeatQ conf = do
 
 parseConfGroupId :: C.Config -> IO GroupId
 parseConfGroupId conf = do
-  str <- ((C.lookup conf "VK.group_id") :: IO (Maybe GroupId))
+  str <- (C.lookup conf "VK.group_id" :: IO (Maybe GroupId))
     `catch` ( (\_ -> return Nothing) :: C.KeyError  -> IO (Maybe GroupId) )
     `catch` ( (\_ -> return Nothing) :: IOException -> IO (Maybe GroupId) ) 
   case str of
@@ -134,7 +133,7 @@ inputLogLevel :: IO Priority
 inputLogLevel = do
   putStrLn "Can`t parse value \"logLevel\" from configuration file or command line\nPlease, enter logging level (logs of this level and higher will be recorded)\nAvailable levels: DEBUG ; INFO ; WARNING ; ERROR (without quotes)"
   input <- getLine
-  case (map toUpper input) of
+  case map toUpper input of
     "DEBUG"   -> return DEBUG
     "INFO"    -> return INFO
     "WARNING" -> return WARNING
@@ -155,11 +154,10 @@ inputGroupId :: IO GroupId
 inputGroupId = do
   putStrLn "Can`t parse value \"group id\" from configuration file or command line\nPlease, enter NUMBER of group id\nExample: 123456789"
   str <- getLine
-  case all isNumber str of 
-      True -> do
-        let grId = read str 
-        return grId
-      _ -> inputGroupId  `E.catch` handleExInput "group_id"
+  if all isNumber str  
+    then return (read str)
+    else inputGroupId `E.catch` handleExInput "group_id"
+
 
 inputLocalTime :: IO String
 inputLocalTime = do

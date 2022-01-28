@@ -13,25 +13,29 @@ import Tg.Types
 
 
 data TGBotException
-  = DuringGetUpdatesException String
+  = GetUpdatesException String
   | CheckGetUpdatesResponseException String
-  | DuringConfirmUpdatesException String
+  | ConfirmUpdatesException String
   | CheckConfirmUpdatesResponseException String
-  | DuringSendMsgException Msg ToUserId String
-  | DuringCopyMsgException MsgId ToUserId String
+  | SendMsgException Msg ToUserId String
+  | CopyMsgException MsgId ToUserId String
   | CheckSendMsgResponseException Msg ToUserId String
   | CheckCopyMsgResponseException MsgId ToUserId String
-  | DuringSendKeybException ToUserId String
+  | SendKeybException ToUserId String
   | CheckSendKeybResponseException ToUserId String
-  | DuringGetTimeException String
-  | DuringPullConfigException String
-  | DuringParseConfigException String
-  | DuringInputException String
+  | ConfigException ConfigException
   deriving (Eq, Show)
 
 instance Exception TGBotException
 
+data ConfigException
+  = PullConfigException String
+  | ParseConfigException String
+  | GetTimeException String
+  | InputException String
+    deriving (Eq,Show)
 
+instance Exception ConfigException 
 
 throwAndLogEx :: (Monad m, MonadCatch m) => LogHandle m -> TGBotException -> m a
 throwAndLogEx logH ex = do
@@ -43,7 +47,7 @@ throwAndLogEx logH ex = do
 handleExGetUpd ::
      (Monad m, MonadCatch m) => LogHandle m -> SomeException -> m LBS.ByteString
 handleExGetUpd logH e = do
-  let ex = DuringGetUpdatesException $ show e
+  let ex = GetUpdatesException $ show e
   throwAndLogEx logH ex
 
 handleExSendMsg ::
@@ -54,7 +58,7 @@ handleExSendMsg ::
   -> SomeException
   -> m LBS.ByteString
 handleExSendMsg logH usId infoMsg e = do
-  let ex = DuringSendMsgException (Msg infoMsg) (ToUserId usId) $ show e
+  let ex = SendMsgException (Msg infoMsg) (ToUserId usId) $ show e
   throwAndLogEx logH ex
 
 handleExCopyMsg ::
@@ -65,7 +69,7 @@ handleExCopyMsg ::
   -> SomeException
   -> m LBS.ByteString
 handleExCopyMsg logH usId msgId e = do
-  let ex = DuringCopyMsgException (MsgId msgId) (ToUserId usId) $ show e
+  let ex = CopyMsgException (MsgId msgId) (ToUserId usId) $ show e
   throwAndLogEx logH ex
 
 handleExSendKeyb ::
@@ -75,7 +79,7 @@ handleExSendKeyb ::
   -> SomeException
   -> m LBS.ByteString
 handleExSendKeyb logH usId e = do
-  let ex = DuringSendKeybException (ToUserId usId) $ show e
+  let ex = SendKeybException (ToUserId usId) $ show e
   throwAndLogEx logH ex
 
 handleExConfUpd ::
@@ -86,7 +90,7 @@ handleExConfUpd ::
   -> m LBS.ByteString
 handleExConfUpd logH json e = do
   let ex =
-        DuringConfirmUpdatesException $
+        ConfirmUpdatesException $
         show e ++ "\nWhen try to confirm old updates: " ++ show json
   throwAndLogEx logH ex
 
@@ -94,19 +98,19 @@ handleExConfUpd logH json e = do
 handleExPullConf :: E.SomeException -> IO C.Config
 handleExPullConf e = do
   print e
-  E.throw $ DuringPullConfigException $ show e
+  E.throw $ PullConfigException $ show e
 
 handleExParseConf :: String -> E.SomeException -> IO a
 handleExParseConf str e = do
   print e
-  E.throw $ DuringParseConfigException $ str ++ "\n" ++ show e
+  E.throw $ ParseConfigException $ str ++ "\n" ++ show e
 
 handleExGetTime :: E.SomeException -> IO String
 handleExGetTime e = do
   print e
-  E.throw $ DuringGetTimeException $ show e
+  E.throw $ GetTimeException $ show e
 
 handleExInput :: String -> E.SomeException -> IO a
 handleExInput str e = do
   print e
-  E.throw $ DuringInputException $ str ++ "\n" ++ show e
+  E.throw $ InputException $ str ++ "\n" ++ show e

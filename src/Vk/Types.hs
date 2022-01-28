@@ -1,6 +1,5 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Vk.Types where
 
@@ -54,4 +53,4 @@ data Attachment = PhotoAttachment  Photo
     | PollAttachment DocInfo 
      deriving (Eq, Show)
 
-data ToUserId      = ToUserId   UserId               deriving (Eq,Show)
+newtype ToUserId      = ToUserId   UserId               deriving (Eq,Show)
