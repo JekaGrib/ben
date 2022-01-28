@@ -8,8 +8,6 @@ import           Test.Hspec (it,shouldThrow,shouldBe,describe,hspec)
 import           Vk.App (Handle(..),runServ,getServer)
 import           Vk.Logger (LogHandle(..),Priority(..),LogConfig(..))
 import           Vk.Api.Response                (ServerInfo(..))
-import qualified Data.Text                      as T
-import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State
 import Vk.Types
 import Vk.Oops (VKBotException(..))

@@ -1,5 +1,5 @@
---{-# OPTIONS_GHC -Werror #-}
---{-# OPTIONS_GHC  -Wall  #-}
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module TestTg where
@@ -10,8 +10,6 @@ import           Tg.Logger (LogHandle(..),Priority(..),LogConfig(..))
 import           Tg.Oops (TGBotException(..))
 import           Tg.Conf (Config(..))
 import           Tg.Types
-import qualified Data.Text                      as T
-import qualified Data.ByteString.Lazy           as LBS
 import           Control.Monad.State (StateT(..),evalStateT,execStateT)
 import qualified Data.Map as Map
 
@@ -46,9 +44,14 @@ logTest0 :: Priority -> String -> StateT [MockAction] IO ()
 logTest0 prio str = StateT $ \s -> 
     return (() , LOGMSG prio str : s)
 
+config1 :: Config 
 config1 = Config { cStartN = 2 , cBotToken = "ABC123" , cHelpMsg = "Hello" , cRepeatQ = "Why?", cPriority = DEBUG}
+
+handleLog1,handleLog0 :: LogHandle (StateT [MockAction] IO)
 handleLog1 = LogHandle (LogConfig DEBUG) logTest
 handleLog0 = LogHandle (LogConfig DEBUG) logTest0
+
+handle1 ::  Handle (StateT [MockAction] IO)
 handle1 = Handle { hConf = config1,
                    hLog = handleLog1,
                    getUpdates = getUpdatesTest json6,
@@ -58,12 +61,15 @@ handle1 = Handle { hConf = config1,
                    sendKeyb = sendKeybTest json4,
                    copyMsg = copyMsgTest json11}
 
+handle0,handle2,handle3,handle4,handle5,handle6 :: Handle (StateT [MockAction] IO)
 handle0  = handle1 { hLog = handleLog0 }
 handle2  = handle1 { getShortUpdates = getUpdatesTest json2}
 handle3  = handle1 { getShortUpdates = getUpdatesTest json3}
 handle4  = handle1 { getShortUpdates = getUpdatesTest json4}
 handle5  = handle1 { getShortUpdates = getUpdatesTest json5,hLog = handleLog0}
 handle6  = handle1 { getUpdates = getUpdatesTest json2}
+
+handle7,handle8,handle9,handle10,handle11,handle12 :: Handle (StateT [MockAction] IO)
 handle7  = handle1 { getUpdates = getUpdatesTest json3}
 handle8  = handle1 { getUpdates = getUpdatesTest json4}
 handle9  = handle1 { getUpdates = getUpdatesTest json7,hLog = handleLog0}
@@ -71,6 +77,7 @@ handle10 = handle1 { getUpdates = getUpdatesTest json8}
 handle11 = handle1 { getUpdates = getUpdatesTest json9}
 handle12 = handle1 { getUpdates = getUpdatesTest json10}
 
+initialDB1 :: MapUserN
 initialDB1 = Map.fromList []
 
 testTG :: IO ()
@@ -286,7 +293,7 @@ testTG = hspec $ do
         `shouldThrow` ( == (CheckGetUpdatesResponseException $ "Too short response:\n" ++ show json4))
       
 
-json1  :: Response
+json1,json2,json3,json4,json5,json6,json7,json8,json9,json10,json11  :: Response
 json1  = "{\"ok\":true,\"result\":[]}"
 json2  = "{\"ok\":false,\"result\":235}"
 json3  = "lalala"
