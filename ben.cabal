@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2adde63b686d44b9b092ccc2c8b680f508c891b1762dc3d5c7c6bbd631a67818
+-- hash: 9bbf42ed7cf9687c8ca489e9d83840171ec0a305b11f5918c61f98be031f0a72
 
 name:           ben
 version:        0.1.0.0
@@ -38,6 +38,7 @@ library
       Vk.Api.Request
       Vk.Api.Response
       Vk.App
+      Vk.App.PrepareAttachment
       Vk.Conf
       Vk.Logger
       Vk.MainVk

@@ -155,10 +155,10 @@ inputRepeatQ = do
   getLine
 
 inputLocalTime :: IO String
-inputLocalTime =
-  (do putStrLn
-        "Local time not found\nPlease, enter your local time in any form\nExample: 06.07.2020 16:21"
-      getLine) 
+inputLocalTime = do 
+  putStrLn
+    "Local time not found\nPlease, enter your local time in any form\nExample: 06.07.2020 16:21"
+  getLine 
 
 -- getTime function:
 getTime :: IO String

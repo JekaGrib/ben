@@ -59,6 +59,17 @@ data Handle m =
     }
 
 
+makeH :: Config -> LogHandle IO -> Handle IO
+makeH conf logH = Handle 
+  conf
+  logH
+  (getUpdates' conf)
+  (getShortUpdates' conf)
+  (confirmUpdates' conf)
+  (sendMsg' conf)
+  (sendKeyb' conf)
+  (copyMsg' conf)
+
 -- logic functions:
 startApp :: (Monad m, MonadCatch m) => Handle m -> m ()
 startApp h = do
@@ -203,7 +214,7 @@ chooseActionOfTxt h currN usId txt =
       lift $
         logInfo (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode\n")
       modify (changeMapUserN usId (Left $ OpenRepeat currN))
-    _ -> do
+    _ -> 
       lift $ replicateM_ currN $ sendMsgAndCheckResp h usId txt
 
 sendMsgAndCheckResp ::
@@ -400,46 +411,46 @@ checkSendKeybResponse h usId n msg json =
          show n ++ show msg ++ " was sent to user " ++ show usId ++ "\n")
 
 -- IO methods functions:
-getShortUpdates' :: Handle IO -> IO Response
-getShortUpdates' h = do
+getShortUpdates' :: Config -> IO Response
+getShortUpdates' conf = do
   manager <- newTlsManager
   req <-
     parseRequest
-      ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
+      ("https://api.telegram.org/bot" ++ cBotToken conf ++ "/getUpdates")
   sendReqAndGetRespBody manager req
 
-getUpdates' :: Handle IO -> IO Response
-getUpdates' h = do
+getUpdates' :: Config -> IO Response
+getUpdates' conf = do
   let bodyTimeOut = JSONBodyTimeOut {timeout = 25}
   manager <- newTlsManager
   initReq <-
     parseRequest
-      ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
+      ("https://api.telegram.org/bot" ++ cBotToken conf ++ "/getUpdates")
   let req = addBodyToReq initReq (RequestBodyLBS . encode $ bodyTimeOut)
   sendReqAndGetRespBody manager req
 
-confirmUpdates' :: Handle IO -> UpdateId -> IO Response
-confirmUpdates' h nextUpdate = do
+confirmUpdates' :: Config -> UpdateId -> IO Response
+confirmUpdates' conf nextUpdate = do
   let bodyOffset = JSONBodyOffset {offset = nextUpdate}
   manager <- newTlsManager
   initReq <-
     parseRequest
-      ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/getUpdates")
+      ("https://api.telegram.org/bot" ++ cBotToken conf ++ "/getUpdates")
   let req = addBodyToReq initReq (RequestBodyLBS . encode $ bodyOffset)
   sendReqAndGetRespBody manager req
 
-sendMsg' :: Handle IO -> UserId -> TextOfMsg -> IO Response
-sendMsg' h usId msg = do
+sendMsg' :: Config -> UserId -> TextOfMsg -> IO Response
+sendMsg' conf usId msg = do
   let msgBody = encode (SendMsgJSONBody {chat_id = usId, text = msg})
   manager <- newTlsManager
   initReq <-
     parseRequest
-      ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage")
+      ("https://api.telegram.org/bot" ++ cBotToken conf ++ "/sendMessage")
   let req = addBodyToReq initReq (RequestBodyLBS msgBody)
   sendReqAndGetRespBody manager req
 
-copyMsg' :: Handle IO -> UserId -> MessageId -> IO Response
-copyMsg' h usId msgId = do
+copyMsg' :: Config -> UserId -> MessageId -> IO Response
+copyMsg' conf usId msgId = do
   let msgBody =
         encode
           (CopyMsgJSONBody
@@ -447,16 +458,16 @@ copyMsg' h usId msgId = do
   manager <- newTlsManager
   initReq <-
     parseRequest
-      ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/copyMessage")
+      ("https://api.telegram.org/bot" ++ cBotToken conf ++ "/copyMessage")
   let req = addBodyToReq initReq (RequestBodyLBS msgBody)
   sendReqAndGetRespBody manager req
 
-sendKeyb' :: Handle IO -> UserId -> N -> TextOfKeyb -> IO Response
-sendKeyb' h usId n msg = do
+sendKeyb' :: Config -> UserId -> N -> TextOfKeyb -> IO Response
+sendKeyb' conf usId n msg = do
   manager <- newTlsManager
   initReq <-
     parseRequest
-      ("https://api.telegram.org/bot" ++ cBotToken (hConf h) ++ "/sendMessage")
+      ("https://api.telegram.org/bot" ++ cBotToken conf ++ "/sendMessage")
   let keybBody = makeKeybBody usId msg n
   let req = addBodyToReq initReq (RequestBodyLBS . encode $ keybBody)
   sendReqAndGetRespBody manager req
@@ -482,7 +493,7 @@ changeMapUserN ::
   -> NState
   -> MapUserN
   -> MapUserN
-changeMapUserN usId nState mapUN = Map.insert usId nState mapUN
+changeMapUserN  = Map.insert 
 
 
 checkButton :: Message -> Maybe N

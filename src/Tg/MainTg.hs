@@ -4,17 +4,8 @@
 module Tg.MainTg where
 
 import Control.Monad.State (evalStateT, forever)
-import Tg.App
-  ( Handle(..)
-  , confirmUpdates'
-  , copyMsg'
-  , getShortUpdates'
-  , getUpdates'
-  , run
-  , sendKeyb'
-  , sendMsg'
-  , startApp
-  )
+import Tg.App (startApp,run)
+import qualified Tg.App (makeH)
 import Tg.Conf (Config(..), getTime, parseConf)
 import Tg.Logger (LogConfig(..), LogHandle(..), logger)
 import qualified Data.Map as Map(fromList) 
@@ -28,15 +19,6 @@ mainTg = do
   config <- parseConf
   let prio = cPriority config
   let handleLog = LogHandle (LogConfig prio) (logger handleLog currLogPath)
-  let handle =
-        Handle
-          config
-          handleLog
-          (getUpdates' handle)
-          (getShortUpdates' handle)
-          (confirmUpdates' handle)
-          (sendMsg' handle)
-          (sendKeyb' handle)
-          (copyMsg' handle)
+  let handle = Tg.App.makeH config handleLog
   startApp handle
   evalStateT (forever $ run handle) $ Map.fromList []
