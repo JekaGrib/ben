@@ -15,11 +15,16 @@ data GetUpdResp
       { ok :: Bool
       , result :: [Update]
       }
+    | OkAnswer {okOA :: Bool}
 
 instance FromJSON GetUpdResp where
-  parseJSON = withObject "GetUpdResp" (\v -> GetUpdResp <$> v .: "ok" <*> v .: "result")
+  parseJSON = 
+    liftA2
+      (<|>)
+      (withObject "GetUpdResp" (\v -> GetUpdResp <$> v .: "ok" <*> v .: "result"))
+      (withObject "OkAnswer" (\v -> OkAnswer <$> v .: "ok" ))
 
-data Answer
+newtype Answer
   = Answer
       { okA :: Bool
       }
@@ -51,15 +56,11 @@ data Message
   = TxtMessage
       { message_id :: MessageId
       , fromUser :: From
-      , chat ::  Maybe Chat
-      , date ::  Maybe Integer
       , textMsg :: T.Text
       }
   | Message
       { message_id :: Integer
       , fromUser :: From
-      , chat ::  Maybe Chat
-      , date :: Maybe Integer
       }
   deriving (Eq,Show)
 
@@ -71,43 +72,20 @@ instance FromJSON Message where
       (withObject
          "TxtMessage"
          (\v ->
-            TxtMessage <$> v .: "message_id" <*> v .: "from" <*> v .: "chat" <*>
-            v .: "date" <*>
+            TxtMessage <$> v .: "message_id" <*> v .: "from"  <*>
             v .: "text"))
       (withObject
          "Message"
          (\v ->
-            Message <$> v .: "message_id" <*> v .: "from" <*> v .: "chat" <*>
-            v .: "date"))
+            Message <$> v .: "message_id" <*> v .: "from" ))
 
 data From =
   From
     { idUser :: UserId
-    , is_bot :: Maybe Bool
-    , first_name ::  Maybe T.Text
-    , last_name ::  Maybe T.Text
-    , language_code ::  Maybe T.Text
     }
   deriving (Eq,Show)
 
 instance FromJSON From where
   parseJSON =
     withObject "From" $ \v ->
-      From <$> v .: "id" <*> v .: "is_bot" <*> v .: "first_name" <*>
-      v .: "last_name" <*>
-      v .: "language_code"
-
-data Chat =
-  Chat
-    { id1 :: Integer
-    , first_nameChat :: T.Text
-    , last_nameChat :: T.Text
-    , typ :: T.Text
-    }
-  deriving (Eq,Show)
-
-instance FromJSON Chat where
-  parseJSON =
-    withObject "Chat" $ \v ->
-      Chat <$> v .: "id" <*> v .: "first_name" <*> v .: "last_name" <*>
-      v .: "type"
+      From <$> v .: "id" 

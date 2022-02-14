@@ -287,6 +287,12 @@ checkGetUpdatesResp h json =
     Nothing ->
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
       "UNKNOWN RESPONSE:\n" ++ show json
+    Just (OkAnswer False) ->
+      throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
+      "NEGATIVE RESPONSE:\n" ++ show json
+    Just (OkAnswer True) ->
+      throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
+      "UNKNOWN RESULT IN RESPONSE:\n" ++ show json    
     Just (GetUpdResp False _) ->
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
       "NEGATIVE RESPONSE:\n" ++ show json
@@ -505,7 +511,7 @@ checkTextButton txt =
     _ -> Nothing
 
 tryPullTextMsg :: Message -> Maybe TextOfMsg
-tryPullTextMsg (TxtMessage _ _ _ _ txt) = Just txt
+tryPullTextMsg (TxtMessage _ _ txt) = Just txt
 tryPullTextMsg _ = Nothing
 
 addBodyToReq :: Request -> RequestBody -> Request

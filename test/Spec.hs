@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
 
-import Tg.Test (testTG)
+import TgTest.Test (testTG)
 --import Vk.Test (testVk)
 
 main :: IO ()

@@ -2,10 +2,10 @@
 {-# OPTIONS_GHC  -Wall  #-}
 
 
-module Tg.LogTest where
+module TgTest.Log where
 
 import Tg.Logger 
-import Tg.TypesTest
+import TgTest.Types
 import           Control.Monad.State  (StateT(..))          
 
 handLogDebug :: LogHandle (StateT [MockAction] IO)

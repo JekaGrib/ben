@@ -1,8 +1,7 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
-{-# LANGUAGE OverloadedStrings #-}
 
-module Tg.TypesTest where
+module TgTest.Types where
 
 import Tg.Logger ( Priority(..))
 import Tg.Types

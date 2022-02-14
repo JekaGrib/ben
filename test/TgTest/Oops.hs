@@ -1,48 +1,48 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
 
-module Tg.OopsTest where
+module TgTest.Oops where
 
 import Tg.Oops
 
 
 
 isGetUpdatesException :: TGBotException -> Bool
-isGetUpdatesException (GetUpdatesException _) = True
+isGetUpdatesException GetUpdatesException{} = True
 isGetUpdatesException _ = False
 
 isCheckGetUpdatesResponseException :: TGBotException -> Bool
-isCheckGetUpdatesResponseException (CheckGetUpdatesResponseException _) = True
+isCheckGetUpdatesResponseException CheckGetUpdatesResponseException{} = True
 isCheckGetUpdatesResponseException _ = False
 
 isConfirmUpdatesException :: TGBotException -> Bool
-isConfirmUpdatesException (ConfirmUpdatesException _) = True
+isConfirmUpdatesException ConfirmUpdatesException{} = True
 isConfirmUpdatesException _ = False
 
 isCheckConfirmUpdatesResponseException :: TGBotException -> Bool
-isCheckConfirmUpdatesResponseException (CheckConfirmUpdatesResponseException _) = True
+isCheckConfirmUpdatesResponseException CheckConfirmUpdatesResponseException{} = True
 isCheckConfirmUpdatesResponseException _ = False
 
 isSendMsgException :: TGBotException -> Bool
-isSendMsgException (SendMsgException _ _ _) = True
+isSendMsgException SendMsgException{} = True
 isSendMsgException _ = False
 
 isCopyMsgException :: TGBotException -> Bool
-isCopyMsgException (CopyMsgException _ _ _) = True
+isCopyMsgException CopyMsgException{} = True
 isCopyMsgException _ = False
 
 isCheckSendMsgResponseException :: TGBotException -> Bool
-isCheckSendMsgResponseException (CheckSendMsgResponseException _ _ _) = True
+isCheckSendMsgResponseException CheckSendMsgResponseException{} = True
 isCheckSendMsgResponseException _ = False
 
 isCheckCopyMsgResponseException :: TGBotException -> Bool
-isCheckCopyMsgResponseException (CheckCopyMsgResponseException _ _ _) = True
+isCheckCopyMsgResponseException CheckCopyMsgResponseException{} = True
 isCheckCopyMsgResponseException _ = False
 
 isSendKeybException :: TGBotException -> Bool
-isSendKeybException (SendKeybException _ _) = True
+isSendKeybException SendKeybException{} = True
 isSendKeybException _ = False
 
 isCheckSendKeybResponseException :: TGBotException -> Bool
-isCheckSendKeybResponseException (CheckSendKeybResponseException _ _) = True
+isCheckSendKeybResponseException CheckSendKeybResponseException{} = True
 isCheckSendKeybResponseException _ = False

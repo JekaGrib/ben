@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-} -}
 
-module Vk.Test () where
+module VkTest.Test () where
 
 {-
 import Control.Monad.State (StateT(..), evalStateT, execStateT)
