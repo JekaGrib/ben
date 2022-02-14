@@ -10,21 +10,23 @@ import qualified Data.Text as T
 import Tg.Types
 
 
-data Answer
-  = Answer
+data GetUpdResp
+  = GetUpdResp
       { ok :: Bool
       , result :: [Update]
       }
-  | OkAnswer
-      { ok :: Bool
+
+instance FromJSON GetUpdResp where
+  parseJSON = withObject "GetUpdResp" (\v -> GetUpdResp <$> v .: "ok" <*> v .: "result")
+
+data Answer
+  = Answer
+      { okA :: Bool
       }
 
 instance FromJSON Answer where
-  parseJSON =
-    liftA2
-      (<|>)
-      (withObject "Answer" (\v -> Answer <$> v .: "ok" <*> v .: "result"))
-      (withObject "OkAnswer" (\v -> OkAnswer <$> v .: "ok"))
+  parseJSON = withObject "Answer" (\v -> Answer <$> v .: "ok" )
+
 
 data Update
   = Update
@@ -34,6 +36,7 @@ data Update
   | UnknownUpdate
       { update_id :: UpdateId
       }
+  deriving (Eq,Show)
 
 instance FromJSON Update where
   parseJSON =
@@ -48,16 +51,18 @@ data Message
   = TxtMessage
       { message_id :: MessageId
       , fromUser :: From
-      , chat :: Chat
-      , date :: Integer
+      , chat ::  Maybe Chat
+      , date ::  Maybe Integer
       , textMsg :: T.Text
       }
   | Message
       { message_id :: Integer
       , fromUser :: From
-      , chat :: Chat
-      , date :: Integer
+      , chat ::  Maybe Chat
+      , date :: Maybe Integer
       }
+  deriving (Eq,Show)
+
 
 instance FromJSON Message where
   parseJSON =
@@ -78,11 +83,12 @@ instance FromJSON Message where
 data From =
   From
     { idUser :: UserId
-    , is_bot :: Bool
-    , first_name :: T.Text
-    , last_name :: T.Text
-    , language_code :: T.Text
+    , is_bot :: Maybe Bool
+    , first_name ::  Maybe T.Text
+    , last_name ::  Maybe T.Text
+    , language_code ::  Maybe T.Text
     }
+  deriving (Eq,Show)
 
 instance FromJSON From where
   parseJSON =
@@ -98,6 +104,7 @@ data Chat =
     , last_nameChat :: T.Text
     , typ :: T.Text
     }
+  deriving (Eq,Show)
 
 instance FromJSON Chat where
   parseJSON =

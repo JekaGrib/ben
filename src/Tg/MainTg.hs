@@ -18,7 +18,7 @@ mainTg = do
   writeFile currLogPath "Create log file\n"
   config <- parseConf
   let prio = cPriority config
-  let handleLog = LogHandle (LogConfig prio) (logger handleLog currLogPath)
+  let handleLog = LogHandle (LogConfig prio) (logger currLogPath)
   let handle = Tg.App.makeH config handleLog
   startApp handle
   evalStateT (forever $ run handle) $ Map.fromList []

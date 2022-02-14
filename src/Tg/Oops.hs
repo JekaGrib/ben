@@ -10,6 +10,7 @@ import qualified Data.Configurator.Types as C
 import qualified Data.Text as T
 import Tg.Logger (LogHandle(..), logError)
 import Tg.Types
+import Tg.Api.Response (Update(..))
 
 
 data TGBotException
@@ -85,13 +86,13 @@ handleExSendKeyb logH usId e = do
 handleExConfUpd ::
      (Monad m, MonadCatch m)
   => LogHandle m
-  -> LBS.ByteString
+  -> [Update]
   -> SomeException
   -> m LBS.ByteString
-handleExConfUpd logH json e = do
+handleExConfUpd logH upds e = do
   let ex =
         ConfirmUpdatesException $
-        show e ++ "\nWhen try to confirm old updates: " ++ show json
+        show e ++ "\nWhen try to confirm old updates: " ++ show upds
   throwAndLogEx logH ex
 
 -- handles to catch exceptions in IO configuration functions:

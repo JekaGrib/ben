@@ -1,27 +1,22 @@
-{-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
+--{-# OPTIONS_GHC -Werror #-}
+--{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module TestTg where
+module Tg.Test where
 
 import Control.Monad.State (StateT(..), evalStateT, execStateT)
 import qualified Data.Map as Map
 import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow)
 import Tg.App (Handle(..), run, startApp)
 import Tg.Conf (Config(..))
-import Tg.Logger (LogConfig(..), LogHandle(..), Priority(..))
+import Tg.Logger (Priority(..))
 import Tg.Oops (TGBotException(..))
 import Tg.Types
+import Tg.TypesTest
+import Tg.LogTest
+import Tg.OopsTest
 
-data MockAction
-  = GOTUPDATES
-  | SENDMSG UserId TextOfMsg
-  | COPYMSG UserId MessageId
-  | CONFIRMUPDATES Offset
-  | SENDKEYB UserId N TextOfKeyb
-  | LOG Priority
-  | LOGMSG Priority String
-  deriving (Eq, Show)
+
 
 getUpdatesTest :: Response -> StateT [MockAction] IO Response
 getUpdatesTest json = StateT $ \s -> return (json, GOTUPDATES : s)
@@ -60,16 +55,11 @@ config1 =
     , cPriority = DEBUG
     }
 
-handleLog1, handleLog0 :: LogHandle (StateT [MockAction] IO)
-handleLog1 = LogHandle (LogConfig DEBUG) logTest
-
-handleLog0 = LogHandle (LogConfig DEBUG) logTest0
-
 handle1 :: Handle (StateT [MockAction] IO)
 handle1 =
   Handle
     { hConf = config1
-    , hLog = handleLog1
+    , hLog = handLogDebug
     , getUpdates = getUpdatesTest json6
     , getShortUpdates = getUpdatesTest json1
     , confirmUpdates = confirmUpdatesTest json1
@@ -80,7 +70,7 @@ handle1 =
 
 handle0, handle2, handle3, handle4, handle5, handle6 ::
      Handle (StateT [MockAction] IO)
-handle0 = handle1 {hLog = handleLog0}
+handle0 = handle1 {hLog = handLogMsgDebug}
 
 handle2 = handle1 {getShortUpdates = getUpdatesTest json2}
 
@@ -88,7 +78,7 @@ handle3 = handle1 {getShortUpdates = getUpdatesTest json3}
 
 handle4 = handle1 {getShortUpdates = getUpdatesTest json4}
 
-handle5 = handle1 {getShortUpdates = getUpdatesTest json5, hLog = handleLog0}
+handle5 = handle1 {getShortUpdates = getUpdatesTest json5, hLog = handLogMsgDebug}
 
 handle6 = handle1 {getUpdates = getUpdatesTest json2}
 
@@ -98,13 +88,31 @@ handle7 = handle1 {getUpdates = getUpdatesTest json3}
 
 handle8 = handle1 {getUpdates = getUpdatesTest json4}
 
-handle9 = handle1 {getUpdates = getUpdatesTest json7, hLog = handleLog0}
+handle9 = handle1 {getUpdates = getUpdatesTest json7, hLog = handLogMsgDebug}
 
 handle10 = handle1 {getUpdates = getUpdatesTest json8}
 
 handle11 = handle1 {getUpdates = getUpdatesTest json9}
 
 handle12 = handle1 {getUpdates = getUpdatesTest json10}
+
+handle13 = handle1 {hLog = handLogWarn}
+
+handle14 =  handle13 {getUpdates = getUpdatesTest json12}
+
+handle15 =  handle13 {getShortUpdates = getUpdatesTest json12}
+
+handle16 =  handle13 {confirmUpdates = confirmUpdatesTest json2}
+
+handle17 =  handle13 {confirmUpdates = confirmUpdatesTest json5}
+
+handle18 =  handle13 {confirmUpdates = confirmUpdatesTest json3}
+
+handle19 =  handle13 {getUpdates = getUpdatesTest json13}
+
+handle20 =  handle13 {confirmUpdates = confirmUpdatesTest json12}
+
+
 
 initialDB1 :: MapUserN
 initialDB1 = Map.fromList []
@@ -155,6 +163,8 @@ testTG =
         evalStateT (startApp handle4) [] `shouldThrow`
         (== (CheckGetUpdatesResponseException $
              "Too short response:\n" ++ show json4))
+      it "throw Exception on other short getUpdates response" $
+        evalStateT (startApp handle4) [] `shouldThrow` isCheckGetUpdatesResponseException
     describe "run" $ do
       it "work with singleton update list with text msg" $ do
         state <- execStateT (evalStateT (run handle0) initialDB1) []
@@ -358,10 +368,30 @@ testTG =
         evalStateT (evalStateT (run handle7) initialDB1) [] `shouldThrow`
         (== (CheckGetUpdatesResponseException $
              "UNKNOWN RESPONSE:\n" ++ show json3))
-      it "throw Exception on short getUpdates response" $
-        evalStateT (evalStateT (run handle8) initialDB1) [] `shouldThrow`
-        (== (CheckGetUpdatesResponseException $
-             "Too short response:\n" ++ show json4))
+      it "throw Exception on other negative getUpdates response" $
+        evalStateT (evalStateT (run handle14) initialDB1) [] `shouldThrow`
+        isCheckGetUpdatesResponseException
+      it "work with other ok confirmUpdates response" $ do
+        dbState <- evalStateT (execStateT (run handle9) initialDB1) []
+        dbState `shouldBe` initialDB1
+        state <- execStateT (evalStateT (run handle17) initialDB1) []
+        reverse state `shouldBe`
+          [GOTUPDATES,CONFIRMUPDATES 235800277,SENDMSG 1118947329 "love",SENDMSG 1118947329 "love"]
+      it "throw Exception on negative confirmUpdates response" $
+        evalStateT (evalStateT (run handle16) initialDB1) [] `shouldThrow`
+        isCheckConfirmUpdatesResponseException
+      it "throw Exception on other negative confirmUpdates response" $
+        evalStateT (evalStateT (run handle20) initialDB1) [] `shouldThrow`
+        isCheckConfirmUpdatesResponseException
+      it "throw Exception on unknown confirmUpdates response" $
+        evalStateT (evalStateT (run handle18) initialDB1) [] `shouldThrow`
+        isCheckConfirmUpdatesResponseException
+      it "throw Exception on confirmUpdates where getUpdates response with negative updateId" $
+        evalStateT (evalStateT (run handle19) initialDB1) [] `shouldThrow`
+        isConfirmUpdatesException
+      
+            
+      
 
 json1, json2, json3, json4, json5, json6, json7, json8, json9, json10, json11 ::
      Response
@@ -392,3 +422,9 @@ json10 =
   "{\"ok\":true,\"result\":[{\"update_id\":235800276,\n\"message\":{\"message_id\":2117,\"from\":{\"id\":1118947329,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118947329,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594202617,\"text\":\"4\"}}]}"
 
 json11 = "{\"ok\":true,\"result\":{\"message_id\":2141}}"
+
+json12 =
+  "{\"ok\":false,\"result\":[{\"update_id\":235800270,\n\"edited_message\":{\"message_id\":2109,\"from\":{\"id\":1118947329,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118947329,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594157544,\"edit_date\":1594157550,\"text\":\"sev\"}},{\"update_id\":235800271,\n\"message\":{\"message_id\":2110,\"from\":{\"id\":1118947329,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118947329,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594157558,\"sticker\":{\"width\":512,\"height\":512,\"emoji\":\"\\ud83d\\udc4b\",\"set_name\":\"HotCherry\",\"is_animated\":true,\"thumb\":{\"file_id\":\"AAMCAgADGQEAAgg-XwTp9qVkXckjuJdFWs8YfRcnlKIAAgUAA8A2TxP5al-agmtNdZc4uA8ABAEAB20AA7V6AAIaBA\",\"file_unique_id\":\"AQADlzi4DwAEtXoAAg\",\"file_size\":3848,\"width\":128,\"height\":128},\"file_id\":\"CAACAgIAAxkBAAIIPl8E6falZF3JI7iXRVrPGH0XJ5SiAAIFAAPANk8T-WpfmoJrTXUaBA\",\"file_unique_id\":\"AgADBQADwDZPEw\",\"file_size\":7285}}},{\"update_id\":235800272,\n\"message\":{\"message_id\":2111,\"from\":{\"id\":1267750993,\"is_bot\":false,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"language_code\":\"ru\"},\"chat\":{\"id\":1267750993,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"type\":\"private\"},\"date\":1594157567,\"text\":\"Toni\"}},{\"update_id\":235800273,\n\"message\":{\"message_id\":2112,\"from\":{\"id\":1267750993,\"is_bot\":false,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"language_code\":\"ru\"},\"chat\":{\"id\":1267750993,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"type\":\"private\"},\"date\":1594157574,\"sticker\":{\"width\":512,\"height\":512,\"emoji\":\"\\ud83d\\ude18\",\"set_name\":\"HotCherry\",\"is_animated\":true,\"thumb\":{\"file_id\":\"AAMCAgADGQEAAghAXwTqBtXCprOmMNPhHaxRKoqSqVoAAgIAA8A2TxMI9W5F-oSnWRQsuA8ABAEAB20AAyZfAAIaBA\",\"file_unique_id\":\"AQADFCy4DwAEJl8AAg\",\"file_size\":4498,\"width\":128,\"height\":128},\"file_id\":\"CAACAgIAAxkBAAIIQF8E6gbVwqazpjDT4R2sUSqKkqlaAAICAAPANk8TCPVuRfqEp1kaBA\",\"file_unique_id\":\"AgADAgADwDZPEw\",\"file_size\":15955}}}]}"
+
+json13 =
+  "{\"ok\":true,\"result\":[{\"update_id\":-235800275,\n\"message\":{\"message_id\":2114,\"from\":{\"id\":1118947329,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118947329,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594202617,\"text\":\"/repeat\"}}]}"

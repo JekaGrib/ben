@@ -84,7 +84,7 @@ data AboutObj =
   AboutObj
     { from_id :: Integer
     , id :: Integer
-    , peer_id :: Integer
+    , peer_id :: Maybe Integer
     , text :: T.Text
     , fwd_messages :: [Value]
     , attachments :: [SomeAttachment]

@@ -1,9 +1,10 @@
-{-# OPTIONS_GHC -Werror #-}
+{-{-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings #-} -}
 
-module TestVk where
+module Vk.Test () where
 
+{-
 import Control.Monad.State (StateT(..), evalStateT, execStateT)
 import qualified Data.Map as Map
 import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow)
@@ -253,3 +254,4 @@ json7 =
 jsonA :: ResponseS
 jsonA =
   "{\"response\":{\"key\":\"912481cc91cb3b0e119b9be5c75b383d6887438f\",\"server\":\"https:\\/\\/lp.vk.com\\/wh000\",\"ts\":\"289\"}}"
+  -}

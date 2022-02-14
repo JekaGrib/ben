@@ -8,7 +8,6 @@ import qualified Data.Map as Map(lookup,insert)
 import Control.Monad.Catch (MonadCatch(catch))
 import Control.Monad.State (StateT, get, lift, modify, replicateM_)
 import Data.Aeson (decode, encode)
-import Data.Maybe (fromJust)
 import qualified Data.Text as T
 import Network.HTTP.Client
   ( Manager
@@ -31,7 +30,7 @@ import Tg.Api.Request
   , KeybJSONBody(..)
   , SendMsgJSONBody(..)
   )
-import Tg.Api.Response (Answer(..), From(..), Message(..), Update(..))
+import Tg.Api.Response (GetUpdResp(..),Answer(..), From(..), Message(..), Update(..))
 import Tg.Conf (Config(..))
 import Tg.Logger (LogHandle(..), logDebug, logInfo, logWarning)
 import Tg.Oops
@@ -44,6 +43,7 @@ import Tg.Oops
   , throwAndLogEx
   )
 import Tg.Types
+import Control.Monad (when)
 
 
 data Handle m =
@@ -71,35 +71,23 @@ makeH conf logH = Handle
   (copyMsg' conf)
 
 -- logic functions:
-startApp :: (Monad m, MonadCatch m) => Handle m -> m ()
+startApp :: (MonadCatch m) => Handle m -> m ()
 startApp h = do
   logInfo (hLog h) "App started\n"
-  logDebug
-    (hLog h)
-    ("Send request to getUpdates: https://api.telegram.org/bot" ++
-     cBotToken (hConf h) ++ "/getUpdates\n")
-  json <- getShortUpdates h `catch` handleExGetUpd (hLog h)
-  logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
-  checkAndConfirmUpdates h json
+  upds <- getShortUpdatesAndCheckResp h
+  confirmUpdatesAndCheckResp h upds
 
 run ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> StateT MapUserN m ()
 run h = do
-  lift $
-    logDebug
-      (hLog h)
-      ("Send request to getUpdates: https://api.telegram.org/bot" ++
-       cBotToken (hConf h) ++ "/getUpdates\n")
-  json <- lift $ getUpdates h `catch` handleExGetUpd (hLog h)
-  lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
-  lift $ checkAndConfirmUpdates h json
-  let upds = extractUpdates json
+  upds <- lift $ getUpdatesAndCheckResp h
+  lift $ confirmUpdatesAndCheckResp h upds
   mapM_ (chooseActionOfUpd h) upds
 
 chooseActionOfUpd ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> Update
   -> StateT MapUserN m ()
@@ -119,7 +107,7 @@ chooseActionOfUpd h upd = do
       chooseActionOfMapUserN h msg msgId usId
 
 chooseActionOfMapUserN ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> Message
   -> MessageId
@@ -141,7 +129,7 @@ chooseActionOfMapUserN h msg msgId usId = do
       chooseActionOfTryPullTxt h msg msgId usId currN
 
 chooseActionOfTryPullTxt ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> Message
   -> MessageId
@@ -161,7 +149,7 @@ chooseActionOfTryPullTxt h msg msgId usId currN =
       lift $ replicateM_ currN $ copyMsgAndCheckResp h usId msgId
 
 chooseActionOfButton ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> Message
   -> UserId
@@ -198,7 +186,7 @@ chooseActionOfButton h msg usId oldN =
       lift $ sendMsgAndCheckResp h usId infoMsg
 
 chooseActionOfTxt ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> N
   -> UserId
@@ -218,7 +206,7 @@ chooseActionOfTxt h currN usId txt =
       lift $ replicateM_ currN $ sendMsgAndCheckResp h usId txt
 
 sendMsgAndCheckResp ::
-     (Monad m, MonadCatch m) => Handle m -> UserId -> TextOfMsg -> m ()
+     (MonadCatch m) => Handle m -> UserId -> TextOfMsg -> m ()
 sendMsgAndCheckResp h usId msg = do
   logDebug
     (hLog h)
@@ -235,7 +223,7 @@ sendMsgAndCheckResp h usId msg = do
   checkSendMsgResponse h usId msg response
 
 copyMsgAndCheckResp ::
-     (Monad m, MonadCatch m) => Handle m -> UserId -> MessageId -> m ()
+     (MonadCatch m) => Handle m -> UserId -> MessageId -> m ()
 copyMsgAndCheckResp h usId msgId = do
   let logMsg =
         "Send request to send attachment msg_id: " ++
@@ -254,7 +242,7 @@ copyMsgAndCheckResp h usId msgId = do
   checkCopyMsgResponse h usId msgId response
 
 sendKeybAndCheckResp ::
-     (Monad m, MonadCatch m) => Handle m -> UserId -> N -> m ()
+     (MonadCatch m) => Handle m -> UserId -> N -> m ()
 sendKeybAndCheckResp h usId currN = do
   let infoMsg =
         T.pack $
@@ -271,69 +259,90 @@ sendKeybAndCheckResp h usId currN = do
   logDebug (hLog h) ("Get response: " ++ show keybResponse ++ "\n")
   checkSendKeybResponse h usId currN infoMsg keybResponse
 
-checkAndConfirmUpdates ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m ()
-checkAndConfirmUpdates h json =
+getUpdatesAndCheckResp :: (MonadCatch m) => Handle m -> m [Update]
+getUpdatesAndCheckResp h = do
+  logDebug
+    (hLog h)
+    ("Send request to getUpdates: https://api.telegram.org/bot" ++
+     cBotToken (hConf h) ++ "/getUpdates\n")
+  json <- getUpdates h `catch` handleExGetUpd (hLog h)
+  logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
+  checkGetUpdatesResp h json
+
+getShortUpdatesAndCheckResp :: (MonadCatch m) => Handle m -> m [Update]
+getShortUpdatesAndCheckResp h = do
+  logDebug
+    (hLog h)
+    ("Send request to getUpdates: https://api.telegram.org/bot" ++
+     cBotToken (hConf h) ++ "/getUpdates\n")
+  json <- getShortUpdates h `catch` handleExGetUpd (hLog h)
+  logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
+  checkGetUpdatesResp h json
+
+
+checkGetUpdatesResp ::
+     (MonadCatch m) => Handle m -> Response -> m [Update]
+checkGetUpdatesResp h json =
   case decode json of
     Nothing ->
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
       "UNKNOWN RESPONSE:\n" ++ show json
-    Just OkAnswer {ok = False} ->
+    Just (GetUpdResp False _) ->
       throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
       "NEGATIVE RESPONSE:\n" ++ show json
-    Just (Answer False _) ->
-      throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
-      "NEGATIVE RESPONSE:\n" ++ show json
-    Just (OkAnswer True) ->
-      throwAndLogEx (hLog h) . CheckGetUpdatesResponseException $
-      "Too short response:\n" ++ show json
-    Just (Answer True []) -> logInfo (hLog h) "No new updates\n"
-    Just _ -> do
+    Just (GetUpdResp _ []) -> do 
+      logInfo (hLog h) "No new updates\n"
+      return []
+    Just (GetUpdResp _ upds) -> do
       logInfo (hLog h) "There is new updates list\n"
-      let nextUpdate = extractNextUpdate json
-      logDebug
-        (hLog h)
-        ("Send request to confirmOldUpdates with offset:" ++
-         show nextUpdate ++
-         " https://api.telegram.org/bot" ++
-         cBotToken (hConf h) ++ "/getUpdates\n")
-      emptyJson <-
-        confirmUpdates h nextUpdate `catch` handleExConfUpd (hLog h) json
-      logDebug (hLog h) ("Get response: " ++ show emptyJson ++ "\n")
-      checkConfirmUpdatesResponse h nextUpdate json emptyJson
+      return upds
+
+confirmUpdatesAndCheckResp :: (MonadCatch m) => Handle m -> [Update] -> m ()
+confirmUpdatesAndCheckResp _ [] = return ()
+confirmUpdatesAndCheckResp h upds = do
+  let nextUpdate = extractNextUpdate upds
+  checkUpdateId h nextUpdate
+  logDebug
+    (hLog h)
+    ("Send request to confirmOldUpdates with offset:" ++
+     show nextUpdate ++
+     " https://api.telegram.org/bot" ++
+     cBotToken (hConf h) ++ "/getUpdates\n")
+  newJson <-
+    confirmUpdates h nextUpdate `catch` handleExConfUpd (hLog h) upds
+  logDebug (hLog h) ("Get response: " ++ show newJson ++ "\n")
+  checkConfirmUpdatesResponse h nextUpdate upds newJson
+
+checkUpdateId :: (MonadCatch m) => Handle m -> UpdateId -> m ()
+checkUpdateId h updId =
+  when (updId <= 0) . throwAndLogEx (hLog h) $ ConfirmUpdatesException "Update id not greater then 1"
 
 checkConfirmUpdatesResponse ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> Offset
-  -> Response
+  -> [Update]
   -> Response
   -> m ()
-checkConfirmUpdatesResponse h offsetArg confirmedJson responseJson =
+checkConfirmUpdatesResponse h offsetArg upds responseJson =
   case decode responseJson of
     Nothing ->
       throwAndLogEx (hLog h) . CheckConfirmUpdatesResponseException $
       "UNKNOWN RESPONSE:\n" ++
       show responseJson ++
       "\nUpdates: \n" ++
-      show confirmedJson ++
+      show upds ++
       "\nPROBABLY NOT CONFIRM with offset: " ++ show offsetArg
-    Just OkAnswer {ok = False} ->
+    Just (Answer False) ->
       throwAndLogEx (hLog h) . CheckConfirmUpdatesResponseException $
       "NEGATIVE RESPONSE:\n" ++
       show responseJson ++
       "\nUpdates: \n" ++
-      show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg
-    Just (Answer False _) ->
-      throwAndLogEx (hLog h) . CheckConfirmUpdatesResponseException $
-      "NEGATIVE RESPONSE:\n" ++
-      show responseJson ++
-      "\nUpdates: \n" ++
-      show confirmedJson ++ "\nNOT CONFIRM with offset: " ++ show offsetArg
+      show upds ++ "\nNOT CONFIRM with offset: " ++ show offsetArg
     Just _ -> logInfo (hLog h) "Received updates confirmed\n"
 
 checkSendMsgResponse ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> UserId
   -> TextOfMsg
@@ -345,11 +354,7 @@ checkSendMsgResponse h usId msg json =
       throwAndLogEx (hLog h) .
       CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
       "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
-    Just OkAnswer {ok = False} ->
-      throwAndLogEx (hLog h) .
-      CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
-      "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-    Just (Answer False _) ->
+    Just (Answer False) ->
       throwAndLogEx (hLog h) .
       CheckSendMsgResponseException (Msg msg) (ToUserId usId) $
       "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
@@ -359,7 +364,7 @@ checkSendMsgResponse h usId msg json =
         ("Msg " ++ show msg ++ " was sent to user " ++ show usId ++ "\n")
 
 checkCopyMsgResponse ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> UserId
   -> MessageId
@@ -371,11 +376,7 @@ checkCopyMsgResponse h usId msgId json =
       throwAndLogEx (hLog h) .
       CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
       "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
-    Just OkAnswer {ok = False} ->
-      throwAndLogEx (hLog h) .
-      CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
-      "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
-    Just (Answer False _) ->
+    Just (Answer False) ->
       throwAndLogEx (hLog h) .
       CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId) $
       "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
@@ -386,7 +387,7 @@ checkCopyMsgResponse h usId msgId json =
          show msgId ++ " was sent to user " ++ show usId ++ "\n")
 
 checkSendKeybResponse ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> UserId
   -> N
@@ -398,10 +399,7 @@ checkSendKeybResponse h usId n msg json =
     Nothing ->
       throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $
       "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"
-    Just OkAnswer {ok = False} ->
-      throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $
-      "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
-    Just (Answer False _) ->
+    Just (Answer False) ->
       throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $
       "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
     Just _ ->
@@ -476,14 +474,8 @@ sendReqAndGetRespBody :: Manager -> Request -> IO Response
 sendReqAndGetRespBody manager req = responseBody <$> httpLbs req manager
 
 -- clear functions:
-extractNextUpdate :: Response -> UpdateId
-extractNextUpdate = succ . update_id . last . result . fromJust . decode
-
-extractUpdates :: Response -> [Update]
-extractUpdates = result . fromJust . decode
-
-extractTextMsg :: Update -> TextOfMsg
-extractTextMsg = textMsg . message
+extractNextUpdate :: [Update] -> UpdateId
+extractNextUpdate = succ . update_id . last 
 
 extractUserId :: Update -> UserId
 extractUserId = idUser . fromUser . message
