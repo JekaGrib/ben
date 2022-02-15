@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 98d485cde5c4d656278212a42c477cb5437a2d8343b42897e6edfd9699a370a0
+-- hash: 9c699479410c10c6045b8b6cf860e41149b0d1c09ef390672cc0710f3821ca23
 
 name:           ben
 version:        0.1.0.0
@@ -94,12 +94,22 @@ test-suite ben-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      TgTest.Conf
       TgTest.Handlers
       TgTest.Log
       TgTest.Oops
+      TgTest.ResponseExample
       TgTest.Test
       TgTest.Types
+      VkTest.Conf
+      VkTest.Log
+      VkTest.Oops
+      VkTest.PrepareAttachment
+      VkTest.PrepareAttachment.Handlers
+      VkTest.PrepareAttachment.ResponseExample
+      VkTest.PrepareAttachment.Types
       VkTest.Test
+      VkTest.Types
       Paths_ben
   hs-source-dirs:
       test

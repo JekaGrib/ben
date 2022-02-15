@@ -14,6 +14,7 @@ import Tg.Types
 import TgTest.Types
 import TgTest.Oops
 import TgTest.Handlers
+import TgTest.ResponseExample
 
 
 initialDB1,initialDB2,initialDB3 :: MapUserN

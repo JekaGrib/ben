@@ -23,7 +23,7 @@ import Network.HTTP.Client.MultipartFormData (formDataBody, partFileRequestBody)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Vk.Api.Response
 import Vk.Conf (Config(..))
-import Vk.Logger (LogHandle(..))
+import Vk.Logger (LogHandle(..),logDebug)
 import Vk.Oops
   ( PrependAttachmetException(..)
   , handleExGetUploadServ
@@ -137,7 +137,9 @@ checkGetUploadServResponse ::
      (Monad m, MonadCatch m) => Handle m -> Response -> m ServerUrl
 checkGetUploadServResponse h json =
   case decode json of
-    Just (UploadServerResponse (UploadUrl serUrl)) -> return serUrl
+    Just (UploadServerResponse (UploadUrl serUrl)) -> do
+      logDebug (hLog h) $ "Got upload server response: " ++ show json
+      return serUrl
     _ -> do
       let ex =
             CheckGetUploadServerResponseException $
@@ -148,7 +150,9 @@ checkLoadDocResponse ::
      (Monad m, MonadCatch m) => Handle m -> Response -> m LoadDocResp
 checkLoadDocResponse h json =
   case decode json of
-    Just loadDocResp@(LoadDocResp _) -> return loadDocResp
+    Just loadDocResp@(LoadDocResp _) -> do
+      logDebug (hLog h) $ "Got load doc to server response: " ++ show json
+      return loadDocResp
     _ -> do
       let ex =
             CheckLoadToServResponseException $
@@ -159,7 +163,9 @@ checkSaveDocResponse ::
      (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSaveDocResponse h json =
   case decode json of
-    Just (SaveDocResp (ResponseSDR "doc" docInf)) -> return docInf
+    Just (SaveDocResp (ResponseSDR "doc" docInf)) -> do
+      logDebug (hLog h) $ "Got save doc on server response: " ++ show json
+      return docInf
     _ -> do
       let ex =
             CheckSaveOnServResponseException $
@@ -170,7 +176,8 @@ checkSaveDocAuMesResponse ::
      (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSaveDocAuMesResponse h json =
   case decode json of
-    Just (SaveDocAuMesResp (ResponseSDAMR "audio_message" docInf)) ->
+    Just (SaveDocAuMesResp (ResponseSDAMR "audio_message" docInf)) -> do
+      logDebug (hLog h) $ "Got save doc(audio_msg) on server response: " ++ show json
       return docInf
     _ -> do
       let ex =
@@ -182,7 +189,9 @@ checkLoadPhotoResponse ::
      (Monad m, MonadCatch m) => Handle m -> Response -> m LoadPhotoResp
 checkLoadPhotoResponse h json =
   case decode json of
-    Just loadPhotoResp -> return loadPhotoResp
+    Just loadPhotoResp -> do
+      logDebug (hLog h) $ "Got load photo to server response: " ++ show json
+      return loadPhotoResp
     _ -> do
       let ex =
             CheckLoadToServResponseException $
@@ -193,7 +202,9 @@ checkSavePhotoResponse ::
      (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSavePhotoResponse h json =
   case decode json of
-    Just (SavePhotoResp [DocInfo id' ownerId]) -> return (DocInfo id' ownerId)
+    Just (SavePhotoResp [DocInfo id' ownerId]) -> do
+      logDebug (hLog h) $ "Got save photo on server response: " ++ show json
+      return (DocInfo id' ownerId)
     _ -> do
       let ex =
             CheckSaveOnServResponseException $
