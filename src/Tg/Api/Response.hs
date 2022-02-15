@@ -59,7 +59,7 @@ data Message
       , textMsg :: T.Text
       }
   | Message
-      { message_id :: Integer
+      { message_id :: MessageId
       , fromUser :: From
       }
   deriving (Eq,Show)
