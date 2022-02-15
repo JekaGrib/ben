@@ -19,7 +19,7 @@ mainVk = do
   writeFile currLogPath "Create log file\n"
   config <- parseConf
   let handleLog =
-        LogHandle (LogConfig (cPriority config)) (logger handleLog currLogPath)
+        LogHandle (LogConfig (cPriority config)) (logger currLogPath)
   let handle = Vk.App.makeH config handleLog
   putStrLn "App started"
   evalStateT (forever $ run handle) (ServerInfo "A" "A" "1", Map.fromList [])

@@ -21,26 +21,18 @@ import Network.HTTP.Client (HttpException( InvalidUrlException ))
 getUpdatesTest :: Response -> StateT [MockAction] IO Response
 getUpdatesTest json = StateT $ \s -> return (json, GOTUPDATES : s)
 
-
-
 confirmUpdatesTest :: Response -> Offset -> StateT [MockAction] IO Response
 confirmUpdatesTest json offset =
   StateT $ \s -> return (json, CONFIRMUPDATES offset : s)
-
-
 
 sendMsgTest ::
      Response -> UserId -> TextOfMsg -> StateT [MockAction] IO Response
 sendMsgTest json usId msg = StateT $ \s -> return (json, SENDMSG usId msg : s)
 
-
-
 copyMsgTest ::
      Response -> UserId -> MessageId -> StateT [MockAction] IO Response
 copyMsgTest json usId msgId =
   StateT $ \s -> return (json, COPYMSG usId msgId : s)
-
-
 
 sendKeybTest ::
      Response -> UserId -> N -> TextOfMsg -> StateT [MockAction] IO Response
@@ -67,13 +59,6 @@ copyMsgTestEx _ _ = throwHttpEx
 sendKeybTestEx ::
      UserId -> N -> TextOfMsg -> StateT [MockAction] IO Response
 sendKeybTestEx _ _ _ = throwHttpEx
-
-
-logTest :: Priority -> String -> StateT [MockAction] IO ()
-logTest prio _ = StateT $ \s -> return ((), LOG prio : s)
-
-logTest0 :: Priority -> String -> StateT [MockAction] IO ()
-logTest0 prio str = StateT $ \s -> return ((), LOGMSG prio str : s)
 
 config1 :: Config
 config1 =
