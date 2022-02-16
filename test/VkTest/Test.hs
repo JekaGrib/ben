@@ -2,7 +2,13 @@
 {-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-} -}
 
-module VkTest.Test () where
+module VkTest.Test where
+
+import VkTest.PrepareAttachment (testVkPrAtt)
+ 
+
+testVk :: IO ()
+testVk = testVkPrAtt
 
 {-
 import Control.Monad.State (StateT(..), evalStateT, execStateT)
@@ -44,16 +50,6 @@ logTest prio _ = StateT $ \s -> return ((), LOG prio : s)
 logTest0 :: Priority -> String -> StateT [MockAction] IO ()
 logTest0 prio str = StateT $ \s -> return ((), LOGMSG prio str : s)
 
-config1 :: Config
-config1 =
-  Config
-    { cStartN = 2
-    , cBotToken = "ABC123"
-    , cHelpMsg = "Hello"
-    , cRepeatQ = "Why?"
-    , cGroupId = 321
-    , cPriority = DEBUG
-    }
 
 handleLog1, handleLog0 :: LogHandle (StateT [MockAction] IO)
 handleLog1 = LogHandle (LogConfig DEBUG) logTest

@@ -4,7 +4,7 @@
 
 module Vk.App where
 
-import Vk.App.PrepareAttachment (getSomeAttachmentString)
+import Vk.App.PrepareAttachment (getSomeAttachmentString,chooseAttType)
 import qualified Vk.App.PrepareAttachment (Handle,makeH)
 import Control.Applicative (liftA3)
 import Control.Monad.Catch (MonadCatch(catch))
@@ -74,10 +74,10 @@ getServer h = do
     logDebug (hLog h) $
     "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=" ++
     show (cGroupId (hConf h)) ++
-    "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n"
+    "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103"
   jsonServ <-
     lift $ getLongPollServer h `catch` handleExGetLongPollServ (hLog h)
-  lift $ logDebug (hLog h) ("Get response: " ++ show jsonServ ++ "\n")
+  lift $ logDebug (hLog h) ("Get response: " ++ show jsonServ)
   lift $ checkGetServResponse h jsonServ
   let servInf = extractServerInfo jsonServ
   modify $ changeServerInfo servInf
@@ -101,9 +101,9 @@ getUpdAndLog h = do
     logDebug (hLog h) $
     "Send request to getUpdates: " ++
     T.unpack server ++
-    "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20\n"
+    "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20"
   json <- lift $ getUpdates h sI `catch` handleExGetUpd (hLog h)
-  lift $ logDebug (hLog h) ("Get response: " ++ show json ++ "\n")
+  lift $ logDebug (hLog h) ("Get response: " ++ show json )
   return json
 
 chooseActionOfUpd ::
@@ -112,7 +112,7 @@ chooseActionOfUpd ::
   -> Update
   -> StateT ServerAndMapUserN m ()
 chooseActionOfUpd h upd = do
-  lift $ logInfo (hLog h) "Analysis update from the list\n"
+  lift $ logInfo (hLog h) "Analysis update from the list"
   case upd of
     Update "message_new" obj -> do
       lift $ logInfo (hLog h) (logStrForGetObj obj)
@@ -121,12 +121,12 @@ chooseActionOfUpd h upd = do
       lift $
       logWarning
         (hLog h)
-        ("There is UNKNOWN UPDATE. BOT WILL IGNORE IT. " ++ show upd ++ "\n")
+        ("There is UNKNOWN UPDATE. BOT WILL IGNORE IT. " ++ show upd )
     _ ->
       lift $
       logWarning
         (hLog h)
-        ("There is UNKNOWN UPDATE. BOT WILL IGNORE IT. " ++ show upd ++ "\n")
+        ("There is UNKNOWN UPDATE. BOT WILL IGNORE IT. " ++ show upd )
 
 chooseActionOfNState ::
      (Monad m, MonadCatch m)
@@ -139,7 +139,7 @@ chooseActionOfNState h obj@(AboutObj usId _ _ _ _ _ _) = do
   case nState of
     Just (Left (OpenRepeat oldN)) -> do
       lift $
-        logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode\n")
+        logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode")
       chooseActionOfButton h obj oldN
     Just (Right n) -> do
       let currN = n
@@ -161,12 +161,12 @@ chooseActionOfButton h obj@(AboutObj usId _ _ _ _ _ _) oldN =
         logInfo
           (hLog h)
           ("Change number of repeats to " ++
-           show newN ++ " for user " ++ show usId ++ "\n")
+           show newN ++ " for user " ++ show usId)
       modify $ changeSecond $ changeMapUserN usId $ Right newN
       let infoMsg =
             T.pack $
             "Number of repeats successfully changed from " ++
-            show oldN ++ " to " ++ show newN ++ "\n"
+            show oldN ++ " to " ++ show newN
       let msg = TextMsg infoMsg
       lift $ sendMsgAndCheckResp h usId msg
     Nothing -> do
@@ -176,13 +176,13 @@ chooseActionOfButton h obj@(AboutObj usId _ _ _ _ _ _) oldN =
           ("User " ++
            show usId ++
            " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: " ++
-           show oldN ++ "\n")
+           show oldN )
       modify $ changeSecond $ changeMapUserN usId $ Right oldN
       let infoMsg =
             T.pack $
             "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++
             show oldN ++
-            "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later\n"
+            "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later"
       let msg = TextMsg infoMsg
       lift $ sendMsgAndCheckResp h usId msg
 
@@ -195,7 +195,7 @@ chooseActionOfObject ::
 chooseActionOfObject h obj currN =
   case obj of
     AboutObj usId _ _ txt [] [] Nothing -> chooseActionOfTxt h currN usId txt
-    AboutObj usId _ _ "" [] [SomeAttachment "sticker" _ _ _ _ (Just (StickerInfo idSt)) _ _ _ _] Nothing ->
+    AboutObj usId _ _ "" [] [StickerAttachment "sticker" (StickerInfo idSt)] Nothing ->
       lift $
       replicateM_ currN $ do
         let msg = StickerMsg idSt
@@ -205,9 +205,9 @@ chooseActionOfObject h obj currN =
       lift $
         logWarning
           (hLog h)
-          ("There is forward message. BOT WILL IGNORE IT. " ++ show obj ++ "\n")
+          ("There is forward message. BOT WILL IGNORE IT. " ++ show obj)
       let infoMsg =
-              "I`m sorry, I can`t work with forward messages, so I will ignore this message\n"
+              "I`m sorry, I can`t work with forward messages, so I will ignore this message"
       let msg = TextMsg infoMsg
       lift $ sendMsgAndCheckResp h usId msg
 
@@ -229,7 +229,7 @@ chooseActionOfTxt h currN usId txt =
            show usId ++
            "&random_id=0&message=" ++
            T.unpack infoMsg ++
-           "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103\n")
+           "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103")
       let msg = TextMsg infoMsg
       lift $ sendMsgAndCheckResp h usId msg
     "/repeat" -> do
@@ -251,8 +251,8 @@ chooseActionOfAttachs ::
   -> AboutObj
   -> StateT ServerAndMapUserN m ()
 chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
-  eitherAttachStrings <- lift $ mapM (getSomeAttachmentString (hPrepAttach h) usId) attachs
-  case sequence eitherAttachStrings of
+  eitherAttachStrings <- lift $ runExceptT $ mapM (getAttachmentString (hPrepAttach h) usId) attachs
+  case eitherAttachStrings of
     Right attachStrings ->
       lift $
       replicateM_ currN $ do
@@ -263,8 +263,7 @@ chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
       lift $
       logWarning
         (hLog h)
-        ("There is UNKNOWN ATTACMENT in updateList. BOT WILL IGNORE IT. " ++
-         show attachs ++ ". " ++ str ++ "\n")
+        ("There is UNKNOWN ATTACMENT in updateList. BOT WILL IGNORE IT. " ++ str ++ "\n")
 
 
 sendMsgAndCheckResp ::
@@ -273,9 +272,9 @@ sendMsgAndCheckResp h usId msg = do
   logDebug
     (hLog h)
     ("Send request to send to user_id:" ++
-     show usId ++ " msg: " ++ show msg ++ "\n")
+     show usId ++ " msg: " ++ show msg )
   response <- sendMsg h usId msg `catch` handleExSendMsg (hLog h) usId msg
-  logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+  logDebug (hLog h) ("Get response: " ++ show response )
   checkSendMsgResponse h usId msg response
 
 sendKeybAndCheckResp ::
@@ -285,7 +284,7 @@ sendKeybAndCheckResp h usId currN txt = do
     "Send request to send keyboard to user: " ++
     show usId ++ " with message: " ++ show currN ++ show txt
   response <- sendKeyb h usId currN txt `catch` handleExSendKeyb (hLog h) usId
-  logDebug (hLog h) ("Get response: " ++ show response ++ "\n")
+  logDebug (hLog h) ("Get response: " ++ show response )
   checkSendKeybResponse h usId currN txt response
 
 checkGetServResponse :: (Monad m, MonadCatch m) => Handle m -> Response -> m ()
@@ -293,14 +292,14 @@ checkGetServResponse h json =
   case decode json of
     Nothing -> do
       let ex =
-            CheckGetServerResponseException $ "UNKNOWN RESPONSE:\n" ++ show json
+            CheckGetServerResponseException $ "UNKNOWN RESPONSE:" ++ show json
       throwAndLogEx (hLog h) ex
     Just ErrorAnswerServ {} -> do
       let ex =
             CheckGetServerResponseException $
-            "NEGATIVE RESPONSE:\n" ++ show json
+            "NEGATIVE RESPONSE:" ++ show json
       throwAndLogEx (hLog h) ex
-    Just _ -> logInfo (hLog h) "Work with received server\n"
+    Just _ -> logInfo (hLog h) "Work with received server"
 
 checkAndPullUpdates ::
      (Monad m, MonadCatch m)
@@ -312,52 +311,52 @@ checkAndPullUpdates h json =
     Nothing -> do
       let ex =
             CheckGetUpdatesResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+            "UNKNOWN RESPONSE:" ++ show json
       lift $ throwAndLogEx (hLog h) ex
     Just ErrorAnswer {} -> do
       let ex =
             CheckGetUpdatesResponseException $
-            "NEGATIVE RESPONSE:\n" ++ show json
+            "NEGATIVE RESPONSE:" ++ show json
       lift $ throwAndLogEx (hLog h) ex
     Just (FailAnswer 2) -> do
       lift $
         logWarning
           (hLog h)
-          "FAIL. Long poll server key expired, need to request new key\n"
+          "FAIL. Long poll server key expired, need to request new key"
       getServer h
       getUpdAndCheckResp h
     Just (FailAnswer 3) -> do
       lift $
         logWarning
           (hLog h)
-          "FAIL. Long poll server information is lost, need to request new key and ts\n"
+          "FAIL. Long poll server information is lost, need to request new key and ts"
       getServer h
       getUpdAndCheckResp h
     Just FailTSAnswer {failFTSA = 1, tsFTSA = ts} -> do
       lift $
         logWarning
           (hLog h)
-          "FAIL number 1. Ts in request is wrong, need to use received ts\n"
+          "FAIL number 1. Ts in request is wrong, need to use received ts"
       modify $ changeTs (T.pack . show $ ts)
       getUpdAndCheckResp h
     Just FailTSAnswer {tsFTSA = ts} -> do
       lift $
         logWarning
           (hLog h)
-          "FAIL. Ts in request is wrong, need to use received ts\n"
+          "FAIL. Ts in request is wrong, need to use received ts"
       modify $ changeTs (T.pack . show $ ts)
       getUpdAndCheckResp h
     Just (FailAnswer _) -> do
       let ex =
             CheckGetUpdatesResponseException $
-            "NEGATIVE RESPONSE:\n" ++ show json
+            "NEGATIVE RESPONSE:" ++ show json
       lift $ throwAndLogEx (hLog h) ex
     Just AnswerOk {updates = []} -> do
-      lift $ logInfo (hLog h) "No new updates\n"
+      lift $ logInfo (hLog h) "No new updates"
       return []
     Just (AnswerOk ts upds) -> do
       modify $ changeTs ts
-      lift $ logInfo (hLog h) "There is new updates list\n"
+      lift $ logInfo (hLog h) "There is new updates list"
       return upds
 
 checkAndPullLatLong ::
@@ -367,7 +366,7 @@ checkAndPullLatLong h maybeGeo =
     Nothing -> return ("", "")
     Just (Geo "point" (Coordinates lat long)) -> return (show lat, show long)
     _ -> do
-      let ex = GetUpdatesException $ "UNKNOWN GEO type\n" ++ show maybeGeo
+      let ex = GetUpdatesException $ "UNKNOWN GEO type" ++ show maybeGeo
       throwAndLogEx (hLog h) ex
 
 checkSendMsgResponse ::
@@ -377,37 +376,37 @@ checkSendMsgResponse h usId msg json =
     Nothing -> do
       let ex =
             CheckSendMsgResponseException msg (ToUserId usId) $
-            "UNKNOWN RESPONSE:\n" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
+            "UNKNOWN RESPONSE:" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
       throwAndLogEx (hLog h) ex
     Just ErrorAnswerMsg {} -> do
       let ex =
             CheckSendMsgResponseException msg (ToUserId usId) $
-            "NEGATIVE RESPONSE:\n" ++ show json ++ "\nMESSAGE NOT SENT"
+            "NEGATIVE RESPONSE:" ++ show json ++ "\nMESSAGE NOT SENT"
       throwAndLogEx (hLog h) ex
     Just _ ->
       case msg of
         TextMsg txt ->
           logInfo
             (hLog h)
-            ("Msg " ++ show txt ++ " was sent to user " ++ show usId ++ "\n")
+            ("Msg " ++ show txt ++ " was sent to user " ++ show usId )
         StickerMsg idSt ->
           logInfo
             (hLog h)
             ("Sticker_id " ++
-             show idSt ++ " was sent to user " ++ show usId ++ "\n")
+             show idSt ++ " was sent to user " ++ show usId )
         AttachmentMsg txt attachStrings ("", "") ->
           logInfo
             (hLog h)
             ("AttachmentMsg was sent to user " ++
              show usId ++
              ". Text: " ++
-             show txt ++ "; attachments: " ++ show attachStrings ++ "\n")
+             show txt ++ "; attachments: " ++ show attachStrings )
         AttachmentMsg txt [] latLong ->
           logInfo
             (hLog h)
             ("GeoMsg was sent to user " ++
              show usId ++
-             ". Text: " ++ show txt ++ "; geo: " ++ show latLong ++ "\n")
+             ". Text: " ++ show txt ++ "; geo: " ++ show latLong )
         AttachmentMsg txt attachStrings latLong ->
           logInfo
             (hLog h)
@@ -416,7 +415,7 @@ checkSendMsgResponse h usId msg json =
              ". Text: " ++
              show txt ++
              "; attachments: " ++
-             show attachStrings ++ "; geo: " ++ show latLong ++ "\n")
+             show attachStrings ++ "; geo: " ++ show latLong )
 
 checkSendKeybResponse ::
      (Monad m, MonadCatch m)
@@ -431,18 +430,18 @@ checkSendKeybResponse h usId n txt json =
     Nothing -> do
       let ex =
             CheckSendKeybResponseException (ToUserId usId) $
-            "UNKNOWN RESPONSE:\n" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"
+            "UNKNOWN RESPONSE:" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"
       throwAndLogEx (hLog h) ex
     Just ErrorAnswerMsg {} -> do
       let ex =
             CheckSendKeybResponseException (ToUserId usId) $
-            "NEGATIVE RESPONSE:\n" ++ show json ++ "\nKEYBOARD NOT SENT"
+            "NEGATIVE RESPONSE:" ++ show json ++ "\nKEYBOARD NOT SENT"
       throwAndLogEx (hLog h) ex
     Just _ ->
       logInfo
         (hLog h)
         ("Keyboard with message: " ++
-         show n ++ show txt ++ " was sent to user " ++ show usId ++ "\n")
+         show n ++ show txt ++ " was sent to user " ++ show usId)
 
 checkGetUploadServResponse ::
      (Monad m, MonadCatch m) => Handle m -> Response -> m ServerUrl
@@ -452,7 +451,7 @@ checkGetUploadServResponse h json =
     _ -> do
       let ex =
             CheckGetUploadServerResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+            "UNKNOWN RESPONSE:" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 checkLoadDocResponse ::
@@ -463,7 +462,7 @@ checkLoadDocResponse h json =
     _ -> do
       let ex =
             CheckLoadToServResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+            "UNKNOWN RESPONSE:" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSaveDocResponse ::
@@ -474,7 +473,7 @@ checkSaveDocResponse h json =
     _ -> do
       let ex =
             CheckSaveOnServResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+            "UNKNOWN RESPONSE:" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSaveDocAuMesResponse ::
@@ -486,7 +485,7 @@ checkSaveDocAuMesResponse h json =
     _ -> do
       let ex =
             CheckSaveOnServResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+            "UNKNOWN RESPONSE:" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 checkLoadPhotoResponse ::
@@ -497,7 +496,7 @@ checkLoadPhotoResponse h json =
     _ -> do
       let ex =
             CheckLoadToServResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+            "UNKNOWN RESPONSE:" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSavePhotoResponse ::
@@ -508,7 +507,7 @@ checkSavePhotoResponse h json =
     _ -> do
       let ex =
             CheckSaveOnServResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+            "UNKNOWN RESPONSE:" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 -- IO handle functions:
@@ -606,38 +605,38 @@ checkTextButton txt =
 
 logStrForGetObj :: AboutObj -> String
 logStrForGetObj (AboutObj usId _ _ txt [] [] Nothing) =
-  "Get TextMsg: " ++ show txt ++ " from user " ++ show usId ++ "\n"
+  "Get TextMsg: " ++ show txt ++ " from user " ++ show usId 
 logStrForGetObj (AboutObj usId _ _ txt fwds [] Nothing) =
   "Get ForwardMsg: " ++
-  show fwds ++ addInfoAboutTxt txt ++ " from user " ++ show usId ++ "\n"
+  show fwds ++ addInfoAboutTxt txt ++ " from user " ++ show usId 
 logStrForGetObj (AboutObj usId _ _ txt [] [] (Just geo)) =
   "Get GeoMsg: " ++
-  show geo ++ addInfoAboutTxt txt ++ " from user " ++ show usId ++ "\n"
+  show geo ++ addInfoAboutTxt txt ++ " from user " ++ show usId 
 logStrForGetObj (AboutObj usId _ _ txt [] attachs Nothing) =
   "Get AttachmentMsg: " ++
-  show attachs ++ addInfoAboutTxt txt ++ " from user " ++ show usId ++ "\n"
+  show attachs ++ addInfoAboutTxt txt ++ " from user " ++ show usId 
 logStrForGetObj (AboutObj usId _ _ txt fwds attachs Nothing) =
   "Get AttachmentMsg: " ++
   show attachs ++
   addInfoAboutTxt txt ++
-  ", with ForwardParts: " ++ show fwds ++ "  from user " ++ show usId ++ "\n"
+  ", with ForwardParts: " ++ show fwds ++ "  from user " ++ show usId 
 logStrForGetObj (AboutObj usId _ _ txt [] attachs (Just geo)) =
   "Get AttachmentMsg: " ++
   show attachs ++
   addInfoAboutTxt txt ++
-  ", with Geo: " ++ show geo ++ "  from user " ++ show usId ++ "\n"
+  ", with Geo: " ++ show geo ++ "  from user " ++ show usId 
 logStrForGetObj (AboutObj usId _ _ txt fwds [] (Just geo)) =
   "Get ForwardMsg: " ++
   show fwds ++
   addInfoAboutTxt txt ++
-  ", with Geo: " ++ show geo ++ "  from user " ++ show usId ++ "\n"
+  ", with Geo: " ++ show geo ++ "  from user " ++ show usId 
 logStrForGetObj (AboutObj usId _ _ txt fwds attachs (Just geo)) =
   "Get AttachmentMsg: " ++
   show attachs ++
   addInfoAboutTxt txt ++
   ", with Geo: " ++
   show geo ++
-  ", with ForwardParts: " ++ show fwds ++ "  from user " ++ show usId ++ "\n"
+  ", with ForwardParts: " ++ show fwds ++ "  from user " ++ show usId 
 
 addInfoAboutTxt :: TextOfMsg -> String
 addInfoAboutTxt "" = ""

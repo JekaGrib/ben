@@ -5,6 +5,7 @@
 module Vk.App.PrepareAttachment where
 
 import Control.Monad.Catch (MonadCatch(catch))
+import Control.Monad.Except (ExceptT)
 import Data.Aeson (decode)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -61,25 +62,45 @@ makeH conf logH = Handle
 
 -- logic functions:
 
-getSomeAttachmentString ::
+getAttachmentString ::
      (MonadCatch m)
   => Handle m
   -> UserId
-  -> SomeAttachment
-  -> m (Either SomethingWrong AttachmentString)
-getSomeAttachmentString h usId someAtt =
-  case chooseAttType someAtt of
-    Left str -> return . Left $ str
-    Right att -> getAttachmentString h usId att
-
-getAttachmentString ::
-     (Monad m, MonadCatch m)
-  => Handle m
-  -> UserId
   -> Attachment
-  -> m (Either SomethingWrong AttachmentString)
-getAttachmentString h usId (PhotoAttachment (Photo sizes)) = do
+  -> ExceptT SomethingWrong m AttachmentString
+getAttachmentString h usId (PhotoAttachment (Photo [])) = do
+  throwE $ ("Unknown photo attachment, empty sizes")
+getAttachmentString h usId (PhotoAttachment photo) = do
   let picUrl = url . head . sortOn (Down . height) $ sizes
+  (DocInfo idDoc owner_id) <- lift $ getPhotoDocInfo h photo
+  return $ "photo" ++ show owner_id ++ "_" ++ show idDoc
+getAttachmentString h usId (DocAttachment doc) = do
+  (DocInfo idDoc owner_id) <- lift $ getDocInfo h doc
+  return $ "doc" ++ show owner_id ++ "_" ++ show idDoc
+getAttachmentString h usId (AudioMesAttachment audio) = do
+  (DocInfo idDoc owner_id) <- lift $ getAudioMsgDocInfo h audio
+  return $ "doc" ++ show owner_id ++ "_" ++ show idDoc
+getAttachmentString _ _ (VideoAttachment (DocInfo idDoc owner_id)) =
+  return $ "video" ++ show owner_id ++ "_" ++ show idDoc
+getAttachmentString _ _ (AudioAttachment (DocInfo idDoc owner_id)) =
+  return $ "audio" ++ show owner_id ++ "_" ++ show idDoc
+getAttachmentString _ _ (MarketAttachment (DocInfo idDoc owner_id)) =
+  return $ "market" ++ show owner_id ++ "_" ++ show idDoc
+getAttachmentString _ _ (WallAttachment (WallInfo idWall owner_id)) =
+  return $ "wall" ++ show owner_id ++ "_" ++ show idWall
+getAttachmentString _ _ (PollAttachment (DocInfo idDoc owner_id)) =
+  return $ "poll" ++ show owner_id ++ "_" ++ show idDoc
+getAttachmentString _ usId (StickerAttachment _) =
+  throwE $ "Wrong sticker attachment from user: " ++
+  show usId ++ ". Sticker not alone in msg.\n"
+getAttachmentString _ usId (UnknownAttachment _) =
+  throwE $ "Unknown attachment:" ++ show sAtt ++ "\n"
+
+getPhotoDocInfo :: (Monad m) => Handle m
+  -> UserId
+  -> Photo
+  -> m DocInfo
+getPhotoDocInfo h usId (Photo sizes) = do
   serRespJson <- getPhotoServer h usId `catch` handleExGetUploadServ (hLog h)
   serUrl <- checkGetUploadServResponse h serRespJson
   bsPic <- goToUrl h picUrl `catch` handleExGoToUrl (hLog h)
@@ -88,9 +109,13 @@ getAttachmentString h usId (PhotoAttachment (Photo sizes)) = do
   loadPhotoResp <- checkLoadPhotoResponse h loadPhotoJson
   savePhotoJson <-
     savePhotoOnServ h loadPhotoResp `catch` handleExSaveOnServ (hLog h)
-  (DocInfo idDoc owner_id) <- checkSavePhotoResponse h savePhotoJson
-  return $ Right $ "photo" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString h usId (DocAttachment (Doc docUrl ext title)) = do
+  checkSavePhotoResponse h savePhotoJson
+
+getDocInfo :: (Monad m) => Handle m
+  -> UserId
+  -> Doc
+  -> m DocInfo
+getDocInfo h usId (Doc docUrl ext title) = do
   serRespJson <-
     getDocServer h usId "doc" `catch` handleExGetUploadServ (hLog h)
   serUrl <- checkGetUploadServResponse h serRespJson
@@ -100,9 +125,14 @@ getAttachmentString h usId (DocAttachment (Doc docUrl ext title)) = do
   loadDocResp <- checkLoadDocResponse h loadDocJson
   saveDocJson <-
     saveDocOnServ h loadDocResp title `catch` handleExSaveOnServ (hLog h)
-  (DocInfo idDoc owner_id) <- checkSaveDocResponse h saveDocJson
-  return $ Right $ "doc" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString h usId (AudioMesAttachment (Audio docUrl)) = do
+  checkSaveDocResponse h saveDocJson
+
+
+getAudioMsgDocInfo :: (Monad m) => Handle m
+  -> UserId
+  -> Audio
+  -> m DocInfo
+getAudioMsgDocInfo h usId (Audio docUrl) = do
   serRespJson <-
     getDocServer h usId "audio_message" `catch` handleExGetUploadServ (hLog h)
   serUrl <- checkGetUploadServResponse h serRespJson
@@ -114,27 +144,10 @@ getAttachmentString h usId (AudioMesAttachment (Audio docUrl)) = do
   saveDocJson <-
     saveDocOnServ h loadDocResp "audio_message" `catch`
     handleExSaveOnServ (hLog h)
-  (DocInfo idDoc owner_id) <- checkSaveDocAuMesResponse h saveDocJson
-  return $ Right $ "doc" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (VideoAttachment (DocInfo idDoc owner_id)) =
-  return $ Right $ "video" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (AudioAttachment (DocInfo idDoc owner_id)) =
-  return $ Right $ "audio" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (MarketAttachment (DocInfo idDoc owner_id)) =
-  return $ Right $ "market" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (WallAttachment (WallInfo idWall owner_id)) =
-  return $ Right $ "wall" ++ show owner_id ++ "_" ++ show idWall
-getAttachmentString _ _ (PollAttachment (DocInfo idDoc owner_id)) =
-  return $ Right $ "poll" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ usId (StickerAttachment _) =
-  return $
-  Left $
-  "Wrong sticker attachment from user: " ++
-  show usId ++ ". Sticker not alone in msg.\n"
-
+  checkSaveDocAuMesResponse h saveDocJson
 
 checkGetUploadServResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m ServerUrl
+     (MonadCatch m) => Handle m -> Response -> m ServerUrl
 checkGetUploadServResponse h json =
   case decode json of
     Just (UploadServerResponse (UploadUrl serUrl)) -> do
@@ -147,7 +160,7 @@ checkGetUploadServResponse h json =
       throwAndLogPrepAttEx (hLog h) ex
 
 checkLoadDocResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m LoadDocResp
+     (MonadCatch m) => Handle m -> Response -> m LoadDocResp
 checkLoadDocResponse h json =
   case decode json of
     Just loadDocResp@(LoadDocResp _) -> do
@@ -160,7 +173,7 @@ checkLoadDocResponse h json =
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSaveDocResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
+     (MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSaveDocResponse h json =
   case decode json of
     Just (SaveDocResp (ResponseSDR "doc" docInf)) -> do
@@ -173,7 +186,7 @@ checkSaveDocResponse h json =
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSaveDocAuMesResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
+     (MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSaveDocAuMesResponse h json =
   case decode json of
     Just (SaveDocAuMesResp (ResponseSDAMR "audio_message" docInf)) -> do
@@ -186,7 +199,7 @@ checkSaveDocAuMesResponse h json =
       throwAndLogPrepAttEx (hLog h) ex
 
 checkLoadPhotoResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m LoadPhotoResp
+     (MonadCatch m) => Handle m -> Response -> m LoadPhotoResp
 checkLoadPhotoResponse h json =
   case decode json of
     Just loadPhotoResp -> do
@@ -199,7 +212,7 @@ checkLoadPhotoResponse h json =
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSavePhotoResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
+     (MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSavePhotoResponse h json =
   case decode json of
     Just (SavePhotoResp [DocInfo id' ownerId]) -> do
@@ -292,29 +305,3 @@ goToUrl' urlTxt = do
   return bs
 
 
--- clear functions:
-
-
-chooseAttType :: SomeAttachment -> Either SomethingWrong Attachment
-chooseAttType sAtt =
-  case sAtt of
-    SomeAttachment "photo" (Just (Photo [])) _ _ _ _ _ _ _ _ ->
-      Left "Unknown photo attachment, empty sizes\n"
-    SomeAttachment "photo" (Just photo) _ _ _ _ _ _ _ _ ->
-      Right $ PhotoAttachment photo
-    SomeAttachment "doc" _ (Just doc) _ _ _ _ _ _ _ -> Right $ DocAttachment doc
-    SomeAttachment "audio_message" _ _ (Just auMes) _ _ _ _ _ _ ->
-      Right $ AudioMesAttachment auMes
-    SomeAttachment "video" _ _ _ (Just docInf) _ _ _ _ _ ->
-      Right $ VideoAttachment docInf
-    SomeAttachment "sticker" _ _ _ _ (Just sticker) _ _ _ _ ->
-      Right $ StickerAttachment sticker
-    SomeAttachment "audio" _ _ _ _ _ (Just docInf) _ _ _ ->
-      Right $ AudioAttachment docInf
-    SomeAttachment "market" _ _ _ _ _ _ (Just docInf) _ _ ->
-      Right $ MarketAttachment docInf
-    SomeAttachment "wall" _ _ _ _ _ _ _ (Just wall) _ ->
-      Right $ WallAttachment wall
-    SomeAttachment "poll" _ _ _ _ _ _ _ _ (Just docInf) ->
-      Right $ PollAttachment docInf
-    _ -> Left $ "Unknown attachment:" ++ show sAtt ++ "\n"

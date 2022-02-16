@@ -3,10 +3,10 @@
 
 module VkTest.Oops where
 
-import Vk.Oops
+{-import Vk.Oops
 
 
-{-
+
 isGetUpdatesException :: TGBotException -> Bool
 isGetUpdatesException GetUpdatesException{} = True
 isGetUpdatesException _ = False

@@ -6,6 +6,7 @@ module VkTest.Conf where
 
 
 import Vk.Conf (Config(..))
+import Vk.Logger (Priority(..))
 
 config1 :: Config
 config1 =

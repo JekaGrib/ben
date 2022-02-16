@@ -1,5 +1,5 @@
-{-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
+--{-# OPTIONS_GHC -Werror #-}
+--{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -8,11 +8,11 @@ module Vk.Api.Response
        failFTSA, ErrorAnswer, errorEA)
   , Update(Update, objectUpd, UnknownUpdate)
   , AboutObj(AboutObj, from_id, text)
-  , SomeAttachment(..)
+  , Attachment(..)
   , Doc(Doc)
   , Audio(Audio)
   , Photo(Photo)
-  , Size(height, url)
+  , Size(..)
   , LoadDocResp(LoadDocResp)
   , LoadPhotoResp(LoadPhotoResp)
   , SavePhotoResp(SavePhotoResp)
@@ -33,8 +33,9 @@ module Vk.Api.Response
   , Coordinates(Coordinates)
   ) where
 
-import Control.Applicative ((<|>), liftA2)
-import Data.Aeson (FromJSON(parseJSON), Value, (.:), (.:?), withObject)
+import Control.Applicative ((<|>), liftA2,empty)
+import Data.Aeson (FromJSON(parseJSON), Value(..), (.:), (.:?), withObject,withText)
+import Data.Aeson.Types (Parser)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
 
@@ -87,43 +88,58 @@ data AboutObj =
     , peer_id :: Maybe Integer
     , text :: T.Text
     , fwd_messages :: [Value]
-    , attachments :: [SomeAttachment]
+    , attachments :: [Attachment]
     , geo :: Maybe Geo
     }
   deriving (Generic, Show)
 
 instance FromJSON AboutObj
 
-data SomeAttachment
-  = SomeAttachment
-      { typeSA :: T.Text
-      , photoSA :: Maybe Photo
-      , docSA :: Maybe Doc
-      , audio_msgSA :: Maybe Audio
-      , videoSA :: Maybe DocInfo
-      , stickerSA :: Maybe StickerInfo
-      , audioSA :: Maybe DocInfo
-      , marketSA :: Maybe DocInfo
-      , wallSA :: Maybe WallInfo
-      , pollSA :: Maybe DocInfo
-      }
-  | UnknownAttachment Value
-  deriving (Eq, Show)
+data Attachment 
+    = PhotoAttachment 
+      { photoPA :: Photo }
+    | DocAttachment
+      { docDA :: Doc }
+    | AudioMesAttachment
+      { audio_message :: Audio }
+    | VideoAttachment
+      { docVA :: DocInfo }
+    | StickerAttachment
+      { sticker :: StickerInfo }
+    | AudioAttachment
+      { audio :: DocInfo }
+    | MarketAttachment
+      { market :: DocInfo }
+    | WallAttachment
+      {} wall :: WallInfo }
+    | PollAttachment
+      { poll :: DocInfo }
+    | UnknownAttachment Value 
+     deriving (Generic, Show)
 
-instance FromJSON SomeAttachment where
-  parseJSON =
-    liftA2
-      (<|>)
-      (withObject "SomeAttachment" $ \v ->
-         SomeAttachment <$> v .: "type" <*> v .:? "photo" <*> v .:? "doc" <*>
-         v .:? "audio_message" <*>
-         v .:? "video" <*>
-         v .:? "sticker" <*>
-         v .:? "audio" <*>
-         v .:? "market" <*>
-         v .:? "wall" <*>
-         v .:? "poll")
-      (fmap UnknownAttachment . parseJSON)
+instance FromJSON Attachment where
+    parseJSON (Object v) = (PhotoAttachment
+        <$> isPhoto (v .: "type")
+        <*> v .: "photo") <|> (DocAttachment
+        <$> isPhoto (v .: "type")
+        <*> v .: "doc") <|> (AudioMesAttachment
+        <$> isAuMes (v .: "type")
+        <*> v .: "audio_message") <|> (VideoAttachment
+        <$> isVideo (v .: "type")
+        <*> v .: "video") <|> (StickerAttachment
+        <$> isSticker (v .: "type")
+        <*> v .: "sticker") <|> (AudioAttachment
+        <$> isAudio (v .: "type")
+        <*> v .: "audio") <|> (MarketAttachment
+        <$> isMarket (v .: "type")
+        <*> v .: "market") <|> (WallAttachment
+        <$> isWall (v .: "type")
+        <*> v .: "wall") <|> (PollAttachment
+        <$> isPoll (v .: "type")
+        <*> v .: "poll") <|> (fmap UnknownAttachment . parseJSON $ (Object v))
+    parseJSON v = fmap UnknownAttachment . parseJSON $ v
+
+
 
 data Doc =
   Doc
@@ -167,7 +183,7 @@ newtype LoadDocResp =
   LoadDocResp
     { file :: String
     }
-  deriving (Generic, Show)
+  deriving (Generic, Show,Eq)
 
 instance FromJSON LoadDocResp
 
@@ -177,7 +193,7 @@ data LoadPhotoResp =
     , hash :: String
     , photo :: String
     }
-  deriving (Generic, Show)
+  deriving (Generic, Show,Eq)
 
 instance FromJSON LoadPhotoResp
 
@@ -381,3 +397,21 @@ data Coordinates =
   deriving (Eq, Generic, Show)
 
 instance FromJSON Coordinates
+
+isText :: T.Text -> Parser T.Text -> Parser T.Text
+isText txt m = do
+  a <- m
+  if a  == txt
+    then m
+    else empty
+
+isPhoto,isDoc,isAuMes,isVideo,isSticker,isAudio,isMarket,isWall,isPoll :: Parser T.Text -> Parser T.Text
+isPhoto m = isText "photo" m
+isDoc m = isText "doc" m
+isAuMes m = isText "audio_message" m
+isVideo m = isText "video" m
+isSticker m = isText "sticker" m
+isAudio m = isText "audio" m
+isMarket m = isText "market" m
+isWall m = isText "wall" m
+isPoll m = isText "poll" m

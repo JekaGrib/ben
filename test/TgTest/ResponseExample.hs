@@ -60,7 +60,7 @@ json19 =
   "{\"ok\":true,\"result\":[{\"update_id\":235801,\n\"message\":{\"message_id\":2112,\"from\":{\"id\":1118},\"text\":\"love\"}}]}"
 
 json20 =
-  "{\"ok\":true,\"blabla\":true,\"result\":[{\"chat\":0,\"update_id\":235801,\n\"message\":{\"message_id\":2112,\"lala\":2112,\"from\":{\"id\":1118},\"text\":\"love\"}}]}"
+  "{\"ok\":true,\"blabla\":true,\"result\":[{\"chat\":0,\"update_id\":235801,\n\"message\":{\"message_id\":2112,\"lala\":2112,\"date\":\"lala\",\"from\":{\"id\":1118},\"text\":\"love\"}}]}"
 
 json21, json22, json23, json24, json25, json26, json27, json28, json29 :: Response
 json21 = "{\"blabla\":27,\"type\":\"blabla\"}"

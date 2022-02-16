@@ -3,12 +3,12 @@
 
 module VkTest.Types where
 
+
 import Vk.Logger ( Priority(..))
 import Vk.Types
 
 data MockAction
   = GOTSERVER
-  | GOTUPDATES ServerInfo
   | SENDMSG UserId MSG
   | SENDKEYB UserId N TextOfKeyb
   | LOG Priority

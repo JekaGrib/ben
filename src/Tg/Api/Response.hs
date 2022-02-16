@@ -5,7 +5,7 @@
 module Tg.Api.Response where
 
 import Control.Applicative ((<|>), liftA2)
-import Data.Aeson (FromJSON(parseJSON), (.:), withObject)
+import Data.Aeson (FromJSON(parseJSON), (.:), (.:?), withObject)
 import qualified Data.Text as T
 import Tg.Types
 
@@ -53,31 +53,18 @@ instance FromJSON Update where
       (withObject "UnknownUpdate" (\v -> UnknownUpdate <$> v .: "update_id"))
 
 data Message
-  = TxtMessage
+  = Message
       { message_id :: MessageId
       , fromUser :: From
-      , textMsg :: T.Text
-      }
-  | Message
-      { message_id :: MessageId
-      , fromUser :: From
+      , textMsg :: Maybe T.Text
       }
   deriving (Eq,Show)
 
-
 instance FromJSON Message where
-  parseJSON =
-    liftA2
-      (<|>)
-      (withObject
-         "TxtMessage"
-         (\v ->
-            TxtMessage <$> v .: "message_id" <*> v .: "from"  <*>
-            v .: "text"))
-      (withObject
-         "Message"
-         (\v ->
-            Message <$> v .: "message_id" <*> v .: "from" ))
+  parseJSON = withObject "Message"
+    (\v -> Message <$> v .: "message_id" <*> v .: "from"  <*>
+            v .:? "text")
+
 
 data From =
   From

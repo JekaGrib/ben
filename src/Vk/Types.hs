@@ -7,15 +7,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Map (Map)
 import qualified Data.Text as T
-import Vk.Api.Response
-  ( Audio
-  , Doc
-  , DocInfo
-  , Photo
-  , ServerInfo(..)
-  , StickerInfo
-  , WallInfo
-  )
+import Vk.Api.Response ( ServerInfo(..) )
 
 type N = Int
 
@@ -75,18 +67,6 @@ data MSG
   = TextMsg TextOfMsg
   | AttachmentMsg TextOfMsg [AttachmentString] LatLong
   | StickerMsg StickerId
-  deriving (Eq, Show)
-
-data Attachment
-  = PhotoAttachment Photo
-  | DocAttachment Doc
-  | AudioMesAttachment Audio
-  | VideoAttachment DocInfo
-  | StickerAttachment StickerInfo
-  | AudioAttachment DocInfo
-  | MarketAttachment DocInfo
-  | WallAttachment WallInfo
-  | PollAttachment DocInfo
   deriving (Eq, Show)
 
 newtype ToUserId =

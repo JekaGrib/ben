@@ -6,8 +6,6 @@ module TgTest.Handlers where
 
 import Control.Monad.State (StateT(..))
 import Tg.App (Handle(..))
-import Tg.Conf (Config(..))
-import Tg.Logger (Priority(..))
 import Tg.Types
 import TgTest.Types
 import TgTest.Log
@@ -58,16 +56,6 @@ copyMsgTestEx _ _ = throwHttpEx
 sendKeybTestEx ::
      UserId -> N -> TextOfMsg -> StateT [MockAction] IO Response
 sendKeybTestEx _ _ _ = throwHttpEx
-
-config1 :: Config
-config1 =
-  Config
-    { cStartN = 2
-    , cBotToken = "ABC123"
-    , cHelpMsg = "Hello"
-    , cRepeatQ = "Why?"
-    , cPriority = DEBUG
-    }
 
 handle1 :: Handle (StateT [MockAction] IO)
 handle1 =

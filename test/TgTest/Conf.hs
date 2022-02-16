@@ -6,6 +6,8 @@ module TgTest.Conf where
 
 
 import Tg.Conf (Config(..))
+import Tg.Logger (Priority(..))
+
 
 config1 :: Config
 config1 =

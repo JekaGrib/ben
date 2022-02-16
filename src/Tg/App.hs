@@ -137,7 +137,7 @@ chooseActionOfTryPullTxt ::
   -> N
   -> StateT MapUserN m ()
 chooseActionOfTryPullTxt h msg msgId usId currN =
-  case tryPullTextMsg msg of
+  case textMsg msg of
     Just txt -> do
       lift $
         logInfo
@@ -496,7 +496,7 @@ changeMapUserN  = Map.insert
 
 checkButton :: Message -> Maybe N
 checkButton msg =
-  case tryPullTextMsg msg of
+  case textMsg msg of
     Just txt -> checkTextButton txt
     Nothing -> Nothing
 
@@ -510,9 +510,6 @@ checkTextButton txt =
     "5" -> Just 5
     _ -> Nothing
 
-tryPullTextMsg :: Message -> Maybe TextOfMsg
-tryPullTextMsg (TxtMessage _ _ txt) = Just txt
-tryPullTextMsg _ = Nothing
 
 addBodyToReq :: Request -> RequestBody -> Request
 addBodyToReq initReq reqBody =

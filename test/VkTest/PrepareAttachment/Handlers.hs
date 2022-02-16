@@ -2,45 +2,55 @@
 {-# OPTIONS_GHC  -Wall  #-}-}
 {-# LANGUAGE OverloadedStrings #-} 
 
-module VkTest.PrepareAttachment where
+module VkTest.PrepareAttachment.Handlers where
 
 import Vk.App.PrepareAttachment
 import VkTest.PrepareAttachment.Types
+import VkTest.PrepareAttachment.ResponseExample
+import VkTest.PrepareAttachment.Log
+import VkTest.Conf
+import Vk.Types
+import Control.Monad.State (StateT(..))
+import Vk.Api.Response (LoadPhotoResp,LoadDocResp)
+
 
 handle1 :: Handle (StateT [MockAction] IO)
 handle1 =
   Handle
     { hConf = config1
     , hLog = handLogDebug
-    , getPhotoServer = getPhotoServerTest json1
-    , loadPhotoToServ = loadPhotoToServTest json2
-    , savePhotoOnServ = savePhotoOnServTest json3
-    , getDocServer = getDocServerTest json4
-    , loadDocToServ = loadDocToServTest json5
-    , saveDocOnServ = saveDocOnServTest json6
-    , goToUrl = goToUrlTest json7
+    , getPhotoServer = getPhotoServerTest json2
+    , loadPhotoToServ = loadPhotoToServTest json3
+    , savePhotoOnServ = savePhotoOnServTest json4
+    , getDocServer = getDocServerTest json5
+    , loadDocToServ = loadDocToServTest json6
+    , saveDocOnServ = saveDocOnServTest json7
+    , goToUrl = goToUrlTest "photo"
     }
 
 getPhotoServerTest :: Response -> UserId -> StateT [MockAction] IO Response
 getPhotoServerTest json usId = StateT $ \s -> return (json, GOTPhotoSERVER usId : s)
 
 loadPhotoToServTest :: Response -> ServerUrl -> PicUrl -> ResponseS -> StateT [MockAction] IO Response
-loadPhotoToServTest json serUrl picUrl bs = StateT $ \s -> return (json, LOADPhotoTOSERVER serUrl picUrl bs : s)
+loadPhotoToServTest json serUrl picUrl bs = StateT $ \s -> return (json, LOADPhotoTOSERV serUrl picUrl bs : s)
 
 savePhotoOnServTest :: Response -> LoadPhotoResp -> StateT [MockAction] IO Response
 savePhotoOnServTest json loadPhotoResp = StateT $ \s -> return (json, SAVEPhotoONSERV loadPhotoResp : s)
 
-getDocServerTest :: Response -> UserId -> StateT [MockAction] IO Response
-getDocServerTest json usId = StateT $ \s -> return (json, GOTDocSERVER usId : s)
+getDocServerTest :: Response -> UserId -> TypeInGetServerReq -> StateT [MockAction] IO Response
+getDocServerTest json usId type' = StateT $ \s -> return (json, GOTDocSERVER usId type' : s)
 
 loadDocToServTest :: Response -> ServerUrl -> DocUrl -> ResponseS -> Extention -> StateT [MockAction] IO Response
-loadDocToServTest json serUrl docUrl bs ext = StateT $ \s -> return (json, LOADDocTOSERVER serUrl docUrl bs ext : s)
+loadDocToServTest json serUrl docUrl bs ext = StateT $ \s -> return (json, LOADDocTOSERV serUrl docUrl bs ext : s)
 
 saveDocOnServTest :: Response -> LoadDocResp -> Title -> StateT [MockAction] IO Response
 saveDocOnServTest json loadDocResp title = StateT $ \s -> return (json, SAVEDocONSERV loadDocResp title : s)
 
-goToUrlTest :: Response -> Url -> StateT [MockAction] IO Response
-goToUrlTest json url = StateT $ \s -> return (json, GOTOURL url : s)
+goToUrlTest :: ResponseS -> Url -> StateT [MockAction] IO ResponseS
+goToUrlTest bs url = StateT $ \s -> return (bs, GOTOURL url : s)
+
+
+
 
 {-
 import Control.Monad.State (StateT(..), evalStateT, execStateT)
