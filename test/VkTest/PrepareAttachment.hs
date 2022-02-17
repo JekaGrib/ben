@@ -11,8 +11,8 @@ import VkTest.PrepareAttachment.Oops
 import Control.Monad.State (runStateT,evalStateT)
 import Control.Monad.Except (runExceptT)
 import Vk.Logger (Priority(..))
-import Vk.Api.Response (Size(..),Photo(..),Attachment(..),Doc(..),Audio(..))
-import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow)
+import Vk.Api.Response (Size(..),Photo(..),Attachment(..),Doc(..),Audio(..),StickerInfo(..))
+import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow, shouldSatisfy)
 import Vk.Api.Response (LoadPhotoResp(..),LoadDocResp(..),DocInfo(..))
 
 
@@ -160,12 +160,56 @@ testVkPrAtt =
         runStateT (getAudioMsgDocInfo handle15 4 (Audio "http://doc"))[] `shouldThrow`
           isGoToUrlException
     describe "getAttachmentString" $ do
-      it "work with photo attachment with user 5" $ do
+      it "work with photo attachment" $ do
         attStr <- 
           evalStateT
            (runExceptT $ (getAttachmentString handle1 5 (PhotoAttachment (Photo [Size 3 3 "http://pic.jpg"])))) 
            []
         attStr `shouldBe`
           Right "photo50_25"
+      it "work with doc attachment" $ do
+        attStr <- 
+          evalStateT
+           (runExceptT $ (getAttachmentString handle2 5 (DocAttachment (Doc "http://doc" "hs" "MyDoc")))) 
+           []
+        attStr `shouldBe`
+          Right "doc50_25"
+      it "work with audio message attachment" $ do
+        attStr <- 
+          evalStateT
+           (runExceptT $ (getAttachmentString handle3 5 (AudioMesAttachment (Audio "http://doc")))) 
+           []
+        attStr `shouldBe`
+          Right "doc50_25"
+      it "work with video attachment" $ do
+        attStr <- 
+          evalStateT
+           (runExceptT $ (getAttachmentString handle3 5 (VideoAttachment (DocInfo 25 50)))) 
+           []
+        attStr `shouldBe`
+          Right "video50_25"
+      it "throwError SomethingWrong on empty photo sizes" $ do
+        attStr <- 
+          evalStateT
+           (runExceptT $ (getAttachmentString handle1 5 (PhotoAttachment (Photo [])))) 
+           []
+        attStr `shouldSatisfy`
+          null
+      it "throwError SomethingWrong on sticker attachment " $ do
+        attStr <- 
+          evalStateT
+           (runExceptT $ (getAttachmentString handle1 5 (StickerAttachment (StickerInfo 5)))) 
+           []
+        attStr `shouldSatisfy`
+          null
+      it "throwError SomethingWrong on unknown attachment " $ do
+        attStr <- 
+          evalStateT
+           (runExceptT $ (getAttachmentString handle1 5 (UnknownAttachment "ff"))) 
+           []
+        attStr `shouldSatisfy`
+          null
+      
+        
 
         
