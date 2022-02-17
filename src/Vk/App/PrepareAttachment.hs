@@ -68,8 +68,8 @@ getAttachmentString ::
   -> UserId
   -> Attachment
   -> ExceptT SomethingWrong m AttachmentString
-getAttachmentString _ _ (PhotoAttachment (Photo [])) = do
-  throwError $ ("Unknown photo attachment, empty sizes")
+getAttachmentString _ _ (PhotoAttachment (Photo [])) = 
+  throwError "Unknown photo attachment, empty sizes"
 getAttachmentString h usId (PhotoAttachment (Photo sizes) ) = do
   let picUrl = url . head . sortOn (Down . height) $ sizes
   (DocInfo idDoc owner_id) <- lift $ getPhotoDocInfo h usId picUrl

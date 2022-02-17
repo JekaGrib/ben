@@ -6,15 +6,15 @@ module VkTest.PrepareAttachment where
 
 import Vk.App.PrepareAttachment
 import VkTest.PrepareAttachment.Handlers
-import VkTest.PrepareAttachment.Types
+import VkTest.Types
 import VkTest.PrepareAttachment.Oops
 import Control.Monad.State (runStateT,evalStateT)
 import Control.Monad.Except (runExceptT)
 import Vk.Logger (Priority(..))
-import Vk.Api.Response (Size(..),Photo(..),Attachment(..),Doc(..),Audio(..),StickerInfo(..))
 import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow, shouldSatisfy)
-import Vk.Api.Response (LoadPhotoResp(..),LoadDocResp(..),DocInfo(..))
-
+import Vk.Api.Response
+         (Size(..), Photo(..), Attachment(..), Doc(..), Audio(..),
+          StickerInfo(..), LoadPhotoResp(..), LoadDocResp(..), DocInfo(..))
 
 
 testVkPrAtt :: IO ()
@@ -66,25 +66,25 @@ testVkPrAtt =
           ,LOG DEBUG]
         docInfo `shouldBe`
           DocInfo 25 50
-      it "throw CheckGetUploadServerResponseException on unknown getUploadServer response" $ do
+      it "throw CheckGetUploadServerResponseException on unknown getUploadServer response" $ 
         runStateT (getPhotoDocInfo handle6 5 "http://pic.jpg") [] `shouldThrow`
           isCheckGetUploadServerResponseException
-      it "throw CheckLoadToServResponseException on unknown loadToServer response" $ do
+      it "throw CheckLoadToServResponseException on unknown loadToServer response" $ 
         runStateT (getPhotoDocInfo handle7 5 "http://pic.jpg") [] `shouldThrow`
           isCheckLoadToServResponseException
-      it "throw CheckSaveOnServResponseException on unknown saveOnServer response" $ do
+      it "throw CheckSaveOnServResponseException on unknown saveOnServer response" $ 
         runStateT (getPhotoDocInfo handle8 5 "http://pic.jpg") [] `shouldThrow`
           isCheckSaveOnServResponseException
-      it "throw GetUploadServerException on getUploadServer HttpException" $ do
+      it "throw GetUploadServerException on getUploadServer HttpException" $ 
         runStateT (getPhotoDocInfo handle12 5 "http://pic.jpg") [] `shouldThrow`
           isGetUploadServerException
-      it "throw LoadToServException on loadToServer HttpException" $ do
+      it "throw LoadToServException on loadToServer HttpException" $ 
         runStateT (getPhotoDocInfo handle13 5 "http://pic.jpg") [] `shouldThrow`
           isLoadToServException
-      it "throw SaveOnServException on saveOnServer HttpException" $ do
+      it "throw SaveOnServException on saveOnServer HttpException" $ 
         runStateT (getPhotoDocInfo handle14 5 "http://pic.jpg") [] `shouldThrow`
           isSaveOnServException
-      it "throw GoToUrlException on goToUrl HttpException" $ do
+      it "throw GoToUrlException on goToUrl HttpException" $ 
         runStateT (getPhotoDocInfo handle15 5 "http://pic.jpg") [] `shouldThrow`
           isGoToUrlException
     describe "getDocInfo" $ do
@@ -103,25 +103,25 @@ testVkPrAtt =
           ,LOG DEBUG]
         docInfo `shouldBe`
           DocInfo 25 50
-      it "throw CheckGetUploadServerResponseException on unknown getUploadServer response" $ do
+      it "throw CheckGetUploadServerResponseException on unknown getUploadServer response" $ 
         runStateT (getDocInfo handle9 6 (Doc "http://doc" "hs" "MyDoc")) [] `shouldThrow`
           isCheckGetUploadServerResponseException
-      it "throw CheckLoadToServResponseException on unknown loadToServer response" $ do
+      it "throw CheckLoadToServResponseException on unknown loadToServer response" $ 
         runStateT (getDocInfo handle10 6 (Doc "http://doc" "hs" "MyDoc")) [] `shouldThrow`
           isCheckLoadToServResponseException
-      it "throw CheckSaveOnServResponseException on unknown saveOnServer response" $ do
+      it "throw CheckSaveOnServResponseException on unknown saveOnServer response" $ 
         runStateT (getDocInfo handle11 6 (Doc "http://doc" "hs" "MyDoc")) [] `shouldThrow`
           isCheckSaveOnServResponseException
-      it "throw GetUploadServerException on getUploadServer HttpException" $ do
+      it "throw GetUploadServerException on getUploadServer HttpException" $ 
         runStateT (getDocInfo handle16 6 (Doc "http://doc" "hs" "MyDoc")) [] `shouldThrow`
           isGetUploadServerException
-      it "throw LoadToServException on loadToServer HttpException" $ do
+      it "throw LoadToServException on loadToServer HttpException" $ 
         runStateT (getDocInfo handle17 6 (Doc "http://doc" "hs" "MyDoc")) [] `shouldThrow`
           isLoadToServException
-      it "throw SaveOnServException on saveOnServer HttpException" $ do
+      it "throw SaveOnServException on saveOnServer HttpException" $ 
         runStateT (getDocInfo handle18 6 (Doc "http://doc" "hs" "MyDoc")) [] `shouldThrow`
           isSaveOnServException
-      it "throw GoToUrlException on goToUrl HttpException" $ do
+      it "throw GoToUrlException on goToUrl HttpException" $ 
         runStateT (getDocInfo handle15 6 (Doc "http://doc" "hs" "MyDoc"))[] `shouldThrow`
           isGoToUrlException
     describe "getAudioMsgDocInfo" $ do
@@ -138,74 +138,74 @@ testVkPrAtt =
           ,LOG DEBUG]
         docInfo `shouldBe`
           DocInfo 25 50
-      it "throw CheckGetUploadServerResponseException on unknown getUploadServer response" $ do
+      it "throw CheckGetUploadServerResponseException on unknown getUploadServer response" $ 
         runStateT (getAudioMsgDocInfo handle9 4 (Audio "http://doc")) [] `shouldThrow`
           isCheckGetUploadServerResponseException
-      it "throw CheckLoadToServResponseException on unknown loadToServer response" $ do
+      it "throw CheckLoadToServResponseException on unknown loadToServer response" $ 
         runStateT (getAudioMsgDocInfo handle10 4 (Audio "http://doc")) [] `shouldThrow`
           isCheckLoadToServResponseException
-      it "throw CheckSaveOnServResponseException on unknown saveOnServer response" $ do
+      it "throw CheckSaveOnServResponseException on unknown saveOnServer response" $ 
         runStateT (getAudioMsgDocInfo handle11 4 (Audio "http://doc")) [] `shouldThrow`
           isCheckSaveOnServResponseException
-      it "throw GetUploadServerException on getUploadServer HttpException" $ do
+      it "throw GetUploadServerException on getUploadServer HttpException" $ 
         runStateT (getAudioMsgDocInfo handle16 4 (Audio "http://doc")) [] `shouldThrow`
           isGetUploadServerException
-      it "throw LoadToServException on loadToServer HttpException" $ do
+      it "throw LoadToServException on loadToServer HttpException" $ 
         runStateT (getAudioMsgDocInfo handle17 4 (Audio "http://doc")) [] `shouldThrow`
           isLoadToServException
-      it "throw SaveOnServException on saveOnServer HttpException" $ do
+      it "throw SaveOnServException on saveOnServer HttpException" $ 
         runStateT (getAudioMsgDocInfo handle18 4 (Audio "http://doc")) [] `shouldThrow`
           isSaveOnServException
-      it "throw GoToUrlException on goToUrl HttpException" $ do
+      it "throw GoToUrlException on goToUrl HttpException" $ 
         runStateT (getAudioMsgDocInfo handle15 4 (Audio "http://doc"))[] `shouldThrow`
           isGoToUrlException
     describe "getAttachmentString" $ do
       it "work with photo attachment" $ do
         attStr <- 
           evalStateT
-           (runExceptT $ (getAttachmentString handle1 5 (PhotoAttachment (Photo [Size 3 3 "http://pic.jpg"])))) 
+           (runExceptT $ getAttachmentString handle1 5 (PhotoAttachment (Photo [Size 3 3 "http://pic.jpg"]))) 
            []
         attStr `shouldBe`
           Right "photo50_25"
       it "work with doc attachment" $ do
         attStr <- 
           evalStateT
-           (runExceptT $ (getAttachmentString handle2 5 (DocAttachment (Doc "http://doc" "hs" "MyDoc")))) 
+           (runExceptT $ getAttachmentString handle2 5 (DocAttachment (Doc "http://doc" "hs" "MyDoc"))) 
            []
         attStr `shouldBe`
           Right "doc50_25"
       it "work with audio message attachment" $ do
         attStr <- 
           evalStateT
-           (runExceptT $ (getAttachmentString handle3 5 (AudioMesAttachment (Audio "http://doc")))) 
+           (runExceptT $ getAttachmentString handle3 5 (AudioMesAttachment (Audio "http://doc"))) 
            []
         attStr `shouldBe`
           Right "doc50_25"
       it "work with video attachment" $ do
         attStr <- 
           evalStateT
-           (runExceptT $ (getAttachmentString handle3 5 (VideoAttachment (DocInfo 25 50)))) 
+           (runExceptT $ getAttachmentString handle3 5 (VideoAttachment (DocInfo 25 50))) 
            []
         attStr `shouldBe`
           Right "video50_25"
       it "throwError SomethingWrong on empty photo sizes" $ do
         attStr <- 
           evalStateT
-           (runExceptT $ (getAttachmentString handle1 5 (PhotoAttachment (Photo [])))) 
+           (runExceptT $ getAttachmentString handle1 5 (PhotoAttachment (Photo []))) 
            []
         attStr `shouldSatisfy`
           null
       it "throwError SomethingWrong on sticker attachment " $ do
         attStr <- 
           evalStateT
-           (runExceptT $ (getAttachmentString handle1 5 (StickerAttachment (StickerInfo 5)))) 
+           (runExceptT $ getAttachmentString handle1 5 (StickerAttachment (StickerInfo 5))) 
            []
         attStr `shouldSatisfy`
           null
       it "throwError SomethingWrong on unknown attachment " $ do
         attStr <- 
           evalStateT
-           (runExceptT $ (getAttachmentString handle1 5 (UnknownAttachment "ff"))) 
+           (runExceptT $ getAttachmentString handle1 5 (UnknownAttachment "ff")) 
            []
         attStr `shouldSatisfy`
           null

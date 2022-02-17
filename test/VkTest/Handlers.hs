@@ -3,32 +3,29 @@
 {-# LANGUAGE OverloadedStrings #-} -}
 
 module VkTest.Handlers where
-
-import VkTest.PrepareAttachment (testVkPrAtt)
- 
-
-testVk :: IO ()
-testVk = testVkPrAtt
-
-{-
-import Control.Monad.State (StateT(..), evalStateT, execStateT)
-import qualified Data.Map as Map
-import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow)
-import Vk.Api.Response (ServerInfo(..))
-import Vk.App (Handle(..), getServer, runServ)
-import Vk.Conf (Config(..))
-import Vk.Logger (LogConfig(..), LogHandle(..), Priority(..))
-import Vk.Oops (VKBotException(..))
+  
+import Vk.App (Handle(..))
+import Control.Monad.State (StateT(..))
+import VkTest.Log
+import VkTest.Conf
+import VkTest.Types 
 import Vk.Types
+import Vk.Api.Response (ServerInfo(..))
+import VkTest.ResponseExample
+import qualified VkTest.PrepareAttachment.Handlers as PrAtt
 
-data MockAction
-  = GOTSERVER
-  | GOTUPDATES ServerInfo
-  | SENDMSG UserId MSG
-  | SENDKEYB UserId N TextOfKeyb
-  | LOG Priority
-  | LOGMSG Priority String
-  deriving (Eq, Show)
+ 
+handle1 :: Handle (StateT [MockAction] IO)
+handle1 =
+  Handle
+    { hConf = config1
+    , hLog = handLogWarn
+    , getLongPollServer = getServerTest json1
+    , getUpdates = getUpdatesTest json2
+    , sendMsg = sendMsgTest json4
+    , sendKeyb = sendKeybTest json4
+    , hPrepAttach = PrAtt.handle1
+    }
 
 getServerTest :: Response -> StateT [MockAction] IO Response
 getServerTest json = StateT $ \s -> return (json, GOTSERVER : s)
@@ -43,6 +40,35 @@ sendKeybTest ::
      Response -> UserId -> N -> TextOfMsg -> StateT [MockAction] IO Response
 sendKeybTest json usId currN msg =
   StateT $ \s -> return (json, SENDKEYB usId currN msg : s)
+
+
+handle0, handle2, handle3, handle4, handle5, handle6, handle7 ::
+     Handle (StateT [MockAction] IO)
+handle0 = handle1 {hLog = handLogMsgDebug}
+
+handle2 = handle1 {getUpdates = getUpdatesTest json3, hLog = handLogMsgDebug}
+
+handle3 = handle1 {getLongPollServer = getServerTest json5}
+
+handle4 = handle1 {getLongPollServer = getServerTest json6}
+
+handle5 = handle1 {getUpdates = getUpdatesTest json7, hLog = handLogMsgDebug}
+
+handle6 = handle1 {getUpdates = getUpdatesTest json5}
+
+handle7 = handle1 {getUpdates = getUpdatesTest json6}
+
+{-
+import Control.Monad.State (StateT(..), evalStateT, execStateT)
+import qualified Data.Map as Map
+import Vk.Api.Response (ServerInfo(..))
+import Vk.App (Handle(..), getServer, runServ)
+import Vk.Conf (Config(..))
+import Vk.Logger (LogConfig(..), LogHandle(..), Priority(..))
+import Vk.Oops (VKBotException(..))
+
+
+
 
 logTest :: Priority -> String -> StateT [MockAction] IO ()
 logTest prio _ = StateT $ \s -> return ((), LOG prio : s)
@@ -74,21 +100,7 @@ handle1 =
     , goToUrl = \_ -> return jsonA
     }
 
-handle0, handle2, handle3, handle4, handle5, handle6, handle7 ::
-     Handle (StateT [MockAction] IO)
-handle0 = handle1 {hLog = handleLog0}
 
-handle2 = handle1 {getUpdates = getUpdatesTest json3, hLog = handleLog0}
-
-handle3 = handle1 {getLongPollServer = getServerTest json5}
-
-handle4 = handle1 {getLongPollServer = getServerTest json6}
-
-handle5 = handle1 {getUpdates = getUpdatesTest json7, hLog = handleLog0}
-
-handle6 = handle1 {getUpdates = getUpdatesTest json5}
-
-handle7 = handle1 {getUpdates = getUpdatesTest json6}
 
 initialDB1 :: MapUserN
 initialDB1 = Map.fromList []

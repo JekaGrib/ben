@@ -66,7 +66,7 @@ instance FromJSON Message where
             v .:? "text")
 
 
-data From =
+newtype From =
   From
     { idUser :: UserId
     }

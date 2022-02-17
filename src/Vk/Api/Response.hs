@@ -135,7 +135,7 @@ instance FromJSON Attachment where
         "market" -> MarketAttachment <$> v .: "market"
         "wall" -> WallAttachment <$> v .: "wall"
         "poll" -> PollAttachment <$> v .: "poll"
-        _ -> fmap UnknownAttachment . parseJSON $ (Object v)
+        _ -> fmap UnknownAttachment . parseJSON $ Object v
     parseJSON v = fmap UnknownAttachment . parseJSON $ v  
 
 
@@ -406,15 +406,15 @@ isText txt m = do
     else empty
 
 isPhoto,isDoc,isAuMes,isVideo,isSticker,isAudio,isMarket,isWall,isPoll :: Parser T.Text -> Parser T.Text
-isPhoto m = isText "photo" m
-isDoc m = isText "doc" m
-isAuMes m = isText "audio_message" m
-isVideo m = isText "video" m
-isSticker m = isText "sticker" m
-isAudio m = isText "audio" m
-isMarket m = isText "market" m
-isWall m = isText "wall" m
-isPoll m = isText "poll" m
+isPhoto = isText "photo"
+isDoc = isText "doc" 
+isAuMes = isText "audio_message" 
+isVideo = isText "video" 
+isSticker = isText "sticker" 
+isAudio = isText "audio" 
+isMarket = isText "market" 
+isWall = isText "wall" 
+isPoll = isText "poll" 
 
 tryReadNum :: T.Text -> Parser Integer
 tryReadNum "" = empty

@@ -5,9 +5,9 @@
 module VkTest.PrepareAttachment.Handlers where
 
 import Vk.App.PrepareAttachment
-import VkTest.PrepareAttachment.Types
 import VkTest.PrepareAttachment.ResponseExample
-import VkTest.PrepareAttachment.Log
+import VkTest.Log
+import VkTest.Types
 import VkTest.Conf
 import Vk.Types
 import Control.Monad.State (StateT(..))

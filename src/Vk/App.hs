@@ -61,19 +61,26 @@ makeH conf logH = Handle
 
 
 -- logic functions:
-run :: (Monad m, MonadCatch m) => Handle m -> StateT MapUserN m ()
-run h = do
-  servInfo <- lift $ getServInfoAndCheckResp h
-  runServ h servInfo
+run :: (MonadCatch m) => Handle m -> StateT MapUserN m ()
+run h = startApp h >>= foreverRunServ h
 
-runServ :: (Monad m, MonadCatch m) => Handle m -> ServerInfo -> StateT MapUserN m ()
+startApp ::(MonadCatch m) => Handle m -> StateT MapUserN m ServerInfo
+startApp h = lift $ getServInfoAndCheckResp h
+
+foreverRunServ :: (MonadCatch m) => Handle m -> ServerInfo -> StateT MapUserN m ()
+foreverRunServ h servInfo = do
+  newServInfo <- runServ h servInfo
+  foreverRunServ h newServInfo
+  return ()
+
+runServ :: (MonadCatch m) => Handle m -> ServerInfo -> StateT MapUserN m ServerInfo
 runServ h servInfo = do
   (upds,newServInfo) <- lift $ getUpdAndCheckResp h servInfo
   mapM_ (chooseActionOfUpd h) upds
-  runServ h newServInfo
+  return newServInfo
 
 getServInfoAndCheckResp ::
-     (Monad m, MonadCatch m) => Handle m -> m ServerInfo
+     (MonadCatch m) => Handle m -> m ServerInfo
 getServInfoAndCheckResp h = do
   logDebug (hLog h) $
     "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=" ++
@@ -85,13 +92,13 @@ getServInfoAndCheckResp h = do
   checkGetServResponse h jsonServ
 
 getUpdAndCheckResp ::
-     (Monad m, MonadCatch m) => Handle m -> ServerInfo -> m UpdatesAndServer
+     (MonadCatch m) => Handle m -> ServerInfo -> m UpdatesAndServer
 getUpdAndCheckResp h serverInfo = do
   json <- getUpdAndLog h serverInfo
   checkAndPullUpdates h serverInfo json 0
 
 getUpdAndLog ::
-     (Monad m, MonadCatch m) => Handle m -> ServerInfo -> m Response
+     (MonadCatch m) => Handle m -> ServerInfo -> m Response
 getUpdAndLog h sI@(ServerInfo key server ts) = do
   logDebug (hLog h) $
     "Send request to getUpdates: " ++
@@ -102,7 +109,7 @@ getUpdAndLog h sI@(ServerInfo key server ts) = do
   return json
 
 chooseActionOfUpd ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> Update
   -> StateT MapUserN m ()
@@ -124,7 +131,7 @@ chooseActionOfUpd h upd = do
         ("There is UNKNOWN UPDATE. BOT WILL IGNORE IT. " ++ show upd )
 
 chooseActionOfNState ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> AboutObj
   -> StateT MapUserN m ()
@@ -144,7 +151,7 @@ chooseActionOfNState h obj@(AboutObj usId _ _ _ _ _ _) = do
       chooseActionOfObject h obj currN
 
 chooseActionOfButton ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> AboutObj
   -> N
@@ -182,7 +189,7 @@ chooseActionOfButton h obj@(AboutObj usId _ _ _ _ _ _) oldN =
       lift $ sendMsgAndCheckResp h usId msg
 
 chooseActionOfObject ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> AboutObj
   -> N
@@ -207,7 +214,7 @@ chooseActionOfObject h obj currN =
       lift $ sendMsgAndCheckResp h usId msg
 
 chooseActionOfTxt ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> N
   -> UserId
@@ -240,7 +247,7 @@ chooseActionOfTxt h currN usId txt =
         sendMsgAndCheckResp h usId msg
 
 chooseActionOfAttachs ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> N
   -> AboutObj
@@ -262,7 +269,7 @@ chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
 
 
 sendMsgAndCheckResp ::
-     (Monad m, MonadCatch m) => Handle m -> UserId -> MSG -> m ()
+     (MonadCatch m) => Handle m -> UserId -> MSG -> m ()
 sendMsgAndCheckResp h usId msg = do
   logDebug
     (hLog h)
@@ -273,7 +280,7 @@ sendMsgAndCheckResp h usId msg = do
   checkSendMsgResponse h usId msg response
 
 sendKeybAndCheckResp ::
-     (Monad m, MonadCatch m) => Handle m -> UserId -> N -> TextOfKeyb -> m ()
+     (MonadCatch m) => Handle m -> UserId -> N -> TextOfKeyb -> m ()
 sendKeybAndCheckResp h usId currN txt = do
   logDebug (hLog h) $
     "Send request to send keyboard to user: " ++
@@ -282,7 +289,7 @@ sendKeybAndCheckResp h usId currN txt = do
   logDebug (hLog h) ("Get response: " ++ show response )
   checkSendKeybResponse h usId currN txt response
 
-checkGetServResponse :: (Monad m, MonadCatch m) => Handle m -> Response -> m ServerInfo
+checkGetServResponse :: (MonadCatch m) => Handle m -> Response -> m ServerInfo
 checkGetServResponse h json =
   case decode json of
     Nothing -> do
@@ -299,7 +306,7 @@ checkGetServResponse h json =
       return servInfo
 
 checkAndPullUpdates ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> ServerInfo
   -> Response
@@ -307,7 +314,7 @@ checkAndPullUpdates ::
   -> m UpdatesAndServer
 checkAndPullUpdates h servInfo json count 
   | count >= 4 = do
-      let ex = CheckGetUpdatesResponseException $ "More then three times getUpdates fail:" ++ show json ++ "serverInfo:" ++ show servInfo
+      let ex = CheckGetUpdatesResponseException $ "More then three times getUpdates fail:" ++ show json ++ ". Server:" ++ show servInfo
       throwAndLogEx (hLog h) ex
 checkAndPullUpdates h servInfo json count =
   case decode json of
@@ -360,7 +367,7 @@ checkAndPullUpdates h servInfo json count =
       return (upds,servInfo{tsSI = ts})
 
 checkAndPullLatLong ::
-     (Monad m, MonadCatch m) => Handle m -> Maybe Geo -> m LatLong
+     (MonadCatch m) => Handle m -> Maybe Geo -> m LatLong
 checkAndPullLatLong h maybeGeo =
   case maybeGeo of
     Nothing -> return ("", "")
@@ -370,7 +377,7 @@ checkAndPullLatLong h maybeGeo =
       throwAndLogEx (hLog h) ex
 
 checkSendMsgResponse ::
-     (Monad m, MonadCatch m) => Handle m -> UserId -> MSG -> Response -> m ()
+     (MonadCatch m) => Handle m -> UserId -> MSG -> Response -> m ()
 checkSendMsgResponse h usId msg json =
   case decode json of
     Nothing -> do
@@ -418,7 +425,7 @@ checkSendMsgResponse h usId msg json =
              show attachStrings ++ "; geo: " ++ show latLong )
 
 checkSendKeybResponse ::
-     (Monad m, MonadCatch m)
+     (MonadCatch m)
   => Handle m
   -> UserId
   -> N
@@ -444,7 +451,7 @@ checkSendKeybResponse h usId n txt json =
          show n ++ show txt ++ " was sent to user " ++ show usId)
 
 checkGetUploadServResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m ServerUrl
+     (MonadCatch m) => Handle m -> Response -> m ServerUrl
 checkGetUploadServResponse h json =
   case decode json of
     Just (UploadServerResponse (UploadUrl serUrl)) -> return serUrl
@@ -455,7 +462,7 @@ checkGetUploadServResponse h json =
       throwAndLogPrepAttEx (hLog h) ex
 
 checkLoadDocResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m LoadDocResp
+     (MonadCatch m) => Handle m -> Response -> m LoadDocResp
 checkLoadDocResponse h json =
   case decode json of
     Just loadDocResp@(LoadDocResp _) -> return loadDocResp
@@ -466,7 +473,7 @@ checkLoadDocResponse h json =
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSaveDocResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
+     (MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSaveDocResponse h json =
   case decode json of
     Just (SaveDocResp (ResponseSDR "doc" docInf)) -> return docInf
@@ -477,7 +484,7 @@ checkSaveDocResponse h json =
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSaveDocAuMesResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
+     (MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSaveDocAuMesResponse h json =
   case decode json of
     Just (SaveDocAuMesResp (ResponseSDAMR "audio_message" docInf)) ->
@@ -489,7 +496,7 @@ checkSaveDocAuMesResponse h json =
       throwAndLogPrepAttEx (hLog h) ex
 
 checkLoadPhotoResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m LoadPhotoResp
+     (MonadCatch m) => Handle m -> Response -> m LoadPhotoResp
 checkLoadPhotoResponse h json =
   case decode json of
     Just loadPhotoResp -> return loadPhotoResp
@@ -500,7 +507,7 @@ checkLoadPhotoResponse h json =
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSavePhotoResponse ::
-     (Monad m, MonadCatch m) => Handle m -> Response -> m DocInfo
+     (MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSavePhotoResponse h json =
   case decode json of
     Just (SavePhotoResp [DocInfo id' ownerId]) -> return (DocInfo id' ownerId)
