@@ -88,7 +88,7 @@ getUpdAndCheckResp ::
      (Monad m, MonadCatch m) => Handle m -> ServerInfo -> m UpdatesAndServer
 getUpdAndCheckResp h serverInfo = do
   json <- getUpdAndLog h serverInfo
-  checkAndPullUpdates h serverInfo json 
+  checkAndPullUpdates h serverInfo json 0
 
 getUpdAndLog ::
      (Monad m, MonadCatch m) => Handle m -> ServerInfo -> m Response
@@ -303,8 +303,13 @@ checkAndPullUpdates ::
   => Handle m
   -> ServerInfo
   -> Response
+  -> Counter
   -> m UpdatesAndServer
-checkAndPullUpdates h servInfo json =
+checkAndPullUpdates h servInfo json count 
+  | count >= 4 = do
+      let ex = CheckGetUpdatesResponseException $ "More then three times getUpdates fail:" ++ show json ++ "serverInfo:" ++ show servInfo
+      throwAndLogEx (hLog h) ex
+checkAndPullUpdates h servInfo json count =
   case decode json of
     Nothing -> do
       let ex =
@@ -321,23 +326,27 @@ checkAndPullUpdates h servInfo json =
           (hLog h)
           "FAIL. Long poll server key expired, need to request new key"
       newServInfo <- getServInfoAndCheckResp h
-      getUpdAndCheckResp h newServInfo
+      newJson <- getUpdAndLog h newServInfo
+      checkAndPullUpdates h newServInfo newJson (count+1)
     Just (FailAnswer 3) -> do
       logWarning
           (hLog h)
           "FAIL. Long poll server information is lost, need to request new key and ts"
       newServInfo <- getServInfoAndCheckResp h
-      getUpdAndCheckResp h newServInfo
+      newJson <- getUpdAndLog h newServInfo
+      checkAndPullUpdates h newServInfo newJson (count+1)
     Just FailTSAnswer {failFTSA = 1, tsFTSA = ts} -> do
       logWarning
           (hLog h)
           "FAIL number 1. Ts in request is wrong, need to use received ts"
-      getUpdAndCheckResp h servInfo{tsSI = ts}
+      newJson <- getUpdAndLog h servInfo{tsSI = ts}
+      checkAndPullUpdates h servInfo{tsSI = ts} newJson (count+1)
     Just FailTSAnswer {tsFTSA = ts} -> do
       logWarning
           (hLog h)
           "FAIL. Ts in request is wrong, need to use received ts"
-      getUpdAndCheckResp h servInfo{tsSI = ts}
+      newJson <- getUpdAndLog h servInfo{tsSI = ts}
+      checkAndPullUpdates h servInfo{tsSI = ts} newJson (count+1)
     Just (FailAnswer _) -> do
       let ex =
             CheckGetUpdatesResponseException $
