@@ -19,8 +19,7 @@ handLogWarn = LogHandle (LogConfig WARNING) logTest
 
 logTest :: Priority -> String -> StateT [MockAction] IO ()
 logTest prio _ = StateT $ \acts -> 
-  return (() , LOG prio : acts)
-    
+  return (() , LOG prio : acts)   
 
 logMsgTest :: Priority -> String -> StateT [MockAction] IO ()
 logMsgTest prio msg = StateT $ \acts -> 

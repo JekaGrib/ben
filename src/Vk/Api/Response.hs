@@ -34,14 +34,14 @@ module Vk.Api.Response
   ) where
 
 import Control.Applicative ((<|>), liftA2,empty)
-import Data.Aeson (FromJSON(parseJSON), Value(..), (.:), (.:?), withObject,withText)
+import Data.Aeson (FromJSON(parseJSON), Value(..), (.:), (.:?), withObject,withText,Object)
 import Data.Aeson.Types (Parser)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
 
 data Answer
   = AnswerOk
-      { tsAOk :: T.Text
+      { tsAOk :: Integer
       , updates :: [Update]
       }
   | FailAnswer
@@ -56,12 +56,17 @@ data Answer
       }
   deriving (Generic, Show)
 
+tryReadTs :: Object -> Parser Integer 
+tryReadTs v = (v .: "ts") <|> ( do
+  tsTxt <- v .: "ts" :: Parser T.Text
+  tryReadNum tsTxt )
+
 instance FromJSON Answer where
   parseJSON val =
-    withObject "AnswerOk" (\v -> AnswerOk <$> v .: "ts" <*> v .: "updates") val <|>
+    withObject "AnswerOk" (\v -> AnswerOk <$> tryReadTs v <*> v .: "updates") val <|>
     withObject
       "FailTSAnswer"
-      (\v -> FailTSAnswer <$> v .: "fail" <*> v .: "ts")
+      (\v -> FailTSAnswer <$> v .: "fail" <*> tryReadTs v)
       val <|>
     withObject "FailAnswer" (\v -> FailAnswer <$> v .: "fail") val <|>
     withObject "ErrorAnswer" (\v -> ErrorAnswer <$> v .: "error") val
@@ -321,14 +326,14 @@ data ServerInfo =
   ServerInfo
     { keySI :: T.Text
     , serverSI :: T.Text
-    , tsSI :: T.Text
+    , tsSI :: Integer
     }
   deriving (Eq, Generic, Show)
 
 instance FromJSON ServerInfo where
   parseJSON =
     withObject "ServerInfo" $ \v ->
-      ServerInfo <$> v .: "key" <*> v .: "server" <*> v .: "ts"
+      ServerInfo <$> v .: "key" <*> v .: "server" <*> tryReadTs v
 
 data ResponseOk
   = ResponseOk
@@ -410,3 +415,9 @@ isAudio m = isText "audio" m
 isMarket m = isText "market" m
 isWall m = isText "wall" m
 isPoll m = isText "poll" m
+
+tryReadNum :: T.Text -> Parser Integer
+tryReadNum "" = empty
+tryReadNum xs = case reads . T.unpack $ xs of
+  [(a,"")] -> return a
+  _        -> empty

@@ -7,7 +7,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Map (Map)
 import qualified Data.Text as T
-import Vk.Api.Response ( ServerInfo(..) )
+import Vk.Api.Response ( ServerInfo(..),Update(..) )
 
 type N = Int
 
@@ -24,6 +24,7 @@ type UpdateId = Integer
 type Offset = Integer
 
 type ServerAndMapUserN = (ServerInfo, MapUserN)
+type UpdatesAndServer = ([Update],ServerInfo)
 
 type StickerId = Integer
 
@@ -58,6 +59,8 @@ type LatLong = (String, String)
 type ParameterString = String
 
 type SomethingWrong = String
+
+type Counter = Int
 
 newtype OpenRepeat =
   OpenRepeat N

@@ -7,14 +7,12 @@ module Vk.App where
 import Vk.App.PrepareAttachment (getAttachmentString)
 import qualified Vk.App.PrepareAttachment (Handle,makeH)
 import Control.Monad.Except (runExceptT)
-import Control.Applicative (liftA3)
 import Control.Monad.Catch (MonadCatch(catch))
-import Control.Monad.State (StateT, forever, gets, lift, modify, replicateM_)
+import Control.Monad.State (StateT, get, lift, modify, replicateM_)
 import Data.Aeson (decode, encode)
 import qualified Data.ByteString.Lazy as LBS
 import Data.List (intercalate)
 import qualified Data.Map as Map (insert, lookup)
-import Data.Maybe (fromJust)
 import Data.String (fromString)
 import qualified Data.Text as T
 import Network.HTTP.Client
@@ -63,55 +61,51 @@ makeH conf logH = Handle
 
 
 -- logic functions:
-run :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m ()
+run :: (Monad m, MonadCatch m) => Handle m -> StateT MapUserN m ()
 run h = do
-  getServer h
-  forever $ runServ h
+  servInfo <- lift $ getServInfoAndCheckResp h
+  runServ h servInfo
 
-getServer ::
-     (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m ()
-getServer h = do
-  lift $
-    logDebug (hLog h) $
+runServ :: (Monad m, MonadCatch m) => Handle m -> ServerInfo -> StateT MapUserN m ()
+runServ h servInfo = do
+  (upds,newServInfo) <- lift $ getUpdAndCheckResp h servInfo
+  mapM_ (chooseActionOfUpd h) upds
+  runServ h newServInfo
+
+getServInfoAndCheckResp ::
+     (Monad m, MonadCatch m) => Handle m -> m ServerInfo
+getServInfoAndCheckResp h = do
+  logDebug (hLog h) $
     "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=" ++
     show (cGroupId (hConf h)) ++
     "&access_token=" ++ cBotToken (hConf h) ++ "&v=5.103"
   jsonServ <-
-    lift $ getLongPollServer h `catch` handleExGetLongPollServ (hLog h)
-  lift $ logDebug (hLog h) ("Get response: " ++ show jsonServ)
-  lift $ checkGetServResponse h jsonServ
-  let servInf = extractServerInfo jsonServ
-  modify $ changeServerInfo servInf
-
-runServ :: (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m ()
-runServ h = do
-  upds <- getUpdAndCheckResp h
-  mapM_ (chooseActionOfUpd h) upds
+    getLongPollServer h `catch` handleExGetLongPollServ (hLog h)
+  logDebug (hLog h) ("Get response: " ++ show jsonServ)
+  checkGetServResponse h jsonServ
 
 getUpdAndCheckResp ::
-     (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m [Update]
-getUpdAndCheckResp h = do
-  json <- getUpdAndLog h
-  checkAndPullUpdates h json
+     (Monad m, MonadCatch m) => Handle m -> ServerInfo -> m UpdatesAndServer
+getUpdAndCheckResp h serverInfo = do
+  json <- getUpdAndLog h serverInfo
+  checkAndPullUpdates h serverInfo json 
 
 getUpdAndLog ::
-     (Monad m, MonadCatch m) => Handle m -> StateT ServerAndMapUserN m Response
-getUpdAndLog h = do
-  sI@(ServerInfo key server ts) <- gets fst
-  lift $
-    logDebug (hLog h) $
+     (Monad m, MonadCatch m) => Handle m -> ServerInfo -> m Response
+getUpdAndLog h sI@(ServerInfo key server ts) = do
+  logDebug (hLog h) $
     "Send request to getUpdates: " ++
     T.unpack server ++
-    "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20"
-  json <- lift $ getUpdates h sI `catch` handleExGetUpd (hLog h)
-  lift $ logDebug (hLog h) ("Get response: " ++ show json )
+    "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ show ts ++ "&wait=20"
+  json <- getUpdates h sI `catch` handleExGetUpd (hLog h)
+  logDebug (hLog h) ("Get response: " ++ show json )
   return json
 
 chooseActionOfUpd ::
      (Monad m, MonadCatch m)
   => Handle m
   -> Update
-  -> StateT ServerAndMapUserN m ()
+  -> StateT MapUserN m ()
 chooseActionOfUpd h upd = do
   lift $ logInfo (hLog h) "Analysis update from the list"
   case upd of
@@ -133,9 +127,9 @@ chooseActionOfNState ::
      (Monad m, MonadCatch m)
   => Handle m
   -> AboutObj
-  -> StateT ServerAndMapUserN m ()
+  -> StateT MapUserN m ()
 chooseActionOfNState h obj@(AboutObj usId _ _ _ _ _ _) = do
-  mapUN <- gets snd
+  mapUN <- get
   let nState = Map.lookup usId mapUN
   case nState of
     Just (Left (OpenRepeat oldN)) -> do
@@ -154,7 +148,7 @@ chooseActionOfButton ::
   => Handle m
   -> AboutObj
   -> N
-  -> StateT ServerAndMapUserN m ()
+  -> StateT MapUserN m ()
 chooseActionOfButton h obj@(AboutObj usId _ _ _ _ _ _) oldN =
   case checkButton obj of
     Just newN -> do
@@ -163,7 +157,7 @@ chooseActionOfButton h obj@(AboutObj usId _ _ _ _ _ _) oldN =
           (hLog h)
           ("Change number of repeats to " ++
            show newN ++ " for user " ++ show usId)
-      modify $ changeSecond $ changeMapUserN usId $ Right newN
+      modify $ changeMapUserN usId $ Right newN
       let infoMsg =
             T.pack $
             "Number of repeats successfully changed from " ++
@@ -178,7 +172,7 @@ chooseActionOfButton h obj@(AboutObj usId _ _ _ _ _ _) oldN =
            show usId ++
            " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: " ++
            show oldN )
-      modify $ changeSecond $ changeMapUserN usId $ Right oldN
+      modify $ changeMapUserN usId $ Right oldN
       let infoMsg =
             T.pack $
             "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still " ++
@@ -192,7 +186,7 @@ chooseActionOfObject ::
   => Handle m
   -> AboutObj
   -> N
-  -> StateT ServerAndMapUserN m ()
+  -> StateT MapUserN m ()
 chooseActionOfObject h obj currN =
   case obj of
     AboutObj usId _ _ txt [] [] Nothing -> chooseActionOfTxt h currN usId txt
@@ -218,7 +212,7 @@ chooseActionOfTxt ::
   -> N
   -> UserId
   -> TextOfMsg
-  -> StateT ServerAndMapUserN m ()
+  -> StateT MapUserN m ()
 chooseActionOfTxt h currN usId txt =
   case filter (' ' /=) . T.unpack $ txt of
     "/help" -> do
@@ -238,7 +232,7 @@ chooseActionOfTxt h currN usId txt =
             T.pack $
             " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
       lift $ sendKeybAndCheckResp h usId currN infoMsg
-      modify $ changeSecond $ changeMapUserN usId $ Left $ OpenRepeat currN
+      modify $ changeMapUserN usId $ Left $ OpenRepeat currN
     _ ->
       lift $
       replicateM_ currN $ do
@@ -250,7 +244,7 @@ chooseActionOfAttachs ::
   => Handle m
   -> N
   -> AboutObj
-  -> StateT ServerAndMapUserN m ()
+  -> StateT MapUserN m ()
 chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
   eitherAttachStrings <- lift $ runExceptT $ mapM (getAttachmentString (hPrepAttach h) usId) attachs
   case eitherAttachStrings of
@@ -288,7 +282,7 @@ sendKeybAndCheckResp h usId currN txt = do
   logDebug (hLog h) ("Get response: " ++ show response )
   checkSendKeybResponse h usId currN txt response
 
-checkGetServResponse :: (Monad m, MonadCatch m) => Handle m -> Response -> m ()
+checkGetServResponse :: (Monad m, MonadCatch m) => Handle m -> Response -> m ServerInfo
 checkGetServResponse h json =
   case decode json of
     Nothing -> do
@@ -300,65 +294,61 @@ checkGetServResponse h json =
             CheckGetServerResponseException $
             "NEGATIVE RESPONSE:" ++ show json
       throwAndLogEx (hLog h) ex
-    Just _ -> logInfo (hLog h) "Work with received server"
+    Just (GetPollServerJSONBody servInfo) -> do
+      logInfo (hLog h) "Work with received server"
+      return servInfo
 
 checkAndPullUpdates ::
      (Monad m, MonadCatch m)
   => Handle m
+  -> ServerInfo
   -> Response
-  -> StateT ServerAndMapUserN m [Update]
-checkAndPullUpdates h json =
+  -> m UpdatesAndServer
+checkAndPullUpdates h servInfo json =
   case decode json of
     Nothing -> do
       let ex =
             CheckGetUpdatesResponseException $
             "UNKNOWN RESPONSE:" ++ show json
-      lift $ throwAndLogEx (hLog h) ex
+      throwAndLogEx (hLog h) ex
     Just ErrorAnswer {} -> do
       let ex =
             CheckGetUpdatesResponseException $
             "NEGATIVE RESPONSE:" ++ show json
-      lift $ throwAndLogEx (hLog h) ex
+      throwAndLogEx (hLog h) ex
     Just (FailAnswer 2) -> do
-      lift $
-        logWarning
+      logWarning
           (hLog h)
           "FAIL. Long poll server key expired, need to request new key"
-      getServer h
-      getUpdAndCheckResp h
+      newServInfo <- getServInfoAndCheckResp h
+      getUpdAndCheckResp h newServInfo
     Just (FailAnswer 3) -> do
-      lift $
-        logWarning
+      logWarning
           (hLog h)
           "FAIL. Long poll server information is lost, need to request new key and ts"
-      getServer h
-      getUpdAndCheckResp h
+      newServInfo <- getServInfoAndCheckResp h
+      getUpdAndCheckResp h newServInfo
     Just FailTSAnswer {failFTSA = 1, tsFTSA = ts} -> do
-      lift $
-        logWarning
+      logWarning
           (hLog h)
           "FAIL number 1. Ts in request is wrong, need to use received ts"
-      modify $ changeTs (T.pack . show $ ts)
-      getUpdAndCheckResp h
+      getUpdAndCheckResp h servInfo{tsSI = ts}
     Just FailTSAnswer {tsFTSA = ts} -> do
-      lift $
-        logWarning
+      logWarning
           (hLog h)
           "FAIL. Ts in request is wrong, need to use received ts"
-      modify $ changeTs (T.pack . show $ ts)
-      getUpdAndCheckResp h
+      getUpdAndCheckResp h servInfo{tsSI = ts}
     Just (FailAnswer _) -> do
       let ex =
             CheckGetUpdatesResponseException $
             "NEGATIVE RESPONSE:" ++ show json
-      lift $ throwAndLogEx (hLog h) ex
+      throwAndLogEx (hLog h) ex
     Just AnswerOk {updates = []} -> do
-      lift $ logInfo (hLog h) "No new updates"
-      return []
+      logInfo (hLog h) "No new updates"
+      return ([],servInfo)
     Just (AnswerOk ts upds) -> do
-      modify $ changeTs ts
-      lift $ logInfo (hLog h) "There is new updates list"
-      return upds
+      logInfo (hLog h) "There is new updates list"
+      return (upds,servInfo{tsSI = ts})
 
 checkAndPullLatLong ::
      (Monad m, MonadCatch m) => Handle m -> Maybe Geo -> m LatLong
@@ -528,7 +518,7 @@ getUpdates' (ServerInfo key server ts) = do
   req <-
     parseRequest $
     T.unpack server ++
-    "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ T.unpack ts ++ "&wait=20"
+    "?act=a_check&key=" ++ T.unpack key ++ "&ts=" ++ show ts ++ "&wait=20"
   responseBody <$> httpLbs req manager
 
 sendMsg' :: Config -> UserId -> MSG -> IO Response
@@ -572,18 +562,6 @@ chooseParamsForMsg (AttachmentMsg txt attachStrings (latStr, longStr)) =
       param4 = "long=" ++ longStr
    in [param1, param2, param3, param4]
 
-extractServerInfo :: Response -> ServerInfo
-extractServerInfo =
-  liftA3 ServerInfo keySI serverSI tsSI . (responseGPSJB . fromJust . decode)
-
-changeServerInfo :: ServerInfo -> ServerAndMapUserN -> ServerAndMapUserN
-changeServerInfo newInfo (_, mapUN) = (newInfo, mapUN)
-
-changeTs :: T.Text -> ServerAndMapUserN -> ServerAndMapUserN
-changeTs newTs (serverInfo, mapUN) = (serverInfo {tsSI = newTs}, mapUN)
-
-changeSecond :: (b -> b) -> (a, b) -> (a, b)
-changeSecond f (a, b) = (a, f b)
 
 changeMapUserN :: UserId -> NState -> MapUserN -> MapUserN
 changeMapUserN = Map.insert
