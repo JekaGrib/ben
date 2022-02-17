@@ -11,6 +11,9 @@ picUploadUrl,docUploadUrl :: String
 picUploadUrl = "http://toLoadPic"
 docUploadUrl = "http://toLoadDoc"
 
+docId,ownerId :: Int
+docId = 25
+ownerId = 50
 
 json1, json2, json3, json4, json5, json6, json7, json8, json9, json10 :: Response
 json1 = "{\"blabla\":\"blabla\"}"
@@ -18,39 +21,41 @@ json1 = "{\"blabla\":\"blabla\"}"
 json2 = fromString $
   "{\"response\":{\"album_id\":-64,\"upload_url\":\"" ++ picUploadUrl ++ "\",\"user_id\":0,\"group_id\":194952914}}"
 
-json3 = "{\"server\":24,\"photo\":\"[{\\\"markers_restarted\\\":true,\\\"photo\\\":\\\"79a6b96823:x\\\",\\\"sizes\\\":[],\\\"latitude\\\":0,\\\"longitude\\\":0,\\\"kid\\\":\\\"8bd681ca71d9263d4eab61b1355a55aa\\\",\\\"sizes2\\\":[[\\\"s\\\",\\\"55bd8ea631621f617e7002492a9e31e8818447f59eecc08783c9701a\\\",\\\"-7522010445187125223\\\",17,17],[\\\"m\\\",\\\"55bd8ea631621f617e7002492a9e31e8818447f59eecc08783c9701a\\\",\\\"-7522010445187125223\\\",17,17],[\\\"x\\\",\\\"111de3b9f23b5a7405a4d250857612d75615e62304a224b0a0a333b4\\\",\\\"8389943903789619595\\\",17,17],[\\\"o\\\",\\\"55bd8ea631621f617e7002492a9e31e8818447f59eecc08783c9701a\\\",\\\"-7522010445187125223\\\",17,17],[\\\"p\\\",\\\"55bd8ea631621f617e7002492a9e31e8818447f59eecc08783c9701a\\\",\\\"-7522010445187125223\\\",17,17],[\\\"q\\\",\\\"55bd8ea631621f617e7002492a9e31e8818447f59eecc08783c9701a\\\",\\\"-7522010445187125223\\\",17,17],[\\\"r\\\",\\\"55bd8ea631621f617e7002492a9e31e8818447f59eecc08783c9701a\\\",\\\"-7522010445187125223\\\",17,17]],\\\"urls\\\":[],\\\"urls2\\\":[\\\"Vb2OpjFiH2F-cAJJKp4x6IGER_We7MCHg8lwGg/GfDXeVpznJc.jpg\\\",\\\"Vb2OpjFiH2F-cAJJKp4x6IGER_We7MCHg8lwGg/GfDXeVpznJc.jpg\\\",\\\"ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA/i5nVVocRb3Q.jpg\\\",\\\"Vb2OpjFiH2F-cAJJKp4x6IGER_We7MCHg8lwGg/GfDXeVpznJc.jpg\\\",\\\"Vb2OpjFiH2F-cAJJKp4x6IGER_We7MCHg8lwGg/GfDXeVpznJc.jpg\\\",\\\"Vb2OpjFiH2F-cAJJKp4x6IGER_We7MCHg8lwGg/GfDXeVpznJc.jpg\\\",\\\"Vb2OpjFiH2F-cAJJKp4x6IGER_We7MCHg8lwGg/GfDXeVpznJc.jpg\\\"],\\\"peer_id\\\":16063921}]\",\"hash\":\"anyHash\"}"
+json3 = "{\"server\":24,\"photo\":\"anyPhotoSring\",\"hash\":\"anyHash\"}"
 
-json4 = "{\"response\":[{\"album_id\":-64,\"date\":1644999562,\"id\":457240253,\"owner_id\":16063921,\"access_key\":\"35546f916f1affb66f\",\"sizes\":[{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"s\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"m\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"x\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"o\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"p\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"q\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"r\",\"width\":17}],\"text\":\"\"}]}"
+json4 = fromString $
+  "{\"response\":[{\"album_id\":-64,\"date\":1644999562,\"id\":" ++ show docId ++ ",\"owner_id\":" ++ show ownerId ++ ",\"access_key\":\"35546f916f1affb66f\",\"sizes\":[{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"s\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"m\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"x\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"o\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"p\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"q\",\"width\":17},{\"height\":17,\"url\":\"https:\\/\\/sun9-22.userapi.com\\/impg\\/ER3jufI7WnQFpNJQhXYS11YV5iMEoiSwoKMztA\\/i5nVVocRb3Q.jpg?size=17x17&quality=96&sign=b6d70b2d3c4dbf5cad94d0c403fabe28&c_uniq_tag=N-LR7V66BK7KhSBdGo-k1mmUhCiUDWQaetjwFPdsIFw&type=album\",\"type\":\"r\",\"width\":17}],\"text\":\"\"}]}"
 
-json5 =
-  "{\"response\":{\"upload_url\":\"https:\\/\\/pu.vk.com\\/c236331\\/upload.php?act=add_doc_new&mid=-194952914&aid=-1&gid=0&type=0&peer_id=16063921&rhash=7d82883b4629b839252d7f5014edc7d1&api=1&server=236331&_origin=https%3A%2F%2Fapi.vk.com&_sig=fe7c33a474c70a3d81b636380a7fe509\"}}"
+json5 = fromString $
+  "{\"response\":{\"upload_url\":\"" ++ docUploadUrl ++ "\"}}"
 
 json6 = 
-  "{\"file\":\"16063921|0|-1|236331|6e59b21ae4|sql|88583|doc16063921_626273448?hash=e268b9a861bdb29876&dl=GE3DANRTHEZDC:1644999581:332b5286b10e0b82fa&api=1&no_preview=1 file.sql|c6a300e93b81fd395e173034ad479128|0045f9a6c4a2aaa64ffb169302de84d6||||eyJkaXNrIjo0NywicGVlcl9zZW5kZXIiOiItMTk0OTUyOTE0In0=\"}"
+  "{\"file\":\"anyFile\"}"
 
-json7 =
-  "{\"response\":{\"type\":\"doc\",\"doc\":{\"id\":626276949,\"owner_id\":16063921,\"title\":\"car.sql\",\"size\":88583,\"ext\":\"sql\",\"date\":1644999586,\"type\":8,\"url\":\"https:\\/\\/vk.com\\/doc16063921_626276949?hash=977b8afbe994b8c09d&dl=FUYTSNBZGUZDSMJU:1644999586:4ca2a1750bf9f6403d&api=1&no_preview=1\"}}}"
+json7 = fromString $
+  "{\"response\":{\"type\":\"doc\",\"doc\":{\"id\":" ++ show docId ++ ",\"owner_id\":" ++ show ownerId ++ ",\"title\":\"car.sql\",\"size\":88583,\"ext\":\"sql\",\"date\":1644999586,\"type\":8,\"url\":\"https:\\/\\/vk.com\\/doc16063921_626276949?hash=977b8afbe994b8c09d&dl=FUYTSNBZGUZDSMJU:1644999586:4ca2a1750bf9f6403d&api=1&no_preview=1\"}}}"
 
-json8 =
-  "{\"ok\":true,\"result\":[{\"update_id\":235800,\n\"message\":{\"message_id\":2114,\"from\":{\"id\":1118,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594202617,\"text\":\"/repeat\"}}]}"
+json8 = fromString $
+  "{\"response\":{\"type\":\"audio_message\",\"audio_message\":{\"duration\":2,\"id\":" ++ show docId ++ ",\"link_mp3\":\"https:\\/\\/psv4.userapi.com\\/c613501\\/\\/u16063921\\/audiomsg\\/d1\\/822afd1f8c.mp3\",\"link_ogg\":\"https:\\/\\/psv4.userapi.com\\/c613501\\/\\/u16063921\\/audiomsg\\/d1\\/822afd1f8c.ogg\",\"owner_id\":" ++ show ownerId ++ ",\"access_key\":\"64f3c82e314bbe46fd\",\"waveform\":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,2,1,1,1,1,1,1,0,0,0,0]}}}"
 
-json9 =
-  "{\"ok\":true,\"result\":[{\"update_id\":235807,\n\"message\":{\"message_id\":2140,\"from\":{\"id\":12677,\"is_bot\":false,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"language_code\":\"ru\"},\"chat\":{\"id\":12677,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"type\":\"private\"},\"date\":1594219382,\"sticker\":{\"width\":512,\"height\":512,\"emoji\":\"\\ud83d\\udc4b\",\"set_name\":\"HotCherry\",\"is_animated\":true,\"thumb\":{\"file_id\":\"AAMCAgADGQEAAghcXwXbdpokxFdrCT29uzt0nEq3KzwAAgUAA8A2TxP5al-agmtNdZc4uA8ABAEAB20AA7V6AAIaBA\",\"file_unique_id\":\"AQADlzi4DwAEtXoAAg\",\"file_size\":3848,\"width\":128,\"height\":128},\"file_id\":\"CAACAgIAAxkBAAIIXF8F23aaJMRXawk9vbs7dJxKtys8AAIFAAPANk8T-WpfmoJrTXUaBA\",\"file_unique_id\":\"AgADBQADwDZPEw\",\"file_size\":7285}}}]}"
-
-json10 =
-  "{\"ok\":true,\"result\":[{\"update_id\":235801,\n\"message\":{\"message_id\":2117,\"from\":{\"id\":1118,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594202617,\"text\":\"4\"}}]}"
+json9 = fromString $
+  "{\"response\":{\"upload_url\":\"" ++ docUploadUrl ++ "\"},\"blabla\":\"blabla\"}"
+  
+json10 = fromString $
+  "{\"response\":{\"upload_url\":\"" ++ picUploadUrl ++ "\"}}"
 
 json11, json12, json13, json14, json15, json16, json17, json18, json19, json20 :: Response
-json11 = "{\"ok\":true,\"result\":{\"message_id\":2141}}"
+json11 = fromString $
+  "{\"response\":[{\"id\":" ++ show docId ++ ",\"owner_id\":" ++ show ownerId ++ "}]}"
 
-json12 =
-  "{\"ok\":false,\"result\":[{\"update_id\":235800,\n\"edited_message\":{\"message_id\":2109,\"from\":{\"id\":1118,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594157544,\"edit_date\":1594157550,\"text\":\"sev\"}},{\"update_id\":235801,\n\"message\":{\"message_id\":2110,\"from\":{\"id\":1118,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594157558,\"sticker\":{\"width\":512,\"height\":512,\"emoji\":\"\\ud83d\\udc4b\",\"set_name\":\"HotCherry\",\"is_animated\":true,\"thumb\":{\"file_id\":\"AAMCAgADGQEAAgg-XwTp9qVkXckjuJdFWs8YfRcnlKIAAgUAA8A2TxP5al-agmtNdZc4uA8ABAEAB20AA7V6AAIaBA\",\"file_unique_id\":\"AQADlzi4DwAEtXoAAg\",\"file_size\":3848,\"width\":128,\"height\":128},\"file_id\":\"CAACAgIAAxkBAAIIPl8E6falZF3JI7iXRVrPGH0XJ5SiAAIFAAPANk8T-WpfmoJrTXUaBA\",\"file_unique_id\":\"AgADBQADwDZPEw\",\"file_size\":7285}}},{\"update_id\":235802,\n\"message\":{\"message_id\":2111,\"from\":{\"id\":12677,\"is_bot\":false,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"language_code\":\"ru\"},\"chat\":{\"id\":12677,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"type\":\"private\"},\"date\":1594157567,\"text\":\"Toni\"}},{\"update_id\":235803,\n\"message\":{\"message_id\":2112,\"from\":{\"id\":12677,\"is_bot\":false,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"language_code\":\"ru\"},\"chat\":{\"id\":12677,\"first_name\":\"Vitalik\",\"last_name\":\"Gribov\",\"type\":\"private\"},\"date\":1594157574,\"sticker\":{\"width\":512,\"height\":512,\"emoji\":\"\\ud83d\\ude18\",\"set_name\":\"HotCherry\",\"is_animated\":true,\"thumb\":{\"file_id\":\"AAMCAgADGQEAAghAXwTqBtXCprOmMNPhHaxRKoqSqVoAAgIAA8A2TxMI9W5F-oSnWRQsuA8ABAEAB20AAyZfAAIaBA\",\"file_unique_id\":\"AQADFCy4DwAEJl8AAg\",\"file_size\":4498,\"width\":128,\"height\":128},\"file_id\":\"CAACAgIAAxkBAAIIQF8E6gbVwqazpjDT4R2sUSqKkqlaAAICAAPANk8TCPVuRfqEp1kaBA\",\"file_unique_id\":\"AgADAgADwDZPEw\",\"file_size\":15955}}}]}"
+json12 = fromString $
+  "{\"response\":{\"blabla\":\"blabla\",\"album_id\":\"blabla\",\"upload_url\":\"" ++ picUploadUrl ++ "\",\"user_id\":-25}}"
 
 json13 =
-  "{\"ok\":true,\"result\":[{\"update_id\":-235802,\n\"message\":{\"message_id\":2114,\"from\":{\"id\":1118,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594202617,\"text\":\"/repeat\"}}]}"
+  "{\"server\":24,\"photo\":\"anyPhotoSring\",\"hash\":\"anyHash\",\"blabla\":\"blabla\"}"
 
-json14 = "{\"ok\":true,\"result\":235}"
-
+json14 = fromString $
+  "{\"response\":[{\"blabla\":\"blabla\",\"album_id\":\"blabla\",\"id\":" ++ show docId ++ ",\"owner_id\":" ++ show ownerId ++ ",\"access_key\":25}]}"
 json15 =
   "{\"ok\":true,\"result\":[{\"update_id\":235800,\n\"edited_message\":{\"message_id\":2109,\"from\":{\"id\":1118,\"is_bot\":false,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"language_code\":\"ru\"},\"chat\":{\"id\":1118,\"first_name\":\"Jeka\",\"last_name\":\"Grib\",\"type\":\"private\"},\"date\":1594157544,\"edit_date\":1594157550,\"text\":\"sev\"}}]}"
 

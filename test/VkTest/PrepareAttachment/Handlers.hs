@@ -25,7 +25,7 @@ handle1 =
     , getDocServer = getDocServerTest json5
     , loadDocToServ = loadDocToServTest json6
     , saveDocOnServ = saveDocOnServTest json7
-    , goToUrl = goToUrlTest "photo"
+    , goToUrl = goToUrlTest "anyPhoto"
     }
 
 getPhotoServerTest :: Response -> UserId -> StateT [MockAction] IO Response
@@ -49,8 +49,23 @@ saveDocOnServTest json loadDocResp title = StateT $ \s -> return (json, SAVEDocO
 goToUrlTest :: ResponseS -> Url -> StateT [MockAction] IO ResponseS
 goToUrlTest bs url = StateT $ \s -> return (bs, GOTOURL url : s)
 
+handle2 = handle1 {goToUrl = goToUrlTest "anyDoc"}
 
+handle3 = handle2 {saveDocOnServ = saveDocOnServTest json8}
 
+handle4 :: Handle (StateT [MockAction] IO)
+handle4 = handle1
+    { getPhotoServer = getPhotoServerTest json10
+    , loadPhotoToServ = loadPhotoToServTest json3
+    , savePhotoOnServ = savePhotoOnServTest json11
+    }
+
+handle5 :: Handle (StateT [MockAction] IO)
+handle5 = handle1
+    { getPhotoServer = getPhotoServerTest json12
+    , loadPhotoToServ = loadPhotoToServTest json13
+    , savePhotoOnServ = savePhotoOnServTest json14
+    }
 
 {-
 import Control.Monad.State (StateT(..), evalStateT, execStateT)

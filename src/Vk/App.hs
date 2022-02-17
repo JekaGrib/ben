@@ -4,8 +4,9 @@
 
 module Vk.App where
 
-import Vk.App.PrepareAttachment (getSomeAttachmentString,chooseAttType)
+import Vk.App.PrepareAttachment (getAttachmentString)
 import qualified Vk.App.PrepareAttachment (Handle,makeH)
+import Control.Monad.Except (runExceptT)
 import Control.Applicative (liftA3)
 import Control.Monad.Catch (MonadCatch(catch))
 import Control.Monad.State (StateT, forever, gets, lift, modify, replicateM_)
@@ -195,7 +196,7 @@ chooseActionOfObject ::
 chooseActionOfObject h obj currN =
   case obj of
     AboutObj usId _ _ txt [] [] Nothing -> chooseActionOfTxt h currN usId txt
-    AboutObj usId _ _ "" [] [StickerAttachment "sticker" (StickerInfo idSt)] Nothing ->
+    AboutObj usId _ _ "" [] [StickerAttachment (StickerInfo idSt)] Nothing ->
       lift $
       replicateM_ currN $ do
         let msg = StickerMsg idSt

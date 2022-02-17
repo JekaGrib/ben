@@ -111,33 +111,28 @@ data Attachment
     | MarketAttachment
       { market :: DocInfo }
     | WallAttachment
-      {} wall :: WallInfo }
+      { wall :: WallInfo }
     | PollAttachment
       { poll :: DocInfo }
     | UnknownAttachment Value 
      deriving (Generic, Show)
 
 instance FromJSON Attachment where
-    parseJSON (Object v) = (PhotoAttachment
-        <$> isPhoto (v .: "type")
-        <*> v .: "photo") <|> (DocAttachment
-        <$> isPhoto (v .: "type")
-        <*> v .: "doc") <|> (AudioMesAttachment
-        <$> isAuMes (v .: "type")
-        <*> v .: "audio_message") <|> (VideoAttachment
-        <$> isVideo (v .: "type")
-        <*> v .: "video") <|> (StickerAttachment
-        <$> isSticker (v .: "type")
-        <*> v .: "sticker") <|> (AudioAttachment
-        <$> isAudio (v .: "type")
-        <*> v .: "audio") <|> (MarketAttachment
-        <$> isMarket (v .: "type")
-        <*> v .: "market") <|> (WallAttachment
-        <$> isWall (v .: "type")
-        <*> v .: "wall") <|> (PollAttachment
-        <$> isPoll (v .: "type")
-        <*> v .: "poll") <|> (fmap UnknownAttachment . parseJSON $ (Object v))
-    parseJSON v = fmap UnknownAttachment . parseJSON $ v
+    parseJSON (Object v) = do
+      txt <- (v .: "type") :: Parser T.Text
+      case txt of
+        "photo" -> PhotoAttachment <$> v .: "photo"
+        "doc"   -> DocAttachment <$> v .: "doc"
+        "audio_message" -> AudioMesAttachment <$> v .: "audio_message"
+        "video" -> VideoAttachment <$> v .: "video"
+        "sticker" -> StickerAttachment <$> v .: "sticker"
+        "audio" -> AudioAttachment <$>  v .: "audio"
+        "market" -> MarketAttachment <$> v .: "market"
+        "wall" -> WallAttachment <$> v .: "wall"
+        "poll" -> PollAttachment <$> v .: "poll"
+        _ -> fmap UnknownAttachment . parseJSON $ (Object v)
+    parseJSON v = fmap UnknownAttachment . parseJSON $ v  
+
 
 
 

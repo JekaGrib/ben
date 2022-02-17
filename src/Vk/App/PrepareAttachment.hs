@@ -5,7 +5,7 @@
 module Vk.App.PrepareAttachment where
 
 import Control.Monad.Catch (MonadCatch(catch))
-import Control.Monad.Except (ExceptT)
+import Control.Monad.Except (ExceptT,throwError,lift)
 import Data.Aeson (decode)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
@@ -68,17 +68,17 @@ getAttachmentString ::
   -> UserId
   -> Attachment
   -> ExceptT SomethingWrong m AttachmentString
-getAttachmentString h usId (PhotoAttachment (Photo [])) = do
-  throwE $ ("Unknown photo attachment, empty sizes")
-getAttachmentString h usId (PhotoAttachment photo) = do
+getAttachmentString _ _ (PhotoAttachment (Photo [])) = do
+  throwError $ ("Unknown photo attachment, empty sizes")
+getAttachmentString h usId (PhotoAttachment (Photo sizes) ) = do
   let picUrl = url . head . sortOn (Down . height) $ sizes
-  (DocInfo idDoc owner_id) <- lift $ getPhotoDocInfo h photo
+  (DocInfo idDoc owner_id) <- lift $ getPhotoDocInfo h usId picUrl
   return $ "photo" ++ show owner_id ++ "_" ++ show idDoc
 getAttachmentString h usId (DocAttachment doc) = do
-  (DocInfo idDoc owner_id) <- lift $ getDocInfo h doc
+  (DocInfo idDoc owner_id) <- lift $ getDocInfo h usId doc
   return $ "doc" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString h usId (AudioMesAttachment audio) = do
-  (DocInfo idDoc owner_id) <- lift $ getAudioMsgDocInfo h audio
+getAttachmentString h usId (AudioMesAttachment aud) = do
+  (DocInfo idDoc owner_id) <- lift $ getAudioMsgDocInfo h usId aud
   return $ "doc" ++ show owner_id ++ "_" ++ show idDoc
 getAttachmentString _ _ (VideoAttachment (DocInfo idDoc owner_id)) =
   return $ "video" ++ show owner_id ++ "_" ++ show idDoc
@@ -91,16 +91,16 @@ getAttachmentString _ _ (WallAttachment (WallInfo idWall owner_id)) =
 getAttachmentString _ _ (PollAttachment (DocInfo idDoc owner_id)) =
   return $ "poll" ++ show owner_id ++ "_" ++ show idDoc
 getAttachmentString _ usId (StickerAttachment _) =
-  throwE $ "Wrong sticker attachment from user: " ++
+  throwError $ "Wrong sticker attachment from user: " ++
   show usId ++ ". Sticker not alone in msg.\n"
-getAttachmentString _ usId (UnknownAttachment _) =
-  throwE $ "Unknown attachment:" ++ show sAtt ++ "\n"
+getAttachmentString _ _ (UnknownAttachment x) =
+  throwError $ "Unknown attachment:" ++ show x ++ "\n"
 
-getPhotoDocInfo :: (Monad m) => Handle m
+getPhotoDocInfo :: (MonadCatch m) => Handle m
   -> UserId
-  -> Photo
+  -> Url
   -> m DocInfo
-getPhotoDocInfo h usId (Photo sizes) = do
+getPhotoDocInfo h usId picUrl = do
   serRespJson <- getPhotoServer h usId `catch` handleExGetUploadServ (hLog h)
   serUrl <- checkGetUploadServResponse h serRespJson
   bsPic <- goToUrl h picUrl `catch` handleExGoToUrl (hLog h)
@@ -111,7 +111,7 @@ getPhotoDocInfo h usId (Photo sizes) = do
     savePhotoOnServ h loadPhotoResp `catch` handleExSaveOnServ (hLog h)
   checkSavePhotoResponse h savePhotoJson
 
-getDocInfo :: (Monad m) => Handle m
+getDocInfo :: (MonadCatch m) => Handle m
   -> UserId
   -> Doc
   -> m DocInfo
@@ -128,7 +128,7 @@ getDocInfo h usId (Doc docUrl ext title) = do
   checkSaveDocResponse h saveDocJson
 
 
-getAudioMsgDocInfo :: (Monad m) => Handle m
+getAudioMsgDocInfo :: (MonadCatch m) => Handle m
   -> UserId
   -> Audio
   -> m DocInfo
