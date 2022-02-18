@@ -165,6 +165,56 @@ testVk = do
             ,SENDMSG 1606 (AttachmentMsg "" ["poll-6799_3839"] ("",""))
             ,SENDMSG 1606 (AttachmentMsg "" ["poll-6799_3839"] ("",""))
           ]
+      it "work with singleton update list with audio attachment msg with text" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle19) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("",""))
+            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("",""))
+          ]
+      it "work with singleton update list with market attachment msg with text" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle20) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 1606 (AttachmentMsg "hello" ["market-1196_3822"] ("",""))
+            ,SENDMSG 1606 (AttachmentMsg "hello" ["market-1196_3822"] ("",""))
+          ]
+      it "work with forward msg (ignore)" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle21) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,LOG WARNING
+            ,SENDMSG 1606 (TextMsg "I`m sorry, I can`t work with forward messages, so I will ignore this message")]
+    it "work with singleton update list with GEO msg" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle22) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 1606 (AttachmentMsg "" [] ("69.409","32.456"))
+            ,SENDMSG 1606 (AttachmentMsg "" [] ("69.409","32.456"))
+          ]
+    it "work with singleton update list with GEO msg with text" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle23) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 1606 (AttachmentMsg "hello" [] ("69.409","32.456"))
+            ,SENDMSG 1606 (AttachmentMsg "hello" [] ("69.409","32.456"))
+          ]
+    
     describe "(startApp >>= runServ)" $ do
       it "work with empty update list" $ do
         actions <-

@@ -81,5 +81,17 @@ handle17 = handle1 {getUpdates = getUpdatesTest json14}
 
 handle18 = handle1 {getUpdates = getUpdatesTest json15}
 
+handle19 = handle1 {getUpdates = getUpdatesTest json16}
+
+handle20 = handle1 {getUpdates = getUpdatesTest json17}
+
+handle21 = handle1 {getUpdates = getUpdatesTest json18}
+
+handle22 = handle1 {getUpdates = getUpdatesTest json19}
+
+handle23 = handle1 {getUpdates = getUpdatesTest json20}
+
+
+
 
 
