@@ -42,13 +42,11 @@ testVk = do
           [] `shouldThrow`
         (== (CheckGetServerResponseException $
              "UNKNOWN RESPONSE:" ++ show json6))
-    describe "(startApp >>= runServ)" $ do
+    describe "(runServ after startApp)" $ do
       it "work with empty update list" $ do
         actions <-
           execStateT
-            (evalStateT
-               (startApp handle0 >>= runServ handle0)
-               initialDB1)
+               (startApp handle0 >>= \servInfo -> evalStateT (runServ handle0) (servInfo,initialDB1))
             []
         reverse actions `shouldBe`
           [ LOGMSG
@@ -71,9 +69,7 @@ testVk = do
       it "work with singleton update list with text msg" $ do
         actions <-
           execStateT
-            (evalStateT
-               (startApp handle2 >>= runServ handle2)
-               initialDB1)
+               (startApp handle2 >>= \servInfo -> evalStateT (runServ handle2) (servInfo,initialDB1))
             []
         reverse actions `shouldBe`
           [ LOGMSG
@@ -110,9 +106,7 @@ testVk = do
       it "work with singleton update list with sticker msg " $ do
         actions <-
           execStateT
-            (evalStateT
-               (startApp handle5 >>= runServ handle5)
-               initialDB1)
+            (startApp handle5 >>= \servInfo -> evalStateT (runServ handle5) (servInfo,initialDB1))
             []
         reverse actions `shouldBe`
           [ LOGMSG
@@ -146,17 +140,13 @@ testVk = do
            ])
       it "throw CheckGetUpdatesException with error answer" $
         evalStateT
-          (evalStateT
-             (startApp handle6 >>= runServ handle6)
-             initialDB1)
+             (startApp handle6 >>= \servInfo -> evalStateT (runServ handle6) (servInfo,initialDB1))
           [] `shouldThrow`
         (== (CheckGetUpdatesResponseException $
              "NEGATIVE RESPONSE:" ++ show json5))
       it "throw CheckGetUpdatesException with unknown answer" $
         evalStateT
-          (evalStateT
-             (startApp handle7 >>= runServ handle7)
-             initialDB1)
+             (startApp handle7 >>= \servInfo -> evalStateT (runServ handle7) (servInfo,initialDB1))
           [] `shouldThrow`
         (== (CheckGetUpdatesResponseException $
              "UNKNOWN RESPONSE:" ++ show json6))

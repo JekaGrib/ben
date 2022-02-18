@@ -14,7 +14,7 @@ import Vk.App.PrepareAttachment (getAttachmentString)
 import qualified Vk.App.PrepareAttachment (Handle,makeH)
 import Control.Monad.Except (runExceptT)
 import Control.Monad.Catch (MonadCatch(catch))
-import Control.Monad.State ( StateT, gets, lift, modify, replicateM_,MonadState,forever,evalStateT)
+import Control.Monad.State ( lift,replicateM_,forever,evalStateT)
 import Data.Aeson (decode, encode)
 import qualified Data.ByteString.Lazy as LBS
 import Data.List (intercalate)
@@ -41,6 +41,7 @@ import Vk.Oops
   , throwAndLogEx
   )
 import Vk.Types
+import Vk.AppT (AppT,MonadStateTwo(..))
 
 data Handle m =
   Handle
@@ -63,29 +64,6 @@ makeH conf logH = Handle
   (sendKeyb' conf)
   (Vk.App.PrepareAttachment.makeH conf logH)
 
---class (MonadCatch m,MonadTrans t,MonadState ServerInfo (t m),MonadState MapUserN (t m)) => MonadCatch m
-
---data T m a = StateT ServerInfo (StateT MapUserN m a)
-
-type AppT = StateT (ServerInfo,MapUserN) 
-
-class (MonadState (s1,s2) m) => MonadStateTwo s1 s2 m | m -> s1 s2 where
-  get1 :: m s1
-  get2 :: m s2
-  put1 :: s1 -> m ()
-  put2 :: s2 -> m ()
-  modify1 :: (s1 -> s1) -> m ()
-  modify2 :: (s2 -> s2) -> m ()
-  
-instance (Monad m) => MonadStateTwo ServerInfo MapUserN (StateT (ServerInfo,MapUserN) m) where
-  get1 = gets fst
-  get2 = gets snd
-  put1 s1 = modify (\(_,s2) -> (s1,s2))
-  put2 s2 = modify (\(s1,_) -> (s1,s2))
-  modify1 f = modify (\(s1,s2) -> (f s1,s2))
-  modify2 f = modify (\(s1,s2) -> (s1,f s2))
-  
-
 
 -- logic functions:
 run :: (MonadCatch m) => Handle m -> MapUserN -> m ()
@@ -95,12 +73,6 @@ run h initialDB = do
 
 startApp ::(MonadCatch m) => Handle m -> m ServerInfo
 startApp h = getServInfoAndCheckResp h
-
---myEvalStateT :: StateT ServerInfo m () -> ServerInfo -> m ()
---myEvalStateT stT servInfo = evalStateT stT servInfo
-
---runMyServ :: (MonadCatch m) => Handle m -> StateT ServerInfo (StateT MapUserN m) ()
---runMyServ = runServ
 
 runServ :: (MonadCatch m) => Handle m -> AppT m ()
 runServ h = do
