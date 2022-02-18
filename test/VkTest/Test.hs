@@ -46,7 +46,7 @@ testVk = do
       it "work with empty update list" $ do
         actions <-
           execStateT
-               (startApp h initialDB >>= evalStateT runServ)
+               (startApp handle0 initialDB1 >>= evalStateT (runServ handle0))
             []
         reverse actions `shouldBe`
           [ LOGMSG
@@ -69,7 +69,7 @@ testVk = do
       it "work with singleton update list with text msg" $ do
         actions <-
           execStateT
-               (startApp handle2 >>= \servInfo -> evalStateT (runServ handle2) (servInfo,initialDB1))
+               (startApp handle2 initialDB1 >>= evalStateT (runServ handle2))
             []
         reverse actions `shouldBe`
           [ LOGMSG
@@ -106,7 +106,7 @@ testVk = do
       it "work with singleton update list with sticker msg " $ do
         actions <-
           execStateT
-            (startApp handle5 >>= \servInfo -> evalStateT (runServ handle5) (servInfo,initialDB1))
+            (startApp handle5 initialDB1 >>= evalStateT (runServ handle5))
             []
         reverse actions `shouldBe`
           [ LOGMSG
@@ -140,13 +140,13 @@ testVk = do
            ])
       it "throw CheckGetUpdatesException with error answer" $
         evalStateT
-             (startApp handle6 >>= \servInfo -> evalStateT (runServ handle6) (servInfo,initialDB1))
+             (startApp handle6 initialDB1 >>= evalStateT (runServ handle6))
           [] `shouldThrow`
         (== (CheckGetUpdatesResponseException $
              "NEGATIVE RESPONSE:" ++ show json5))
       it "throw CheckGetUpdatesException with unknown answer" $
         evalStateT
-             (startApp handle7 >>= \servInfo -> evalStateT (runServ handle7) (servInfo,initialDB1))
+             (startApp handle7 initialDB1 >>= evalStateT (runServ handle7))
           [] `shouldThrow`
         (== (CheckGetUpdatesResponseException $
              "UNKNOWN RESPONSE:" ++ show json6))
