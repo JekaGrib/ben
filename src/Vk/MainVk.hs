@@ -4,7 +4,6 @@
 
 module Vk.MainVk where
 
-import Control.Monad.State (evalStateT)
 import qualified Data.Map as Map (fromList)
 import Vk.App (run)
 import qualified Vk.App (makeH)
@@ -21,5 +20,5 @@ mainVk = do
         LogHandle (LogConfig (cPriority config)) (logger currLogPath)
   let handle = Vk.App.makeH config handleLog
   putStrLn "App started"
-  evalStateT (run handle) (Map.fromList [])
+  run handle (Map.fromList [])
   
