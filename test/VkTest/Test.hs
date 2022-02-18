@@ -193,7 +193,8 @@ testVk = do
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
             ,LOG WARNING
-            ,SENDMSG 1606 (TextMsg "I`m sorry, I can`t work with forward messages, so I will ignore this message")]
+            ,SENDMSG 1606 (TextMsg "I`m sorry, I can`t work with forward messages, so I will ignore this message")
+            ]
     it "work with singleton update list with GEO msg" $ do 
         actions <-
           execStateT
@@ -214,7 +215,125 @@ testVk = do
             ,SENDMSG 1606 (AttachmentMsg "hello" [] ("69.409","32.456"))
             ,SENDMSG 1606 (AttachmentMsg "hello" [] ("69.409","32.456"))
           ]
-    
+    it "work with singleton update list with GEO msg with audio attachment" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle24) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("69.409","32.456"))
+            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("69.409","32.456"))
+          ]
+    it "work with singleton update list with GEO msg with audio attachment with text" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle25) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("69.409","32.456"))
+            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("69.409","32.456"))
+          ]
+    it "work with singleton update list with GEO msg with photo attachment with text" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle26) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+          , GOTPhotoSERVER 1606
+          , GOTOURL "https:photo"
+          , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
+          , SAVEPhotoONSERV $
+            LoadPhotoResp 24 "anyHash" "anyPhotoSring"
+          , SENDMSG 1606 (AttachmentMsg "hello" ["photo50_25"] ("69.409","32.456"))
+          , SENDMSG 1606 (AttachmentMsg "hello" ["photo50_25"] ("69.409","32.456"))
+          ]
+    it "work with singleton update list with GEO forward msg (ignore)" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle27) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,LOG WARNING
+            ,SENDMSG 123 (TextMsg "I`m sorry, I can`t work with forward messages, so I will ignore this message")
+            ]
+    it "work with update list with several text msgs from different users" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle28) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 123 (TextMsg "love")
+            ,SENDMSG 123 (TextMsg "love")
+            ,SENDMSG 555 (TextMsg "hello")
+            ,SENDMSG 555 (TextMsg "hello")
+          ]
+    it "work with update list with several attachment msgs from different users" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle29) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 123 (AttachmentMsg "" ["audio1606_3483"] ("",""))
+            ,SENDMSG 123 (AttachmentMsg "" ["audio1606_3483"] ("",""))
+            , GOTPhotoSERVER 1606
+            , GOTOURL "https:photo"
+            , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
+            , SAVEPhotoONSERV $
+              LoadPhotoResp 24 "anyHash" "anyPhotoSring"            
+            ,SENDMSG 1606 (AttachmentMsg "" ["photo50_25"] ("",""))
+            ,SENDMSG 1606 (AttachmentMsg "" ["photo50_25"] ("",""))
+          ]
+    it "work with update list with several attachments in one msg" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle30) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            , GOTPhotoSERVER 1606
+            , GOTOURL "https:photo"
+            , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
+            , SAVEPhotoONSERV $
+              LoadPhotoResp 24 "anyHash" "anyPhotoSring"
+            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483","photo50_25"] ("",""))
+            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483","photo50_25"] ("",""))
+          ]
+    it "work with update list with several attachments with text in one msg" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle31) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            , GOTPhotoSERVER 1606
+            , GOTOURL "https:photo"
+            , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
+            , SAVEPhotoONSERV $
+              LoadPhotoResp 24 "anyHash" "anyPhotoSring"
+            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("",""))
+            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("",""))
+          ]
+    it "work with update list with several attachments with text in one GEO msg" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle32) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            , GOTPhotoSERVER 1606
+            , GOTOURL "https:photo"
+            , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
+            , SAVEPhotoONSERV $
+              LoadPhotoResp 24 "anyHash" "anyPhotoSring"
+            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("69.409","32.456"))
+            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("69.409","32.456"))
+          ]
     describe "(startApp >>= runServ)" $ do
       it "work with empty update list" $ do
         actions <-

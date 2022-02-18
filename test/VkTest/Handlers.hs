@@ -91,7 +91,23 @@ handle22 = handle1 {getUpdates = getUpdatesTest json19}
 
 handle23 = handle1 {getUpdates = getUpdatesTest json20}
 
+handle24 = handle1 {getUpdates = getUpdatesTest json21}
 
+handle25 = handle1 {getUpdates = getUpdatesTest json22}
+
+handle26 = handle1 {getUpdates = getUpdatesTest json23}
+
+handle27 = handle1 {getUpdates = getUpdatesTest json24}
+
+handle28 = handle1 {getUpdates = getUpdatesTest json25}
+
+handle29 = handle1 {getUpdates = getUpdatesTest json26}
+
+handle30 = handle1 {getUpdates = getUpdatesTest json27}
+
+handle31 = handle1 {getUpdates = getUpdatesTest json28}
+
+handle32 = handle1 {getUpdates = getUpdatesTest json29}
 
 
 
