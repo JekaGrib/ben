@@ -17,7 +17,7 @@ import Control.Monad.Catch (throwM)
 
 
 
-handle1 :: Handle (StateT [MockAction] IO)
+handle0,handle1 :: Handle (StateT [MockAction] IO)
 handle1 =
   Handle
     { hConf = config1
@@ -30,6 +30,8 @@ handle1 =
     , saveDocOnServ = saveDocOnServTest json7
     , goToUrl = goToUrlTest "anyPhoto"
     }
+
+handle0 = handle1 {hLog = handLogWarn}
 
 getPhotoServerTest :: Response -> UserId -> StateT [MockAction] IO Response
 getPhotoServerTest json usId = StateT $ \s -> return (json, GOTPhotoSERVER usId : s)
@@ -101,7 +103,7 @@ handle8 = handle1 {savePhotoOnServ = savePhotoOnServTest json1}
 
 handle9 = handle1 {getDocServer = getDocServerTest json1}
 
-handle10,handle11,handle12,handle13,handle14,handle15,handle16,handle17,handle18 :: Handle (StateT [MockAction] IO)
+handle10,handle11,handle12,handle13,handle14,handle15,handle16,handle17,handle18,handle19 :: Handle (StateT [MockAction] IO)
 handle10 = handle1 {loadDocToServ = loadDocToServTest json1}
 
 handle11 = handle1 {saveDocOnServ = saveDocOnServTest json1}
@@ -119,3 +121,8 @@ handle16 = handle1 {getDocServer = getDocServerTestEx}
 handle17 = handle1 {loadDocToServ = loadDocToServTestEx}
 
 handle18 = handle1 {saveDocOnServ = saveDocOnServTestEx}
+
+handle19 = handle2 {hLog = handLogWarn}
+
+handle20 :: Handle (StateT [MockAction] IO)
+handle20 = handle3 {hLog = handLogWarn}
