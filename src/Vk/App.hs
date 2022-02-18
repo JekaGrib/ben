@@ -67,12 +67,15 @@ makeH conf logH = Handle
 
 -- logic functions:
 run :: (MonadCatch m) => Handle m -> MapUserN -> m ()
-run h initialDB = do
-  servInfo <- startApp h 
-  evalStateT (forever (runServ h)) (servInfo,initialDB)
+run h initialDB = startApp h initialDB >>= evalStateT (foreverRunServ h)
 
-startApp ::(MonadCatch m) => Handle m -> m ServerInfo
-startApp h = getServInfoAndCheckResp h
+startApp :: (MonadCatch m) => Handle m -> MapUserN -> m (ServerInfo,MapUserN)
+startApp h initialDB = do
+  servInfo <- getServInfoAndCheckResp h
+  return (servInfo,initialDB)
+
+foreverRunServ :: (MonadCatch m) => Handle m -> AppT m ()
+foreverRunServ h = forever (runServ h)
 
 runServ :: (MonadCatch m) => Handle m -> AppT m ()
 runServ h = do

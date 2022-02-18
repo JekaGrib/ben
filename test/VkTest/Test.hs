@@ -42,11 +42,11 @@ testVk = do
           [] `shouldThrow`
         (== (CheckGetServerResponseException $
              "UNKNOWN RESPONSE:" ++ show json6))
-    describe "(runServ after startApp)" $ do
+    describe "(startApp >>= runServ)" $ do
       it "work with empty update list" $ do
         actions <-
           execStateT
-               (startApp handle0 >>= \servInfo -> evalStateT (runServ handle0) (servInfo,initialDB1))
+               (startApp h initialDB >>= evalStateT runServ)
             []
         reverse actions `shouldBe`
           [ LOGMSG
