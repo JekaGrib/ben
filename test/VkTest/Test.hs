@@ -125,6 +125,46 @@ testVk = do
             ,SENDMSG 1606 (AttachmentMsg "" ["video-4144_1714"] ("",""))
             ,SENDMSG 1606 (AttachmentMsg "" ["video-4144_1714"] ("",""))
           ]
+      it "work with singleton update list with audio attachment msg" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle15) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("",""))
+            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("",""))
+          ]
+      it "work with singleton update list with market attachment msg" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle16) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 1606 (AttachmentMsg "" ["market-1196_3822"] ("",""))
+            ,SENDMSG 1606 (AttachmentMsg "" ["market-1196_3822"] ("",""))
+          ]
+      it "work with singleton update list with wall attachment msg" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle17) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 1606 (AttachmentMsg "" ["wall-6799_4584"] ("",""))
+            ,SENDMSG 1606 (AttachmentMsg "" ["wall-6799_4584"] ("",""))
+          ]
+      it "work with singleton update list with poll attachment msg" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle18) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 1606 (AttachmentMsg "" ["poll-6799_3839"] ("",""))
+            ,SENDMSG 1606 (AttachmentMsg "" ["poll-6799_3839"] ("",""))
+          ]
     describe "(startApp >>= runServ)" $ do
       it "work with empty update list" $ do
         actions <-

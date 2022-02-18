@@ -73,4 +73,13 @@ handle13 = handle1 {getUpdates = getUpdatesTest json10,hPrepAttach = PrAtt.handl
 
 handle14 = handle1 {getUpdates = getUpdatesTest json11}
 
+handle15 = handle1 {getUpdates = getUpdatesTest json12}
+
+handle16 = handle1 {getUpdates = getUpdatesTest json13}
+
+handle17 = handle1 {getUpdates = getUpdatesTest json14}
+
+handle18 = handle1 {getUpdates = getUpdatesTest json15}
+
+
 
