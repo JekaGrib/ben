@@ -11,11 +11,11 @@
 module Vk.AppT where
 
 import Control.Monad.State ( StateT, gets,  modify,MonadState)
-import Vk.Api.Response (ServerInfo)
+import Vk.Api.Response (ServerInfo(..))
 import Vk.Types (MapUserN)
 
 
-type AppT = StateT (ServerInfo,MapUserN) 
+type AppT = StateT (TryServerInfo,MapUserN) 
 
 class (MonadState (s1,s2) m) => MonadStateTwo s1 s2 m | m -> s1 s2 where
   get1 :: m s1
@@ -25,7 +25,7 @@ class (MonadState (s1,s2) m) => MonadStateTwo s1 s2 m | m -> s1 s2 where
   modify1 :: (s1 -> s1) -> m ()
   modify2 :: (s2 -> s2) -> m ()
   
-instance (Monad m) => MonadStateTwo ServerInfo MapUserN (StateT (ServerInfo,MapUserN) m) where
+instance (Monad m) => MonadStateTwo TryServerInfo MapUserN (StateT (TryServerInfo,MapUserN) m) where
   get1 = gets fst
   get2 = gets snd
   put1 s1 = modify (\(_,s2) -> (s1,s2))
@@ -33,3 +33,33 @@ instance (Monad m) => MonadStateTwo ServerInfo MapUserN (StateT (ServerInfo,MapU
   modify1 f = modify (\(s1,s2) -> (f s1,s2))
   modify2 f = modify (\(s1,s2) -> (s1,f s2))
   
+data TryServerInfo = 
+  FirstTry ServerInfo
+  | SecondTry ServerInfo
+  | ThirdTry ServerInfo
+    deriving (Eq)
+
+nextTry :: TryServerInfo -> TryServerInfo
+nextTry (FirstTry sI) = SecondTry sI
+nextTry (SecondTry sI) = ThirdTry sI
+nextTry (ThirdTry sI) = ThirdTry sI
+
+resetTry :: TryServerInfo -> TryServerInfo
+resetTry (FirstTry sI) = (FirstTry sI)
+resetTry (SecondTry sI) = (FirstTry sI)
+resetTry (ThirdTry sI) = (FirstTry sI)
+
+changeServInfo :: ServerInfo -> TryServerInfo -> TryServerInfo
+changeServInfo sI (FirstTry _) = FirstTry sI
+changeServInfo sI (SecondTry _) = SecondTry sI
+changeServInfo sI (ThirdTry _) = ThirdTry sI
+
+changeTs :: Integer -> TryServerInfo -> TryServerInfo
+changeTs ts (FirstTry sI) = (FirstTry sI{tsSI=ts})
+changeTs ts (SecondTry sI) = (SecondTry sI{tsSI=ts})
+changeTs ts (ThirdTry sI) = (ThirdTry sI{tsSI=ts})
+
+unTry ::  TryServerInfo -> ServerInfo
+unTry (FirstTry sI) = sI
+unTry (SecondTry sI) = sI
+unTry (ThirdTry sI) = sI

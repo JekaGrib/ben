@@ -1,5 +1,5 @@
-{-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
+--{-# OPTIONS_GHC -Werror #-}
+--{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module VkTest.ResponseExample where
@@ -20,7 +20,7 @@ json4 = "{\"response\":626}"
 json5 =
   "{\"error\":{\"error_code\":5,\"error_msg\":\"User authorization failed: invalid access_token (4).\",\"request_params\":[{\"key\":\"user_id\",\"value\":\"1606\"},{\"key\":\"random_id\",\"value\":\"0\"},{\"key\":\"v\",\"value\":\"5.103\"},{\"key\":\"method\",\"value\":\"messages.send\"},{\"key\":\"oauth\",\"value\":\"1\"}]}}"
 
-json6 = "lalala"
+json6 = "blabla"
 
 json7 =
   "{\"ts\":\"304\",\"updates\":[{\"type\":\"message_new\",\"object\":{\"date\":1594932378,\"from_id\":1606,\"id\":629,\"out\":0,\"peer_id\":1606,\"text\":\"\",\"conversation_message_id\":594,\"fwd_messages\":[],\"important\":false,\"random_id\":0,\"attachments\":[{\"type\":\"sticker\",\"sticker\":{\"product_id\":279,\"sticker_id\":9014,\"images\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64},{\"url\":\"https:sticker\",\"width\":128,\"height\":128},{\"url\":\"https:sticker\",\"width\":256,\"height\":256},{\"url\":\"https:sticker352\",\"width\":352,\"height\":352},{\"url\":\"https:sticker\",\"width\":512,\"height\":512}],\"images_with_background\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64},{\"url\":\"https:sticker\",\"width\":128,\"height\":128},{\"url\":\"https:sticker256b\",\"width\":256,\"height\":256},{\"url\":\"https:sticker352b\",\"width\":352,\"height\":352},{\"url\":\"https:sticker512b\",\"width\":512,\"height\":512}]}}],\"is_hidden\":false},\"group_id\":19495,\"event_id\":\"123\"}]}"
@@ -93,3 +93,20 @@ json28 =
 
 json29 = 
   "{\"ts\":\"641\",\"updates\":[{\"type\":\"message_new\",\"object\":{\"date\":1645211910,\"from_id\":1606,\"id\":1451,\"out\":0,\"attachments\":[{\"type\":\"audio\",\"audio\":{\"artist\":\"Deftones\",\"id\":3483,\"owner_id\":1606,\"title\":\"Gauze\",\"duration\":281,\"url\":\"https:audio\",\"date\":1425013158,\"lyrics_id\":45597212,\"genre_id\":18,\"is_hq\":true,\"short_videos_allowed\":false,\"stories_allowed\":false,\"stories_cover_allowed\":false}},{\"type\":\"photo\",\"photo\":{\"album_id\":282858707,\"date\":1644582624,\"id\":457240244,\"owner_id\":1606,\"access_key\":\"321\",\"sizes\":[{\"height\":17,\"url\":\"https:photo\",\"type\":\"s\",\"width\":17},{\"height\":17,\"url\":\"https:photo\",\"type\":\"m\",\"width\":17},{\"height\":17,\"url\":\"https:photo\",\"type\":\"x\",\"width\":17},{\"height\":17,\"url\":\"https:photo\",\"type\":\"o\",\"width\":17}],\"text\":\"\"}}],\"conversation_message_id\":1415,\"fwd_messages\":[],\"geo\":{\"coordinates\":{\"latitude\":69.409,\"longitude\":32.456},\"place\":{\"city\":\"anyCity\",\"country\":\"anyCountry\",\"title\":\"anyTitle\"},\"type\":\"point\"},\"important\":false,\"is_hidden\":false,\"peer_id\":1606,\"random_id\":0,\"text\":\"hello\"},\"group_id\":1949,\"event_id\":\"123\"}]}"
+
+json30,json31,json32,json33,json34 :: Response
+json30 =
+  "{\"ts\":\"641\",\"updates\":[{\"blabla\":\"blabla\"},{\"type\":\"message_new\",\"object\":{\"date\":1645211910,\"from_id\":1606,\"id\":1451,\"out\":0,\"attachments\":[{\"type\":\"audio\",\"audio\":{\"artist\":\"Deftones\",\"id\":3483,\"owner_id\":1606,\"title\":\"Gauze\",\"duration\":281,\"url\":\"https:audio\",\"date\":1425013158,\"lyrics_id\":45597212,\"genre_id\":18,\"is_hq\":true,\"short_videos_allowed\":false,\"stories_allowed\":false,\"stories_cover_allowed\":false}}],\"conversation_message_id\":1415,\"fwd_messages\":[],\"important\":false,\"is_hidden\":false,\"peer_id\":1606,\"random_id\":0,\"text\":\"\"},\"group_id\":1949,\"event_id\":\"123\"}]}"
+
+json31 =
+  "{\"ts\":\"304\",\"updates\":[{\"type\":\"message_new\",\"object\":{\"date\":1594932378,\"from_id\":1606,\"id\":629,\"out\":0,\"peer_id\":1606,\"text\":\"hello\",\"conversation_message_id\":594,\"fwd_messages\":[],\"important\":false,\"random_id\":0,\"attachments\":[{\"type\":\"sticker\",\"sticker\":{\"product_id\":279,\"sticker_id\":9014,\"images\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64},{\"url\":\"https:sticker\",\"width\":128,\"height\":128},{\"url\":\"https:sticker\",\"width\":256,\"height\":256},{\"url\":\"https:sticker352\",\"width\":352,\"height\":352},{\"url\":\"https:sticker\",\"width\":512,\"height\":512}],\"images_with_background\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64},{\"url\":\"https:sticker\",\"width\":128,\"height\":128},{\"url\":\"https:sticker256b\",\"width\":256,\"height\":256},{\"url\":\"https:sticker352b\",\"width\":352,\"height\":352},{\"url\":\"https:sticker512b\",\"width\":512,\"height\":512}]}}],\"is_hidden\":false},\"group_id\":19495,\"event_id\":\"123\"}]}"
+
+json32 =
+  "{\"ts\":\"641\",\"updates\":[{\"type\":\"message_new\",\"object\":{\"date\":1645211910,\"from_id\":1606,\"id\":1451,\"out\":0,\"attachments\":[{\"type\":\"audio\",\"audio\":{\"artist\":\"Deftones\",\"id\":3483,\"owner_id\":1606,\"title\":\"Gauze\",\"duration\":281,\"url\":\"https:audio\",\"date\":1425013158,\"lyrics_id\":45597212,\"genre_id\":18,\"is_hq\":true,\"short_videos_allowed\":false,\"stories_allowed\":false,\"stories_cover_allowed\":false}},{\"type\":\"sticker\",\"sticker\":{\"product_id\":279,\"sticker_id\":9014,\"images\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64},{\"url\":\"https:sticker\",\"width\":128,\"height\":128}],\"images_with_background\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64}]}}],\"conversation_message_id\":1415,\"fwd_messages\":[],\"important\":false,\"is_hidden\":false,\"peer_id\":1606,\"random_id\":0,\"text\":\"\"},\"group_id\":1949,\"event_id\":\"123\"}]}"
+
+json33 = "{\"blabla\":\"blabla\"}"
+
+json34 = "{\"fail\":2}"
+
+--au = {\"type\":\"audio\",\"audio\":{\"artist\":\"Deftones\",\"id\":3483,\"owner_id\":1606,\"title\":\"Gauze\",\"duration\":281,\"url\":\"https:audio\",\"date\":1425013158,\"lyrics_id\":45597212,\"genre_id\":18,\"is_hq\":true,\"short_videos_allowed\":false,\"stories_allowed\":false,\"stories_cover_allowed\":false}}],\"conversation_message_id\":1415,\"fwd_messages\":[],\"important\":false,\"is_hidden\":false,\"peer_id\":1606,\"random_id\":0,\"text\":\"\"}
+--st = {\"type\":\"sticker\",\"sticker\":{\"product_id\":279,\"sticker_id\":9014,\"images\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64},{\"url\":\"https:sticker\",\"width\":128,\"height\":128}],\"images_with_background\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64}]}}

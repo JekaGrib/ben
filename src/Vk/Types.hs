@@ -7,7 +7,6 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.Map (Map)
 import qualified Data.Text as T
-import Vk.Api.Response ( ServerInfo(..),Update(..) )
 
 type N = Int
 
@@ -22,9 +21,6 @@ type MessageId = Integer
 type UpdateId = Integer
 
 type Offset = Integer
-
-type ServerAndMapUserN = (ServerInfo, MapUserN)
-type UpdatesAndServer = ([Update],ServerInfo)
 
 type StickerId = Integer
 
@@ -75,3 +71,4 @@ data MSG
 newtype ToUserId =
   ToUserId UserId
   deriving (Eq, Show)
+

@@ -10,9 +10,10 @@ import Vk.Types
 import qualified Data.Map as Map
 import Vk.Oops (VKBotException(..))
 import VkTest.ResponseExample
-import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow)
+import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow,shouldNotBe)
 import VkTest.Handlers
-import Control.Monad.State (evalStateT,execStateT)
+import VkTest.Oops
+import Control.Monad.State (evalStateT,execStateT,runStateT)
 import VkTest.Types
 import Vk.Logger ( Priority(..))
 import Vk.Api.Response (ServerInfo(..),LoadPhotoResp(..),LoadDocResp(..))
@@ -185,7 +186,7 @@ testVk = do
             ,SENDMSG 1606 (AttachmentMsg "hello" ["market-1196_3822"] ("",""))
             ,SENDMSG 1606 (AttachmentMsg "hello" ["market-1196_3822"] ("",""))
           ]
-      it "work with forward msg (ignore)" $ do 
+      it "work with forward msg (IGNORE)" $ do 
         actions <-
           execStateT
                (evalStateT (runServ handle21) (emptyServInf,initialDB1))
@@ -250,7 +251,7 @@ testVk = do
           , SENDMSG 1606 (AttachmentMsg "hello" ["photo50_25"] ("69.409","32.456"))
           , SENDMSG 1606 (AttachmentMsg "hello" ["photo50_25"] ("69.409","32.456"))
           ]
-    it "work with singleton update list with GEO forward msg (ignore)" $ do 
+    it "work with singleton update list with GEO forward msg (IGNORE)" $ do 
         actions <-
           execStateT
                (evalStateT (runServ handle27) (emptyServInf,initialDB1))
@@ -334,6 +335,47 @@ testVk = do
             ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("69.409","32.456"))
             ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("69.409","32.456"))
           ]
+    it "work with update list with Unknown update (IGNORE only unknown update)" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle33) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,LOG WARNING
+            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("",""))
+            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("",""))
+          ]
+    it "work with update list with sticker msg with text (IGNORE) " $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle34) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,LOG WARNING
+          ]
+    it "work with update list with sticker and other attachment in one msg (IGNORE) " $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle35) (emptyServInf,initialDB1))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,LOG WARNING
+          ]
+    it "throw CheckGetUpdatesException with unknown getUpdates answer" $  
+      runStateT (evalStateT (runServ handle36) (emptyServInf,initialDB1)) [] 
+        `shouldThrow`
+          isCheckGetUpdatesResponseException
+    it "throw CheckGetUpdatesException with error getUpdates answer" $ 
+      runStateT (evalStateT (runServ handle6) (emptyServInf,initialDB1)) [] 
+        `shouldThrow`
+          isCheckGetUpdatesResponseException
+    it "change server info with fail 2 getUpdates answer" $ do 
+      (newServInfo,_) <- evalStateT (execStateT (runServ handle37) (emptyServInf,initialDB1)) [] 
+      newServInfo  `shouldNotBe`
+          emptyServInf
     describe "(startApp >>= runServ)" $ do
       it "work with empty update list" $ do
         actions <-
@@ -430,13 +472,13 @@ testVk = do
            , LOGMSG DEBUG "Get response: \"{\\\"response\\\":626}\""
            , LOGMSG INFO "Sticker_id 9014 was sent to user 1606"
            ])
-      it "throw CheckGetUpdatesException with error answer" $
+      it "throw CheckGetUpdatesException with error getUpdates answer" $
         evalStateT
              (startApp handle6 initialDB1 >>= evalStateT (runServ handle6))
           [] `shouldThrow`
         (== (CheckGetUpdatesResponseException $
              "NEGATIVE RESPONSE:" ++ show json5))
-      it "throw CheckGetUpdatesException with unknown answer" $
+      it "throw CheckGetUpdatesException with unknown getUpdates answer" $
         evalStateT
              (startApp handle7 initialDB1 >>= evalStateT (runServ handle7))
           [] `shouldThrow`

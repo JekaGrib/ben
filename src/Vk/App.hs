@@ -41,7 +41,8 @@ import Vk.Oops
   , throwAndLogEx
   )
 import Vk.Types
-import Vk.AppT (AppT,MonadStateTwo(..))
+import Vk.AppT (AppT,MonadStateTwo(..),TryServerInfo(..),nextTry,resetTry,changeTs,changeServInfo,unTry)
+import Control.Applicative (empty)
 
 data Handle m =
   Handle
@@ -67,12 +68,13 @@ makeH conf logH = Handle
 
 -- logic functions:
 run :: (MonadCatch m) => Handle m -> MapUserN -> m ()
-run h initialDB = startApp h initialDB >>= evalStateT (foreverRunServ h)
+run h initialDB = 
+  startApp h initialDB >>= evalStateT (foreverRunServ h)
 
-startApp :: (MonadCatch m) => Handle m -> MapUserN -> m (ServerInfo,MapUserN)
+startApp :: (MonadCatch m) => Handle m -> MapUserN -> m (TryServerInfo,MapUserN)
 startApp h initialDB = do
   servInfo <- getServInfoAndCheckResp h
-  return (servInfo,initialDB)
+  return (FirstTry servInfo,initialDB)
 
 foreverRunServ :: (MonadCatch m) => Handle m -> AppT m ()
 foreverRunServ h = forever (runServ h)
@@ -98,12 +100,12 @@ getUpdAndCheckResp ::
      (MonadCatch m) => Handle m -> AppT m [Update]
 getUpdAndCheckResp h  = do
   json <- getUpdAndLog h 
-  checkAndPullUpdates h json 0
+  checkAndPullUpdates h json
 
 getUpdAndLog ::
      (MonadCatch m) => Handle m -> AppT m Response
 getUpdAndLog h = do
-  sI@(ServerInfo key server ts) <- get1
+  sI@(ServerInfo key server ts) <- (unTry <$> get1)
   lift $ logDebug (hLog h) $
     "Send request to getUpdates: " ++
     T.unpack server ++
@@ -132,8 +134,6 @@ chooseActionOfUpd h upd = do
         (hLog h)
         ("There is UNKNOWN UPDATE. BOT WILL IGNORE IT. " ++ show upd )
 
-getNState :: UserId -> MapUserN -> Maybe NState
-getNState = Map.lookup
 
 chooseActionOfNState ::
      (MonadCatch m)
@@ -141,7 +141,7 @@ chooseActionOfNState ::
   -> AboutObj
   -> AppT m ()
 chooseActionOfNState h obj@(AboutObj usId _ _ _ _ _ _) = do
-  nState <- (getNState usId <$> get2)
+  nState <- (Map.lookup usId <$> get2)
   case nState of
     Just (Left (OpenRepeat oldN)) -> do
       lift $ logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode")
@@ -202,6 +202,10 @@ chooseActionOfObject h obj currN =
       lift $ replicateM_ currN $ do
         let msg = StickerMsg idSt
         sendMsgAndCheckResp h usId msg
+    AboutObj _ _ _ _ [] [StickerAttachment _] _ ->
+      lift $ logWarning
+          (hLog h)
+          ("There is unknown sticker message. Sticker can`t have text or geo. BOT WILL IGNORE IT. " ++ show obj)
     AboutObj _ _ _ _ [] _ _ -> lift $ chooseActionOfAttachs h currN obj
     AboutObj usId _ _ _ _ _ _ -> do
       lift $ logWarning
@@ -301,21 +305,12 @@ checkGetServResponse h json =
       return servInfo
 
 
-showServerInfo :: ServerInfo -> String
-showServerInfo = show
-
 checkAndPullUpdates ::
      (MonadCatch m)
   => Handle m
   -> Response
-  -> Counter
   -> AppT m [Update]
-checkAndPullUpdates h json count 
-  | count >= 4 = do
-      servInfo <- (showServerInfo <$> get1)
-      let ex = CheckGetUpdatesResponseException $ "More then three times getUpdates fail:" ++ show json ++ ". Server:" ++ servInfo
-      lift $ throwAndLogEx (hLog h) ex
-checkAndPullUpdates h json count =
+checkAndPullUpdates h json =
   case decode json of
     Nothing -> do
       let ex =
@@ -331,32 +326,32 @@ checkAndPullUpdates h json count =
       lift $ logWarning
           (hLog h)
           "FAIL. Long poll server key expired, need to request new key"
-      newServInfo <- lift $ getServInfoAndCheckResp h
-      put1 newServInfo
-      newJson <- getUpdAndLog h 
-      checkAndPullUpdates h newJson (count+1)
+      modify1 nextTry
+      checkTry h
+      putNewServerInfo h
+      return empty
     Just (FailAnswer 3) -> do
       lift $ logWarning
           (hLog h)
           "FAIL. Long poll server information is lost, need to request new key and ts"
-      newServInfo <- lift $ getServInfoAndCheckResp h
-      put1 newServInfo
-      newJson <- getUpdAndLog h 
-      checkAndPullUpdates h newJson (count+1)
+      modify1 nextTry
+      checkTry h
+      putNewServerInfo h
+      return empty
     Just FailTSAnswer {failFTSA = 1, tsFTSA = ts} -> do
       lift $ logWarning
           (hLog h)
           "FAIL number 1. Ts in request is wrong, need to use received ts"
-      modify1 (changeTs ts)
-      newJson <- getUpdAndLog h 
-      checkAndPullUpdates h  newJson (count+1)
+      modify1 (nextTry . changeTs ts)
+      checkTry h
+      return empty
     Just FailTSAnswer {tsFTSA = ts} -> do
       lift $ logWarning
           (hLog h)
           "FAIL. Ts in request is wrong, need to use received ts"
-      modify1 (changeTs ts)
-      newJson <- getUpdAndLog h 
-      checkAndPullUpdates h newJson (count+1)
+      modify1 (nextTry . changeTs ts)
+      checkTry h
+      return empty
     Just (FailAnswer _) -> do
       let ex =
             CheckGetUpdatesResponseException $
@@ -364,11 +359,26 @@ checkAndPullUpdates h json count =
       lift $ throwAndLogEx (hLog h) ex
     Just AnswerOk {updates = []} -> do
       lift $ logInfo (hLog h) "No new updates"
+      modify1 resetTry
       return []
     Just (AnswerOk ts upds) -> do
       lift $ logInfo (hLog h) "There is new updates list"
-      modify1 (changeTs ts)
+      modify1 (resetTry . changeTs ts)
       return upds
+
+putNewServerInfo :: (MonadCatch m) => Handle m -> AppT m ()
+putNewServerInfo h = do
+  servInfo <- lift $ getServInfoAndCheckResp h
+  modify1 (changeServInfo servInfo)
+
+checkTry :: (MonadCatch m) => Handle m -> AppT m ()
+checkTry h = do
+  trySI <- get1
+  case trySI of 
+    ThirdTry servInfo -> do
+      let ex = CheckGetUpdatesResponseException $ "More then two times getUpdates fail. ServerInfo:" ++ show servInfo
+      lift $ throwAndLogEx (hLog h) ex
+    _ -> return ()
 
 checkAndPullLatLong ::
      (MonadCatch m) => Handle m -> Maybe Geo -> m LatLong
@@ -520,8 +530,8 @@ chooseParamsForMsg (AttachmentMsg txt attachStrings (latStr, longStr)) =
 changeMapUserN :: UserId -> NState -> MapUserN -> MapUserN
 changeMapUserN = Map.insert
 
-changeTs :: Integer -> ServerInfo -> ServerInfo
-changeTs ts servInfo = servInfo {tsSI=ts}
+--changeTs :: Integer -> ServerInfo -> ServerInfo
+--changeTs ts servInfo = servInfo {tsSI=ts}
 
 checkButton :: AboutObj -> Maybe N
 checkButton obj =
