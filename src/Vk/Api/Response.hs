@@ -48,7 +48,7 @@ data Answer
       { failFA :: Integer
       }
   | FailTSAnswer
-      { failFTSA :: Integer
+      { failFTSA :: Maybe Integer
       , tsFTSA :: Integer
       }
   | ErrorAnswer
@@ -66,7 +66,7 @@ instance FromJSON Answer where
     withObject "AnswerOk" (\v -> AnswerOk <$> tryReadTs v <*> v .: "updates") val <|>
     withObject
       "FailTSAnswer"
-      (\v -> FailTSAnswer <$> v .: "fail" <*> tryReadTs v)
+      (\v -> FailTSAnswer <$> v .:? "fail" <*> tryReadTs v)
       val <|>
     withObject "FailAnswer" (\v -> FailAnswer <$> v .: "fail") val <|>
     withObject "ErrorAnswer" (\v -> ErrorAnswer <$> v .: "error") val

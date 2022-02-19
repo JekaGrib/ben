@@ -339,14 +339,14 @@ checkAndPullUpdates h json =
       checkTry h
       putNewServerInfo h
       return empty
-    Just FailTSAnswer {failFTSA = 1, tsFTSA = ts} -> do
+    Just (FailTSAnswer (Just failNum) ts) -> do
       lift $ logWarning
-          (hLog h)
-          "FAIL number 1. Ts in request is wrong, need to use received ts"
+          (hLog h) $ 
+          "FAIL number " ++ show failNum ++ ". Ts in request is wrong, need to use received ts"
       modify1 (nextTry . changeTs ts)
       checkTry h
       return empty
-    Just FailTSAnswer {tsFTSA = ts} -> do
+    Just (FailTSAnswer _ ts) -> do
       lift $ logWarning
           (hLog h)
           "FAIL. Ts in request is wrong, need to use received ts"

@@ -121,4 +121,14 @@ handle37 = handle1 {getUpdates = getUpdatesTest json34}
 
 handle38 = handle1 {getUpdates = getUpdatesTest json35}
 
+handle39 = handle1 {getUpdates = getUpdatesTest json36}
+
+handle40 = handle1 {getUpdates = getUpdatesTest json37}
+
+handle41 = handle1 {getUpdates = getUpdatesTest json38}
+
+handle42 = handle1 {getUpdates = getUpdatesTest json39}
+
+
+
 

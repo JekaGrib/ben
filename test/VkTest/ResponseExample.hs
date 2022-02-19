@@ -94,7 +94,7 @@ json28 =
 json29 = 
   "{\"ts\":\"641\",\"updates\":[{\"type\":\"message_new\",\"object\":{\"date\":1645211910,\"from_id\":1606,\"id\":1451,\"out\":0,\"attachments\":[{\"type\":\"audio\",\"audio\":{\"artist\":\"Deftones\",\"id\":3483,\"owner_id\":1606,\"title\":\"Gauze\",\"duration\":281,\"url\":\"https:audio\",\"date\":1425013158,\"lyrics_id\":45597212,\"genre_id\":18,\"is_hq\":true,\"short_videos_allowed\":false,\"stories_allowed\":false,\"stories_cover_allowed\":false}},{\"type\":\"photo\",\"photo\":{\"album_id\":282858707,\"date\":1644582624,\"id\":457240244,\"owner_id\":1606,\"access_key\":\"321\",\"sizes\":[{\"height\":17,\"url\":\"https:photo\",\"type\":\"s\",\"width\":17},{\"height\":17,\"url\":\"https:photo\",\"type\":\"m\",\"width\":17},{\"height\":17,\"url\":\"https:photo\",\"type\":\"x\",\"width\":17},{\"height\":17,\"url\":\"https:photo\",\"type\":\"o\",\"width\":17}],\"text\":\"\"}}],\"conversation_message_id\":1415,\"fwd_messages\":[],\"geo\":{\"coordinates\":{\"latitude\":69.409,\"longitude\":32.456},\"place\":{\"city\":\"anyCity\",\"country\":\"anyCountry\",\"title\":\"anyTitle\"},\"type\":\"point\"},\"important\":false,\"is_hidden\":false,\"peer_id\":1606,\"random_id\":0,\"text\":\"hello\"},\"group_id\":1949,\"event_id\":\"123\"}]}"
 
-json30,json31,json32,json33,json34,json35 :: Response
+json30,json31,json32,json33,json34,json35,json36,json37,json38,json39 :: Response
 json30 =
   "{\"ts\":\"641\",\"updates\":[{\"blabla\":\"blabla\"},{\"type\":\"message_new\",\"object\":{\"date\":1645211910,\"from_id\":1606,\"id\":1451,\"out\":0,\"attachments\":[{\"type\":\"audio\",\"audio\":{\"artist\":\"Deftones\",\"id\":3483,\"owner_id\":1606,\"title\":\"Gauze\",\"duration\":281,\"url\":\"https:audio\",\"date\":1425013158,\"lyrics_id\":45597212,\"genre_id\":18,\"is_hq\":true,\"short_videos_allowed\":false,\"stories_allowed\":false,\"stories_cover_allowed\":false}}],\"conversation_message_id\":1415,\"fwd_messages\":[],\"important\":false,\"is_hidden\":false,\"peer_id\":1606,\"random_id\":0,\"text\":\"\"},\"group_id\":1949,\"event_id\":\"123\"}]}"
 
@@ -110,6 +110,15 @@ json34 = "{\"fail\":2}"
 
 json35 = "{\"fail\":3}"
 
+json36 = "{\"ts\":25}"
+
+json37 = "{\"fail\":1,\"ts\":25}"
+
+json38 =
+  "{\"ts\":\"290\",\"updates\":[{\"type\":\"message_new\",\"object\":{\"date\":1594911394,\"from_id\":123,\"id\":597,\"out\":0,\"peer_id\":1606,\"text\":\"3\",\"conversation_message_id\":562,\"fwd_messages\":[],\"important\":false,\"random_id\":0,\"attachments\":[],\"is_hidden\":false},\"group_id\":19495,\"event_id\":\"123\"}]}"
+
+json39 =
+  "{\"ts\":\"290\",\"updates\":[{\"type\":\"message_new\",\"object\":{\"date\":1594911394,\"from_id\":123,\"id\":597,\"out\":0,\"peer_id\":1606,\"text\":\"3\",\"conversation_message_id\":562,\"fwd_messages\":[],\"important\":false,\"random_id\":0,\"attachments\":[],\"is_hidden\":false},\"group_id\":19495,\"event_id\":\"123\"},{\"type\":\"message_new\",\"object\":{\"date\":1594911394,\"from_id\":123,\"id\":597,\"out\":0,\"peer_id\":1606,\"text\":\"love\",\"conversation_message_id\":562,\"fwd_messages\":[],\"important\":false,\"random_id\":0,\"attachments\":[],\"is_hidden\":false},\"group_id\":19495,\"event_id\":\"123\"}]}"
 
 --au = {\"type\":\"audio\",\"audio\":{\"artist\":\"Deftones\",\"id\":3483,\"owner_id\":1606,\"title\":\"Gauze\",\"duration\":281,\"url\":\"https:audio\",\"date\":1425013158,\"lyrics_id\":45597212,\"genre_id\":18,\"is_hq\":true,\"short_videos_allowed\":false,\"stories_allowed\":false,\"stories_cover_allowed\":false}}],\"conversation_message_id\":1415,\"fwd_messages\":[],\"important\":false,\"is_hidden\":false,\"peer_id\":1606,\"random_id\":0,\"text\":\"\"}
 --st = {\"type\":\"sticker\",\"sticker\":{\"product_id\":279,\"sticker_id\":9014,\"images\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64},{\"url\":\"https:sticker\",\"width\":128,\"height\":128}],\"images_with_background\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64}]}}

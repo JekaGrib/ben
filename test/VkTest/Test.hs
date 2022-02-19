@@ -6,7 +6,7 @@ module VkTest.Test where
 
 import VkTest.PrepareAttachment (testVkPrAtt)
 import Vk.App (run,getServInfoAndCheckResp,runServ,startApp)
-import Vk.AppT (TryServer(..),firstTry,secondTry,thirdTry)
+import Vk.AppT (TryServer(..),firstTry,secondTry,thirdTry,nextTry)
 import Vk.Types
 import qualified Data.Map as Map
 import Vk.Oops (VKBotException(..))
@@ -20,8 +20,11 @@ import Vk.Logger ( Priority(..))
 import Vk.Api.Response (ServerInfo(..),LoadPhotoResp(..),LoadDocResp(..))
 
 
-initialDB1 :: MapUserN
+initialDB1,initialDB2,initialDB3 :: MapUserN
 initialDB1 = Map.fromList []
+initialDB2 = Map.fromList [(1118, Left (OpenRepeat 2)),(1234, Right 3),(123, Left (OpenRepeat 4))]
+initialDB3 = Map.fromList [(1118, Left (OpenRepeat 2)),(1234, Right 3),(1606, Right 2)]
+
 
 emptyServInf :: ServerInfo
 emptyServInf = ServerInfo "" "" 0
@@ -67,10 +70,43 @@ testVk = do
             ,SENDMSG 123 (TextMsg "love")
             ,SENDMSG 123 (TextMsg "love")
           ]
+      it "work with text msg \"love\" if user is in OpenRepeat mode (send warning info msg)" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle11) (emptyTryServInf,initialDB2))
+            []
+        reverse actions `shouldBe`
+          [GOTUPDATES emptyServInf
+          ,LOG WARNING
+          ,SENDMSG 123 (TextMsg "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still 4\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later")
+          ]
+      it "work with text msg \"3\" if user is in (OpenRepeat 4) mode (change N to 3, send info msg)" $ do 
+        (st,actions) <-
+          runStateT
+               (execStateT (runServ handle41) (emptyTryServInf,initialDB2))
+            []
+        reverse actions `shouldBe`
+          [GOTUPDATES emptyServInf
+          ,SENDMSG 123 (TextMsg "Number of repeats successfully changed from 4 to 3")
+          ]
+        snd st `shouldBe` Map.insert 123 (Right 3) initialDB2
+      it "work with text msg \"love\" after text msg \"3\" if user is in (OpenRepeat 4) mode (change N to 3, send info msg,send \"love\" 3 times)" $ do 
+        (st,actions) <-
+          runStateT
+               (execStateT (runServ handle42) (emptyTryServInf,initialDB2))
+            []
+        reverse actions `shouldBe`
+          [GOTUPDATES emptyServInf
+          ,SENDMSG 123 (TextMsg "Number of repeats successfully changed from 4 to 3")
+          ,SENDMSG 123 (TextMsg "love")
+          ,SENDMSG 123 (TextMsg "love")
+          ,SENDMSG 123 (TextMsg "love")
+          ]
+        snd st `shouldBe` Map.insert 123 (Right 3) initialDB2
       it "work with singleton update list with sticker msg " $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle12) (emptyTryServInf,initialDB1))
+               (evalStateT (runServ handle12) (emptyTryServInf,initialDB3))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -430,10 +466,12 @@ testVk = do
       evalStateT (execStateT (runServ handle38) (thirdTry emptyServInf,initialDB1)) [] 
         `shouldThrow`
           isCheckGetUpdatesResponseException
-    it "change ts in server info if getUpdates answer=fail2 FirstTime" $ do 
-      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
-      newTryServInfo `shouldNotBe`
-          emptyTryServInf    
+    it "change ts in serverInfo and FirstTry to SecondTry if getUpdates answer=FailTs(ts=25) FirstTime" $ do 
+      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle39) (emptyTryServInf,initialDB1)) [] 
+      newTryServInfo `shouldBe` nextTry (emptyTryServInf{servInf=emptyServInf{tsSI=25}})
+    it "change ts in serverInfo and FirstTry to SecondTry if getUpdates answer=FailTs(ts=25,fail=1) FirstTime" $ do 
+      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle40) (emptyTryServInf,initialDB1)) [] 
+      newTryServInfo `shouldBe` nextTry (emptyTryServInf{servInf=emptyServInf{tsSI=25}})
     describe "(startApp >>= runServ)" $ do
       it "work with empty update list" $ do
         actions <-
