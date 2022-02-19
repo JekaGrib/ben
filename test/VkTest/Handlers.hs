@@ -149,5 +149,16 @@ handle43 = handle1 {getUpdates = getUpdatesTest json40}
 
 handle44 = handle1 {getUpdates = getUpdatesTest json41}
 
+handle45 = handle1 {getLongPollServer = getServerTestEx}
+
+handle46 = handle1 {getUpdates = getUpdatesTestEx}
+
+handle47 = handle1 {sendMsg = sendMsgTestEx, getUpdates = getUpdatesTest json3}
+
+handle48 = handle1 {sendKeyb = sendKeybTestEx, getUpdates = getUpdatesTest json40}
+
+handle49 = handle1 {getLongPollServer = getServerTestEx,getUpdates = getUpdatesTest json35}
+
+
 
 

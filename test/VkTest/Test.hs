@@ -50,6 +50,11 @@ testVk = do
           [] `shouldThrow`
         (== (CheckGetServerResponseException $
              "UNKNOWN RESPONSE:" ++ show json6))
+      it "throw GetLongPollServerException getServer HttpException" $
+        evalStateT
+          (getServInfoAndCheckResp handle45) 
+          [] `shouldThrow`
+            isGetLongPollServerException
     describe "runServ" $ do
       it "work with empty update list" $ do 
         actions <-
@@ -495,6 +500,22 @@ testVk = do
         evalStateT (execStateT (runServ handle39) (thirdTry emptyServInf,initialDB1)) [] 
           `shouldThrow`
             isCheckGetUpdatesResponseException
+      it "throw GetUpdatesException if getUpdates HttpException" $
+        runStateT (runStateT (runServ handle46) (emptyTryServInf,initialDB1)) [] 
+         `shouldThrow`
+            isGetUpdatesException
+      it "throw SendMsgException if sendMsg HttpException" $
+        runStateT (runStateT (runServ handle47) (emptyTryServInf,initialDB1)) [] 
+         `shouldThrow`
+            isSendMsgException
+      it "throw SendKeybException if sendKeyb HttpException" $
+        runStateT (runStateT (runServ handle48) (emptyTryServInf,initialDB1)) [] 
+         `shouldThrow`
+            isSendKeybException
+      it "throw GetLongPollServerException if getServer HttpException; getUpdates answer=Fail" $
+        runStateT (runStateT (runServ handle49) (emptyTryServInf,initialDB1)) [] 
+         `shouldThrow`
+            isGetLongPollServerException
     describe "(startApp >>= runServ)" $ do
       it "work with empty update list" $ do
         actions <-
