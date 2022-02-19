@@ -1,11 +1,7 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FunctionalDependencies #-}
+
 
 
 module Vk.App where
@@ -106,7 +102,7 @@ getUpdAndCheckResp h  = do
 getUpdAndLog ::
      (MonadCatch m) => Handle m -> AppT m Response
 getUpdAndLog h = do
-  sI@(ServerInfo key server ts) <- (servInf <$> get1)
+  sI@(ServerInfo key server ts) <- servInf <$> get1
   lift $ logDebug (hLog h) $
     "Send request to getUpdates: " ++
     T.unpack server ++
@@ -142,7 +138,7 @@ chooseActionOfNState ::
   -> AboutObj
   -> AppT m ()
 chooseActionOfNState h obj@(AboutObj usId _ _ _ _ _ _) = do
-  nState <- (Map.lookup usId <$> get2)
+  nState <- Map.lookup usId <$> get2
   case nState of
     Just (Left (OpenRepeat oldN)) -> do
       lift $ logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode")
@@ -327,32 +323,22 @@ checkAndPullUpdates h json =
       lift $ logWarning
           (hLog h)
           "FAIL. Long poll server key expired, need to request new key"
-      modify1 nextTry
-      checkTry h
-      putNewServerInfo h
-      return empty
+      putNextTryWithNewServer h
     Just (FailAnswer 3) -> do
       lift $ logWarning
           (hLog h)
           "FAIL. Long poll server information is lost, need to request new key and ts"
-      modify1 nextTry
-      checkTry h
-      putNewServerInfo h
-      return empty
+      putNextTryWithNewServer h
     Just (FailTSAnswer (Just failNum) ts) -> do
       lift $ logWarning
           (hLog h) $ 
           "FAIL number " ++ show failNum ++ ". Ts in request is wrong, need to use received ts"
-      modify1 (nextTry . changeTs ts)
-      checkTry h
-      return empty
+      putNextTryWithNewTS h ts
     Just (FailTSAnswer _ ts) -> do
       lift $ logWarning
           (hLog h)
           "FAIL. Ts in request is wrong, need to use received ts"
-      modify1 (nextTry . changeTs ts)
-      checkTry h
-      return empty
+      putNextTryWithNewTS h ts
     Just (FailAnswer _) -> do
       let ex =
             CheckGetUpdatesResponseException $
@@ -367,6 +353,20 @@ checkAndPullUpdates h json =
       modify1 (resetTry . changeTs ts)
       return upds
 
+putNextTryWithNewServer :: (MonadCatch m) => Handle m -> AppT m [Update]
+putNextTryWithNewServer h = do
+  checkTry h
+  modify1 nextTry
+  putNewServerInfo h
+  return empty
+
+putNextTryWithNewTS :: (MonadCatch m) => Handle m -> Integer -> AppT m [Update]
+putNextTryWithNewTS h ts = do
+  checkTry h
+  modify1 (nextTry . changeTs ts)
+  return empty
+
+
 putNewServerInfo :: (MonadCatch m) => Handle m -> AppT m ()
 putNewServerInfo h = do
   servInfo <- lift $ getServInfoAndCheckResp h
@@ -375,7 +375,7 @@ putNewServerInfo h = do
 checkTry :: (MonadCatch m) => Handle m -> AppT m ()
 checkTry h = do
   TryServer num servInfo <- get1
-  when (num >= 4) $ do
+  when (num >= 3) $ do
       let ex = CheckGetUpdatesResponseException $ "More then two times getUpdates fail. ServerInfo:" ++ show servInfo
       lift $ throwAndLogEx (hLog h) ex
 
@@ -529,9 +529,6 @@ chooseParamsForMsg (AttachmentMsg txt attachStrings (latStr, longStr)) =
 
 changeMapUserN :: UserId -> NState -> MapUserN -> MapUserN
 changeMapUserN = Map.insert
-
---changeTs :: Integer -> ServerInfo -> ServerInfo
---changeTs ts servInfo = servInfo {tsSI=ts}
 
 checkButton :: AboutObj -> Maybe N
 checkButton obj =

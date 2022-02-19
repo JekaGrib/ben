@@ -1,5 +1,5 @@
---{-# OPTIONS_GHC -Werror #-}
---{-# OPTIONS_GHC  -Wall  #-}
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module VkTest.ResponseExample where
@@ -127,6 +127,3 @@ json40 =
 json41 =
   "{\"ts\":\"290\",\"updates\":[{\"type\":\"message_new\",\"object\":{\"date\":1594911394,\"from_id\":123,\"id\":597,\"out\":0,\"peer_id\":1606,\"text\":\"/help\",\"conversation_message_id\":562,\"fwd_messages\":[],\"important\":false,\"random_id\":0,\"attachments\":[],\"is_hidden\":false},\"group_id\":19495,\"event_id\":\"123\"}]}"
 
-
---au = {\"type\":\"audio\",\"audio\":{\"artist\":\"Deftones\",\"id\":3483,\"owner_id\":1606,\"title\":\"Gauze\",\"duration\":281,\"url\":\"https:audio\",\"date\":1425013158,\"lyrics_id\":45597212,\"genre_id\":18,\"is_hq\":true,\"short_videos_allowed\":false,\"stories_allowed\":false,\"stories_cover_allowed\":false}}],\"conversation_message_id\":1415,\"fwd_messages\":[],\"important\":false,\"is_hidden\":false,\"peer_id\":1606,\"random_id\":0,\"text\":\"\"}
---st = {\"type\":\"sticker\",\"sticker\":{\"product_id\":279,\"sticker_id\":9014,\"images\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64},{\"url\":\"https:sticker\",\"width\":128,\"height\":128}],\"images_with_background\":[{\"url\":\"https:sticker\",\"width\":64,\"height\":64}]}}

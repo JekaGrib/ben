@@ -1,6 +1,5 @@
-{-{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
-{-# LANGUAGE OverloadedStrings #-} -}
 
 module VkTest.Handlers where
   
@@ -78,7 +77,8 @@ handle8 = handle1 {getUpdates = getUpdatesTest json8}
 
 handle9 = handle1 {getUpdates = getUpdatesTest json9,hPrepAttach = PrAtt.handle19}
 
---handle10, handle11, handle12, handle13, handle14, handle15, handle16, handle17,handle9 ::
+handle10, handle11, handle12, handle13, handle14, handle15, handle16, handle17, handle18,handle19 ::
+  Handle (StateT [MockAction] IO)
 handle10 = handle1 {hLog = handLogMsgInfo}
 
 handle11 = handle1 {getUpdates = getUpdatesTest json3}
@@ -99,6 +99,8 @@ handle18 = handle1 {getUpdates = getUpdatesTest json15}
 
 handle19 = handle1 {getUpdates = getUpdatesTest json16}
 
+handle20, handle21, handle22, handle23, handle24, handle25, handle26, handle27, handle28,handle29 ::
+     Handle (StateT [MockAction] IO)
 handle20 = handle1 {getUpdates = getUpdatesTest json17}
 
 handle21 = handle1 {getUpdates = getUpdatesTest json18}
@@ -119,6 +121,8 @@ handle28 = handle1 {getUpdates = getUpdatesTest json25}
 
 handle29 = handle1 {getUpdates = getUpdatesTest json26}
 
+handle30, handle31, handle32, handle33, handle34, handle35, handle36, handle37, handle38,handle39 ::
+     Handle (StateT [MockAction] IO)
 handle30 = handle1 {getUpdates = getUpdatesTest json27}
 
 handle31 = handle1 {getUpdates = getUpdatesTest json28}
@@ -139,6 +143,8 @@ handle38 = handle1 {getUpdates = getUpdatesTest json35}
 
 handle39 = handle1 {getUpdates = getUpdatesTest json36}
 
+handle40, handle41, handle42, handle43, handle44, handle45, handle46, handle47, handle48,handle49 ::
+     Handle (StateT [MockAction] IO)
 handle40 = handle1 {getUpdates = getUpdatesTest json37}
 
 handle41 = handle1 {getUpdates = getUpdatesTest json38}

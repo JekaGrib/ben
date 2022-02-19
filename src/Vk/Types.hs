@@ -58,6 +58,7 @@ type SomethingWrong = String
 
 type Counter = Int
 
+
 newtype OpenRepeat =
   OpenRepeat N
   deriving (Eq, Show)

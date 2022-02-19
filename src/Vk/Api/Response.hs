@@ -1,5 +1,5 @@
---{-# OPTIONS_GHC -Werror #-}
---{-# OPTIONS_GHC  -Wall  #-}
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -34,7 +34,7 @@ module Vk.Api.Response
   ) where
 
 import Control.Applicative ((<|>), liftA2,empty)
-import Data.Aeson (FromJSON(parseJSON), Value(..), (.:), (.:?), withObject,withText,Object)
+import Data.Aeson (FromJSON(parseJSON), Value(..), (.:), (.:?), withObject,Object)
 import Data.Aeson.Types (Parser)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
@@ -397,24 +397,6 @@ data Coordinates =
   deriving (Eq, Generic, Show)
 
 instance FromJSON Coordinates
-
-isText :: T.Text -> Parser T.Text -> Parser T.Text
-isText txt m = do
-  a <- m
-  if a  == txt
-    then m
-    else empty
-
-isPhoto,isDoc,isAuMes,isVideo,isSticker,isAudio,isMarket,isWall,isPoll :: Parser T.Text -> Parser T.Text
-isPhoto = isText "photo"
-isDoc = isText "doc" 
-isAuMes = isText "audio_message" 
-isVideo = isText "video" 
-isSticker = isText "sticker" 
-isAudio = isText "audio" 
-isMarket = isText "market" 
-isWall = isText "wall" 
-isPoll = isText "poll" 
 
 tryReadNum :: T.Text -> Parser Integer
 tryReadNum "" = empty

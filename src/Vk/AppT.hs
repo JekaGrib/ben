@@ -1,11 +1,8 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
-{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 
 module Vk.AppT where
@@ -52,13 +49,13 @@ changeTs :: Integer -> TryServer -> TryServer
 changeTs ts (TryServer num sI) = TryServer num sI{tsSI=ts}
 
 firstTry :: ServerInfo -> TryServer 
-firstTry sI = TryServer 1 sI
+firstTry  = TryServer 1 
 
 secondTry :: ServerInfo -> TryServer 
-secondTry sI = TryServer 2 sI
+secondTry  = TryServer 2 
 
 thirdTry :: ServerInfo -> TryServer 
-thirdTry sI = TryServer 3 sI
+thirdTry  = TryServer 3 
 
 fourthTry :: ServerInfo -> TryServer 
-fourthTry sI = TryServer 4 sI
+fourthTry  = TryServer 4 

@@ -1,5 +1,5 @@
-{-{-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}-}
+{-# OPTIONS_GHC -Werror #-}
+{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-} 
 
 module VkTest.Test where
@@ -459,7 +459,7 @@ testVk = do
       it "change FirstTry to SecondTry if getUpdates answer=fail2 FirstTime" $ do 
         (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
         tryNum newTryServInfo `shouldBe` 2
-      it "throw exception if getUpdates answer=fail2 ThirdTime" $ do 
+      it "throw exception if getUpdates answer=fail2 ThirdTime" $ 
         evalStateT (execStateT (runServ handle37) (thirdTry emptyServInf,initialDB1)) [] 
           `shouldThrow`
             isCheckGetUpdatesResponseException
@@ -486,7 +486,7 @@ testVk = do
       it "change FirstTry to SecondTry if getUpdates answer=fail3 FirstTime" $ do 
         (newTryServInfo,_) <- evalStateT (execStateT (runServ handle38) (emptyTryServInf,initialDB1)) [] 
         tryNum newTryServInfo `shouldBe` 2
-      it "throw exception if getUpdates answer=fail3 ThirdTime" $ do 
+      it "throw exception if getUpdates answer=fail3 ThirdTime" $ 
         evalStateT (execStateT (runServ handle38) (thirdTry emptyServInf,initialDB1)) [] 
           `shouldThrow`
             isCheckGetUpdatesResponseException
@@ -496,7 +496,7 @@ testVk = do
       it "change ts in serverInfo and FirstTry to SecondTry if getUpdates answer=FailTs(ts=25,fail=1) FirstTime" $ do 
         (newTryServInfo,_) <- evalStateT (execStateT (runServ handle40) (emptyTryServInf,initialDB1)) [] 
         newTryServInfo `shouldBe` nextTry (emptyTryServInf{servInf=emptyServInf{tsSI=25}})
-      it "throw exception if getUpdates answer=failTs(ts=25) ThirdTime" $ do 
+      it "throw exception if getUpdates answer=failTs(ts=25) ThirdTime" $ 
         evalStateT (execStateT (runServ handle39) (thirdTry emptyServInf,initialDB1)) [] 
           `shouldThrow`
             isCheckGetUpdatesResponseException
@@ -625,19 +625,19 @@ testVk = do
         (== (CheckGetUpdatesResponseException $
              "UNKNOWN RESPONSE:" ++ show json6))
     describe "run" $ do
-      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=fail2 (more then 2 times) " $ do 
+      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=fail2 (more then 2 times) " $ 
         evalStateT (run handle37 initialDB1)  [] 
           `shouldThrow`
             isCheckGetUpdatesResponseException
-      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=fail3 (more then 2 times) " $ do 
+      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=fail3 (more then 2 times) " $ 
         evalStateT (run handle38 initialDB1)  [] 
           `shouldThrow`
             isCheckGetUpdatesResponseException
-      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=FailTs(ts=25) (more then 2 times) " $ do 
+      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=FailTs(ts=25) (more then 2 times) " $ 
         evalStateT (run handle39 initialDB1)  [] 
           `shouldThrow`
             isCheckGetUpdatesResponseException
-      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=FailTs(ts=25,fail=1) (more then 2 times) " $ do 
+      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=FailTs(ts=25,fail=1) (more then 2 times) " $ 
         evalStateT (run handle40 initialDB1)  [] 
           `shouldThrow`
             isCheckGetUpdatesResponseException

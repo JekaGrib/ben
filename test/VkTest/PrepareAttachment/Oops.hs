@@ -3,7 +3,7 @@
 
 module VkTest.PrepareAttachment.Oops where
 
-import Vk.Oops
+import Vk.Oops (VKBotException(PrependAttachmetToSendException),PrependAttachmetException(..))
 
 isGetUploadServerException :: VKBotException -> Bool
 isGetUploadServerException (PrependAttachmetToSendException GetUploadServerException{}) = True

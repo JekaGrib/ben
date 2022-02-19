@@ -3,7 +3,7 @@
 
 module VkTest.Oops where
 
-import Vk.Oops
+import Vk.Oops (VKBotException(..))
 
 isGetLongPollServerException :: VKBotException -> Bool
 isGetLongPollServerException GetLongPollServerException{} = True
