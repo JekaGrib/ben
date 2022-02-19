@@ -23,7 +23,7 @@ import Vk.Api.Response (ServerInfo(..),LoadPhotoResp(..),LoadDocResp(..))
 initialDB1,initialDB2,initialDB3 :: MapUserN
 initialDB1 = Map.fromList []
 initialDB2 = Map.fromList [(1118, Left (OpenRepeat 2)),(1234, Right 3),(123, Left (OpenRepeat 4))]
-initialDB3 = Map.fromList [(1118, Left (OpenRepeat 2)),(1234, Right 3),(1606, Right 2)]
+initialDB3 = Map.fromList [(1118, Left (OpenRepeat 2)),(123, Right 3),(1606, Right 2)]
 
 
 emptyServInf :: ServerInfo
@@ -60,7 +60,7 @@ testVk = do
           [ GOTUPDATES emptyServInf
             , LOGMSG INFO "No new updates"
           ]
-      it "work with singleton update list with text msg" $ do 
+      it "work with singleton update list with \"love\" text msg" $ do 
         actions <-
           execStateT
                (evalStateT (runServ handle11) (emptyTryServInf,initialDB1))
@@ -69,6 +69,25 @@ testVk = do
           [ GOTUPDATES emptyServInf
             ,SENDMSG 123 (TextMsg "love")
             ,SENDMSG 123 (TextMsg "love")
+          ]
+      it "work with /repeat text msg(send Keyb,put user in OpenRepeat mode)" $ do 
+        (st,actions) <-
+          runStateT
+               (execStateT (runServ handle43) (emptyTryServInf,initialDB3))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDKEYB 123 3 " : Current number of repeats your message.\nWhy?"
+          ]
+        snd st `shouldBe` Map.insert 123 (Left (OpenRepeat 3)) initialDB3
+      it "work with /help text msg(send infoMsg)" $ do 
+        actions <-
+          execStateT
+               (evalStateT (runServ handle44) (emptyTryServInf,initialDB3))
+            []
+        reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,SENDMSG 123 (TextMsg "Hello")
           ]
       it "work with text msg \"love\" if user is in OpenRepeat mode (send warning info msg)" $ do 
         actions <-
@@ -236,242 +255,246 @@ testVk = do
             ,LOG WARNING
             ,SENDMSG 1606 (TextMsg "I`m sorry, I can`t work with forward messages, so I will ignore this message")
             ]
-    it "work with singleton update list with GEO msg" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle22) (emptyTryServInf,initialDB1))
-            []
-        reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,SENDMSG 1606 (AttachmentMsg "" [] ("69.409","32.456"))
-            ,SENDMSG 1606 (AttachmentMsg "" [] ("69.409","32.456"))
-          ]
-    it "work with singleton update list with GEO msg with text" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle23) (emptyTryServInf,initialDB1))
-            []
-        reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,SENDMSG 1606 (AttachmentMsg "hello" [] ("69.409","32.456"))
-            ,SENDMSG 1606 (AttachmentMsg "hello" [] ("69.409","32.456"))
-          ]
-    it "work with singleton update list with GEO msg with audio attachment" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle24) (emptyTryServInf,initialDB1))
-            []
-        reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("69.409","32.456"))
-            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("69.409","32.456"))
-          ]
-    it "work with singleton update list with GEO msg with audio attachment with text" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle25) (emptyTryServInf,initialDB1))
-            []
-        reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("69.409","32.456"))
-            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("69.409","32.456"))
-          ]
-    it "work with singleton update list with GEO msg with photo attachment with text" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle26) (emptyTryServInf,initialDB1))
-            []
-        reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-          , GOTPhotoSERVER 1606
-          , GOTOURL "https:photo"
-          , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
-          , SAVEPhotoONSERV $
-            LoadPhotoResp 24 "anyHash" "anyPhotoSring"
-          , SENDMSG 1606 (AttachmentMsg "hello" ["photo50_25"] ("69.409","32.456"))
-          , SENDMSG 1606 (AttachmentMsg "hello" ["photo50_25"] ("69.409","32.456"))
-          ]
-    it "work with singleton update list with GEO forward msg (IGNORE)" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle27) (emptyTryServInf,initialDB1))
-            []
-        reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,LOG WARNING
-            ,SENDMSG 123 (TextMsg "I`m sorry, I can`t work with forward messages, so I will ignore this message")
+      it "work with singleton update list with GEO msg" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle22) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              ,SENDMSG 1606 (AttachmentMsg "" [] ("69.409","32.456"))
+              ,SENDMSG 1606 (AttachmentMsg "" [] ("69.409","32.456"))
             ]
-    it "work with update list with several text msgs from different users" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle28) (emptyTryServInf,initialDB1))
-            []
-        reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,SENDMSG 123 (TextMsg "love")
-            ,SENDMSG 123 (TextMsg "love")
-            ,SENDMSG 555 (TextMsg "hello")
-            ,SENDMSG 555 (TextMsg "hello")
-          ]
-    it "work with update list with several attachment msgs from different users" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle29) (emptyTryServInf,initialDB1))
-            []
-        reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,SENDMSG 123 (AttachmentMsg "" ["audio1606_3483"] ("",""))
-            ,SENDMSG 123 (AttachmentMsg "" ["audio1606_3483"] ("",""))
-            , GOTPhotoSERVER 1606
-            , GOTOURL "https:photo"
-            , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
-            , SAVEPhotoONSERV $
-              LoadPhotoResp 24 "anyHash" "anyPhotoSring"            
-            ,SENDMSG 1606 (AttachmentMsg "" ["photo50_25"] ("",""))
-            ,SENDMSG 1606 (AttachmentMsg "" ["photo50_25"] ("",""))
-          ]
-    it "work with update list with several attachments in one msg" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle30) (emptyTryServInf,initialDB1))
-            []
-        reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            , GOTPhotoSERVER 1606
-            , GOTOURL "https:photo"
-            , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
-            , SAVEPhotoONSERV $
-              LoadPhotoResp 24 "anyHash" "anyPhotoSring"
-            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483","photo50_25"] ("",""))
-            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483","photo50_25"] ("",""))
-          ]
-    it "work with update list with several attachments with text in one msg" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle31) (emptyTryServInf,initialDB1))
-            []
-        reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
+      it "work with singleton update list with GEO msg with text" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle23) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              ,SENDMSG 1606 (AttachmentMsg "hello" [] ("69.409","32.456"))
+              ,SENDMSG 1606 (AttachmentMsg "hello" [] ("69.409","32.456"))
+            ]
+      it "work with singleton update list with GEO msg with audio attachment" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle24) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("69.409","32.456"))
+              ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("69.409","32.456"))
+            ]
+      it "work with singleton update list with GEO msg with audio attachment with text" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle25) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("69.409","32.456"))
+              ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("69.409","32.456"))
+            ]
+      it "work with singleton update list with GEO msg with photo attachment with text" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle26) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
             , GOTPhotoSERVER 1606
             , GOTOURL "https:photo"
             , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
             , SAVEPhotoONSERV $
               LoadPhotoResp 24 "anyHash" "anyPhotoSring"
-            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("",""))
-            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("",""))
-          ]
-    it "work with update list with several attachments with text in one GEO msg" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle32) (emptyTryServInf,initialDB1))
-            []
+            , SENDMSG 1606 (AttachmentMsg "hello" ["photo50_25"] ("69.409","32.456"))
+            , SENDMSG 1606 (AttachmentMsg "hello" ["photo50_25"] ("69.409","32.456"))
+            ]
+      it "work with singleton update list with GEO forward msg (IGNORE)" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle27) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              ,LOG WARNING
+              ,SENDMSG 123 (TextMsg "I`m sorry, I can`t work with forward messages, so I will ignore this message")
+              ]
+      it "work with update list with several text msgs from different users" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle28) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              ,SENDMSG 123 (TextMsg "love")
+              ,SENDMSG 123 (TextMsg "love")
+              ,SENDMSG 555 (TextMsg "hello")
+              ,SENDMSG 555 (TextMsg "hello")
+            ]
+      it "work with update list with several attachment msgs from different users" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle29) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              ,SENDMSG 123 (AttachmentMsg "" ["audio1606_3483"] ("",""))
+              ,SENDMSG 123 (AttachmentMsg "" ["audio1606_3483"] ("",""))
+              , GOTPhotoSERVER 1606
+              , GOTOURL "https:photo"
+              , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
+              , SAVEPhotoONSERV $
+                LoadPhotoResp 24 "anyHash" "anyPhotoSring"            
+              ,SENDMSG 1606 (AttachmentMsg "" ["photo50_25"] ("",""))
+              ,SENDMSG 1606 (AttachmentMsg "" ["photo50_25"] ("",""))
+            ]
+      it "work with update list with several attachments in one msg" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle30) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              , GOTPhotoSERVER 1606
+              , GOTOURL "https:photo"
+              , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
+              , SAVEPhotoONSERV $
+                LoadPhotoResp 24 "anyHash" "anyPhotoSring"
+              ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483","photo50_25"] ("",""))
+              ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483","photo50_25"] ("",""))
+            ]
+      it "work with update list with several attachments with text in one msg" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle31) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              , GOTPhotoSERVER 1606
+              , GOTOURL "https:photo"
+              , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
+              , SAVEPhotoONSERV $
+                LoadPhotoResp 24 "anyHash" "anyPhotoSring"
+              ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("",""))
+              ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("",""))
+            ]
+      it "work with update list with several attachments with text in one GEO msg" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle32) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              , GOTPhotoSERVER 1606
+              , GOTOURL "https:photo"
+              , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
+              , SAVEPhotoONSERV $
+                LoadPhotoResp 24 "anyHash" "anyPhotoSring"
+              ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("69.409","32.456"))
+              ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("69.409","32.456"))
+            ]
+      it "work with update list with Unknown update (IGNORE only unknown update)" $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle33) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              ,LOG WARNING
+              ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("",""))
+              ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("",""))
+            ]
+      it "work with update list with sticker msg with text (IGNORE) " $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle34) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              ,LOG WARNING
+            ]
+      it "work with update list with sticker and other attachment in one msg (IGNORE) " $ do 
+          actions <-
+            execStateT
+                 (evalStateT (runServ handle35) (emptyTryServInf,initialDB1))
+              []
+          reverse actions `shouldBe`
+            [ GOTUPDATES emptyServInf
+              ,LOG WARNING
+            ]
+      it "throw CheckGetUpdatesException with unknown getUpdates answer" $  
+        runStateT (evalStateT (runServ handle36) (emptyTryServInf,initialDB1)) [] 
+          `shouldThrow`
+            isCheckGetUpdatesResponseException
+      it "throw CheckGetUpdatesException with error getUpdates answer" $ 
+        runStateT (evalStateT (runServ handle6) (emptyTryServInf,initialDB1)) [] 
+          `shouldThrow`
+            isCheckGetUpdatesResponseException
+      it "got new server info and send nothing if getUpdates answer=fail2 FirstTime" $ do 
+        (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
+        newTryServInfo `shouldNotBe`
+            emptyTryServInf
+        actions <- execStateT (evalStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
         reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            , GOTPhotoSERVER 1606
-            , GOTOURL "https:photo"
-            , LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto"
-            , SAVEPhotoONSERV $
-              LoadPhotoResp 24 "anyHash" "anyPhotoSring"
-            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("69.409","32.456"))
-            ,SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483","photo50_25"] ("69.409","32.456"))
-          ]
-    it "work with update list with Unknown update (IGNORE only unknown update)" $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle33) (emptyTryServInf,initialDB1))
-            []
+            [ GOTUPDATES emptyServInf
+              ,LOG WARNING
+              ,GOTSERVER
+            ]
+      it "got new server info and send nothing if getUpdates answer=fail2 SecondTime" $ do 
+        (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (secondTry emptyServInf,initialDB1)) [] 
+        newTryServInfo `shouldNotBe`
+            emptyTryServInf
+        actions <- execStateT (evalStateT (runServ handle37) (secondTry emptyServInf,initialDB1)) [] 
         reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,LOG WARNING
-            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("",""))
-            ,SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("",""))
-          ]
-    it "work with update list with sticker msg with text (IGNORE) " $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle34) (emptyTryServInf,initialDB1))
-            []
+            [ GOTUPDATES emptyServInf
+              ,LOG WARNING
+              ,GOTSERVER
+            ]
+      it "change FirstTry to SecondTry if getUpdates answer=fail2 FirstTime" $ do 
+        (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
+        tryNum newTryServInfo `shouldBe` 2
+      it "throw exception if getUpdates answer=fail2 ThirdTime" $ do 
+        evalStateT (execStateT (runServ handle37) (thirdTry emptyServInf,initialDB1)) [] 
+          `shouldThrow`
+            isCheckGetUpdatesResponseException
+      it "got new server info and send nothing if getUpdates answer=fail3 FirstTime" $ do 
+        (newTryServInfo,_) <- evalStateT (execStateT (runServ handle38) (emptyTryServInf,initialDB1)) [] 
+        newTryServInfo `shouldNotBe`
+            emptyTryServInf
+        actions <- execStateT (evalStateT (runServ handle38) (emptyTryServInf,initialDB1)) [] 
         reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,LOG WARNING
-          ]
-    it "work with update list with sticker and other attachment in one msg (IGNORE) " $ do 
-        actions <-
-          execStateT
-               (evalStateT (runServ handle35) (emptyTryServInf,initialDB1))
-            []
+            [ GOTUPDATES emptyServInf
+              ,LOG WARNING
+              ,GOTSERVER
+            ]
+      it "got new server info and send nothing if getUpdates answer=fail3 SecondTime" $ do 
+        (newTryServInfo,_) <- evalStateT (execStateT (runServ handle38) (secondTry emptyServInf,initialDB1)) [] 
+        newTryServInfo `shouldNotBe`
+            emptyTryServInf
+        actions <- execStateT (evalStateT (runServ handle38) (secondTry emptyServInf,initialDB1)) [] 
         reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,LOG WARNING
-          ]
-    it "throw CheckGetUpdatesException with unknown getUpdates answer" $  
-      runStateT (evalStateT (runServ handle36) (emptyTryServInf,initialDB1)) [] 
-        `shouldThrow`
-          isCheckGetUpdatesResponseException
-    it "throw CheckGetUpdatesException with error getUpdates answer" $ 
-      runStateT (evalStateT (runServ handle6) (emptyTryServInf,initialDB1)) [] 
-        `shouldThrow`
-          isCheckGetUpdatesResponseException
-    it "got new server info and send nothing if getUpdates answer=fail2 FirstTime" $ do 
-      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
-      newTryServInfo `shouldNotBe`
-          emptyTryServInf
-      actions <- execStateT (evalStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
-      reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,LOG WARNING
-            ,GOTSERVER
-          ]
-    it "got new server info and send nothing if getUpdates answer=fail2 SecondTime" $ do 
-      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (secondTry emptyServInf,initialDB1)) [] 
-      newTryServInfo `shouldNotBe`
-          emptyTryServInf
-      actions <- execStateT (evalStateT (runServ handle37) (secondTry emptyServInf,initialDB1)) [] 
-      reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,LOG WARNING
-            ,GOTSERVER
-          ]
-    it "change FirstTry to SecondTry if getUpdates answer=fail2 FirstTime" $ do 
-      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
-      tryNum newTryServInfo `shouldBe` 2
-    it "throw exception if getUpdates answer=fail2 ThirdTime" $ do 
-      evalStateT (execStateT (runServ handle37) (thirdTry emptyServInf,initialDB1)) [] 
-        `shouldThrow`
-          isCheckGetUpdatesResponseException
-    it "got new server info and send nothing if getUpdates answer=fail3 FirstTime" $ do 
-      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle38) (emptyTryServInf,initialDB1)) [] 
-      newTryServInfo `shouldNotBe`
-          emptyTryServInf
-      actions <- execStateT (evalStateT (runServ handle38) (emptyTryServInf,initialDB1)) [] 
-      reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,LOG WARNING
-            ,GOTSERVER
-          ]
-    it "got new server info and send nothing if getUpdates answer=fail3 SecondTime" $ do 
-      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle38) (secondTry emptyServInf,initialDB1)) [] 
-      newTryServInfo `shouldNotBe`
-          emptyTryServInf
-      actions <- execStateT (evalStateT (runServ handle38) (secondTry emptyServInf,initialDB1)) [] 
-      reverse actions `shouldBe`
-          [ GOTUPDATES emptyServInf
-            ,LOG WARNING
-            ,GOTSERVER
-          ]
-    it "change FirstTry to SecondTry if getUpdates answer=fail3 FirstTime" $ do 
-      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle38) (emptyTryServInf,initialDB1)) [] 
-      tryNum newTryServInfo `shouldBe` 2
-    it "throw exception if getUpdates answer=fail3 ThirdTime" $ do 
-      evalStateT (execStateT (runServ handle38) (thirdTry emptyServInf,initialDB1)) [] 
-        `shouldThrow`
-          isCheckGetUpdatesResponseException
-    it "change ts in serverInfo and FirstTry to SecondTry if getUpdates answer=FailTs(ts=25) FirstTime" $ do 
-      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle39) (emptyTryServInf,initialDB1)) [] 
-      newTryServInfo `shouldBe` nextTry (emptyTryServInf{servInf=emptyServInf{tsSI=25}})
-    it "change ts in serverInfo and FirstTry to SecondTry if getUpdates answer=FailTs(ts=25,fail=1) FirstTime" $ do 
-      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle40) (emptyTryServInf,initialDB1)) [] 
-      newTryServInfo `shouldBe` nextTry (emptyTryServInf{servInf=emptyServInf{tsSI=25}})
+            [ GOTUPDATES emptyServInf
+              ,LOG WARNING
+              ,GOTSERVER
+            ]
+      it "change FirstTry to SecondTry if getUpdates answer=fail3 FirstTime" $ do 
+        (newTryServInfo,_) <- evalStateT (execStateT (runServ handle38) (emptyTryServInf,initialDB1)) [] 
+        tryNum newTryServInfo `shouldBe` 2
+      it "throw exception if getUpdates answer=fail3 ThirdTime" $ do 
+        evalStateT (execStateT (runServ handle38) (thirdTry emptyServInf,initialDB1)) [] 
+          `shouldThrow`
+            isCheckGetUpdatesResponseException
+      it "change ts in serverInfo and FirstTry to SecondTry if getUpdates answer=FailTs(ts=25) FirstTime" $ do 
+        (newTryServInfo,_) <- evalStateT (execStateT (runServ handle39) (emptyTryServInf,initialDB1)) [] 
+        newTryServInfo `shouldBe` nextTry (emptyTryServInf{servInf=emptyServInf{tsSI=25}})
+      it "change ts in serverInfo and FirstTry to SecondTry if getUpdates answer=FailTs(ts=25,fail=1) FirstTime" $ do 
+        (newTryServInfo,_) <- evalStateT (execStateT (runServ handle40) (emptyTryServInf,initialDB1)) [] 
+        newTryServInfo `shouldBe` nextTry (emptyTryServInf{servInf=emptyServInf{tsSI=25}})
+      it "throw exception if getUpdates answer=failTs(ts=25) ThirdTime" $ do 
+        evalStateT (execStateT (runServ handle39) (thirdTry emptyServInf,initialDB1)) [] 
+          `shouldThrow`
+            isCheckGetUpdatesResponseException
     describe "(startApp >>= runServ)" $ do
       it "work with empty update list" $ do
         actions <-
@@ -580,6 +603,22 @@ testVk = do
           [] `shouldThrow`
         (== (CheckGetUpdatesResponseException $
              "UNKNOWN RESPONSE:" ++ show json6))
-
+    describe "run" $ do
+      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=fail2 (more then 2 times) " $ do 
+        evalStateT (run handle37 initialDB1)  [] 
+          `shouldThrow`
+            isCheckGetUpdatesResponseException
+      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=fail3 (more then 2 times) " $ do 
+        evalStateT (run handle38 initialDB1)  [] 
+          `shouldThrow`
+            isCheckGetUpdatesResponseException
+      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=FailTs(ts=25) (more then 2 times) " $ do 
+        evalStateT (run handle39 initialDB1)  [] 
+          `shouldThrow`
+            isCheckGetUpdatesResponseException
+      it "throw CheckGetUpdatesResponseException if getUpdates forever answer=FailTs(ts=25,fail=1) (more then 2 times) " $ do 
+        evalStateT (run handle40 initialDB1)  [] 
+          `shouldThrow`
+            isCheckGetUpdatesResponseException
 
 

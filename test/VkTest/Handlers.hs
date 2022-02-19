@@ -13,6 +13,9 @@ import Vk.Types
 import Vk.Api.Response (ServerInfo(..))
 import VkTest.ResponseExample
 import qualified VkTest.PrepareAttachment.Handlers as PrAtt
+import Network.HTTP.Client (HttpException( InvalidUrlException ))
+import Control.Monad.Catch (throwM)
+
 
  
 handle1 :: Handle (StateT [MockAction] IO)
@@ -36,11 +39,24 @@ getUpdatesTest json sI = StateT $ \s -> return (json, GOTUPDATES sI : s)
 sendMsgTest :: Response -> UserId -> MSG -> StateT [MockAction] IO Response
 sendMsgTest json usId msg = StateT $ \s -> return (json, SENDMSG usId msg : s)
 
-sendKeybTest ::
-     Response -> UserId -> N -> TextOfMsg -> StateT [MockAction] IO Response
+sendKeybTest :: Response -> UserId -> N -> TextOfMsg -> StateT [MockAction] IO Response
 sendKeybTest json usId currN msg =
   StateT $ \s -> return (json, SENDKEYB usId currN msg : s)
 
+throwHttpEx :: StateT [MockAction] IO a
+throwHttpEx = throwM $ InvalidUrlException "" ""
+
+getServerTestEx :: StateT [MockAction] IO Response
+getServerTestEx  = throwHttpEx
+
+getUpdatesTestEx :: ServerInfo -> StateT [MockAction] IO Response
+getUpdatesTestEx  _ = throwHttpEx
+
+sendMsgTestEx :: UserId -> MSG -> StateT [MockAction] IO Response
+sendMsgTestEx  _ _ = throwHttpEx
+
+sendKeybTestEx :: UserId -> N -> TextOfMsg -> StateT [MockAction] IO Response
+sendKeybTestEx  _ _ _ = throwHttpEx
 
 handle0, handle2, handle3, handle4, handle5, handle6, handle7, handle8,handle9 ::
      Handle (StateT [MockAction] IO)
@@ -129,6 +145,9 @@ handle41 = handle1 {getUpdates = getUpdatesTest json38}
 
 handle42 = handle1 {getUpdates = getUpdatesTest json39}
 
+handle43 = handle1 {getUpdates = getUpdatesTest json40}
+
+handle44 = handle1 {getUpdates = getUpdatesTest json41}
 
 
 
