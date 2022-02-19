@@ -41,8 +41,9 @@ import Vk.Oops
   , throwAndLogEx
   )
 import Vk.Types
-import Vk.AppT (AppT,MonadStateTwo(..),TryServerInfo(..),nextTry,resetTry,changeTs,changeServInfo,unTry)
+import Vk.AppT (AppT,MonadStateTwo(..),TryServer(..),nextTry,resetTry,changeTs,changeServInfo,firstTry)
 import Control.Applicative (empty)
+import Control.Monad (when)
 
 data Handle m =
   Handle
@@ -71,10 +72,10 @@ run :: (MonadCatch m) => Handle m -> MapUserN -> m ()
 run h initialDB = 
   startApp h initialDB >>= evalStateT (foreverRunServ h)
 
-startApp :: (MonadCatch m) => Handle m -> MapUserN -> m (TryServerInfo,MapUserN)
+startApp :: (MonadCatch m) => Handle m -> MapUserN -> m (TryServer,MapUserN)
 startApp h initialDB = do
   servInfo <- getServInfoAndCheckResp h
-  return (FirstTry servInfo,initialDB)
+  return (firstTry servInfo,initialDB)
 
 foreverRunServ :: (MonadCatch m) => Handle m -> AppT m ()
 foreverRunServ h = forever (runServ h)
@@ -105,7 +106,7 @@ getUpdAndCheckResp h  = do
 getUpdAndLog ::
      (MonadCatch m) => Handle m -> AppT m Response
 getUpdAndLog h = do
-  sI@(ServerInfo key server ts) <- (unTry <$> get1)
+  sI@(ServerInfo key server ts) <- (servInf <$> get1)
   lift $ logDebug (hLog h) $
     "Send request to getUpdates: " ++
     T.unpack server ++
@@ -373,12 +374,11 @@ putNewServerInfo h = do
 
 checkTry :: (MonadCatch m) => Handle m -> AppT m ()
 checkTry h = do
-  trySI <- get1
-  case trySI of 
-    ThirdTry servInfo -> do
+  TryServer num servInfo <- get1
+  when (num >= 4) $ do
       let ex = CheckGetUpdatesResponseException $ "More then two times getUpdates fail. ServerInfo:" ++ show servInfo
       lift $ throwAndLogEx (hLog h) ex
-    _ -> return ()
+
 
 checkAndPullLatLong ::
      (MonadCatch m) => Handle m -> Maybe Geo -> m LatLong

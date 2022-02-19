@@ -6,6 +6,7 @@ module VkTest.Test where
 
 import VkTest.PrepareAttachment (testVkPrAtt)
 import Vk.App (run,getServInfoAndCheckResp,runServ,startApp)
+import Vk.AppT (TryServer(..),firstTry,secondTry,thirdTry)
 import Vk.Types
 import qualified Data.Map as Map
 import Vk.Oops (VKBotException(..))
@@ -24,6 +25,9 @@ initialDB1 = Map.fromList []
 
 emptyServInf :: ServerInfo
 emptyServInf = ServerInfo "" "" 0
+
+emptyTryServInf :: TryServer
+emptyTryServInf = firstTry emptyServInf
 
 
 testVk :: IO ()
@@ -47,7 +51,7 @@ testVk = do
       it "work with empty update list" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle10) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle10) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -56,7 +60,7 @@ testVk = do
       it "work with singleton update list with text msg" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle11) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle11) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -66,7 +70,7 @@ testVk = do
       it "work with singleton update list with sticker msg " $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle12) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle12) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -76,7 +80,7 @@ testVk = do
       it "work with singleton update list with photo attachment msg " $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle8) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle8) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -91,7 +95,7 @@ testVk = do
       it "work with singleton update list with doc attachment msg " $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle9) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle9) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -105,7 +109,7 @@ testVk = do
       it "work with singleton update list with audio message attachment msg" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle13) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle13) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -119,7 +123,7 @@ testVk = do
       it "work with singleton update list with video attachment msg" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle14) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle14) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -129,7 +133,7 @@ testVk = do
       it "work with singleton update list with audio attachment msg" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle15) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle15) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -139,7 +143,7 @@ testVk = do
       it "work with singleton update list with market attachment msg" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle16) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle16) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -149,7 +153,7 @@ testVk = do
       it "work with singleton update list with wall attachment msg" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle17) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle17) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -159,7 +163,7 @@ testVk = do
       it "work with singleton update list with poll attachment msg" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle18) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle18) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -169,7 +173,7 @@ testVk = do
       it "work with singleton update list with audio attachment msg with text" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle19) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle19) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -179,7 +183,7 @@ testVk = do
       it "work with singleton update list with market attachment msg with text" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle20) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle20) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -189,7 +193,7 @@ testVk = do
       it "work with forward msg (IGNORE)" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle21) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle21) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -199,7 +203,7 @@ testVk = do
     it "work with singleton update list with GEO msg" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle22) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle22) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -209,7 +213,7 @@ testVk = do
     it "work with singleton update list with GEO msg with text" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle23) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle23) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -219,7 +223,7 @@ testVk = do
     it "work with singleton update list with GEO msg with audio attachment" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle24) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle24) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -229,7 +233,7 @@ testVk = do
     it "work with singleton update list with GEO msg with audio attachment with text" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle25) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle25) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -239,7 +243,7 @@ testVk = do
     it "work with singleton update list with GEO msg with photo attachment with text" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle26) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle26) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -254,7 +258,7 @@ testVk = do
     it "work with singleton update list with GEO forward msg (IGNORE)" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle27) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle27) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -264,7 +268,7 @@ testVk = do
     it "work with update list with several text msgs from different users" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle28) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle28) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -276,7 +280,7 @@ testVk = do
     it "work with update list with several attachment msgs from different users" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle29) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle29) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -293,7 +297,7 @@ testVk = do
     it "work with update list with several attachments in one msg" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle30) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle30) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -308,7 +312,7 @@ testVk = do
     it "work with update list with several attachments with text in one msg" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle31) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle31) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -323,7 +327,7 @@ testVk = do
     it "work with update list with several attachments with text in one GEO msg" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle32) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle32) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -338,7 +342,7 @@ testVk = do
     it "work with update list with Unknown update (IGNORE only unknown update)" $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle33) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle33) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -349,7 +353,7 @@ testVk = do
     it "work with update list with sticker msg with text (IGNORE) " $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle34) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle34) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
@@ -358,24 +362,78 @@ testVk = do
     it "work with update list with sticker and other attachment in one msg (IGNORE) " $ do 
         actions <-
           execStateT
-               (evalStateT (runServ handle35) (emptyServInf,initialDB1))
+               (evalStateT (runServ handle35) (emptyTryServInf,initialDB1))
             []
         reverse actions `shouldBe`
           [ GOTUPDATES emptyServInf
             ,LOG WARNING
           ]
     it "throw CheckGetUpdatesException with unknown getUpdates answer" $  
-      runStateT (evalStateT (runServ handle36) (emptyServInf,initialDB1)) [] 
+      runStateT (evalStateT (runServ handle36) (emptyTryServInf,initialDB1)) [] 
         `shouldThrow`
           isCheckGetUpdatesResponseException
     it "throw CheckGetUpdatesException with error getUpdates answer" $ 
-      runStateT (evalStateT (runServ handle6) (emptyServInf,initialDB1)) [] 
+      runStateT (evalStateT (runServ handle6) (emptyTryServInf,initialDB1)) [] 
         `shouldThrow`
           isCheckGetUpdatesResponseException
-    it "change server info with fail 2 getUpdates answer" $ do 
-      (newServInfo,_) <- evalStateT (execStateT (runServ handle37) (emptyServInf,initialDB1)) [] 
-      newServInfo  `shouldNotBe`
-          emptyServInf
+    it "got new server info and send nothing if getUpdates answer=fail2 FirstTime" $ do 
+      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
+      newTryServInfo `shouldNotBe`
+          emptyTryServInf
+      actions <- execStateT (evalStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
+      reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,LOG WARNING
+            ,GOTSERVER
+          ]
+    it "got new server info and send nothing if getUpdates answer=fail2 SecondTime" $ do 
+      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (secondTry emptyServInf,initialDB1)) [] 
+      newTryServInfo `shouldNotBe`
+          emptyTryServInf
+      actions <- execStateT (evalStateT (runServ handle37) (secondTry emptyServInf,initialDB1)) [] 
+      reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,LOG WARNING
+            ,GOTSERVER
+          ]
+    it "change FirstTry to SecondTry if getUpdates answer=fail2 FirstTime" $ do 
+      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
+      tryNum newTryServInfo `shouldBe` 2
+    it "throw exception if getUpdates answer=fail2 ThirdTime" $ do 
+      evalStateT (execStateT (runServ handle37) (thirdTry emptyServInf,initialDB1)) [] 
+        `shouldThrow`
+          isCheckGetUpdatesResponseException
+    it "got new server info and send nothing if getUpdates answer=fail3 FirstTime" $ do 
+      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle38) (emptyTryServInf,initialDB1)) [] 
+      newTryServInfo `shouldNotBe`
+          emptyTryServInf
+      actions <- execStateT (evalStateT (runServ handle38) (emptyTryServInf,initialDB1)) [] 
+      reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,LOG WARNING
+            ,GOTSERVER
+          ]
+    it "got new server info and send nothing if getUpdates answer=fail3 SecondTime" $ do 
+      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle38) (secondTry emptyServInf,initialDB1)) [] 
+      newTryServInfo `shouldNotBe`
+          emptyTryServInf
+      actions <- execStateT (evalStateT (runServ handle38) (secondTry emptyServInf,initialDB1)) [] 
+      reverse actions `shouldBe`
+          [ GOTUPDATES emptyServInf
+            ,LOG WARNING
+            ,GOTSERVER
+          ]
+    it "change FirstTry to SecondTry if getUpdates answer=fail3 FirstTime" $ do 
+      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle38) (emptyTryServInf,initialDB1)) [] 
+      tryNum newTryServInfo `shouldBe` 2
+    it "throw exception if getUpdates answer=fail3 ThirdTime" $ do 
+      evalStateT (execStateT (runServ handle38) (thirdTry emptyServInf,initialDB1)) [] 
+        `shouldThrow`
+          isCheckGetUpdatesResponseException
+    it "change ts in server info if getUpdates answer=fail2 FirstTime" $ do 
+      (newTryServInfo,_) <- evalStateT (execStateT (runServ handle37) (emptyTryServInf,initialDB1)) [] 
+      newTryServInfo `shouldNotBe`
+          emptyTryServInf    
     describe "(startApp >>= runServ)" $ do
       it "work with empty update list" $ do
         actions <-

@@ -15,7 +15,7 @@ import Vk.Api.Response (ServerInfo(..))
 import Vk.Types (MapUserN)
 
 
-type AppT = StateT (TryServerInfo,MapUserN) 
+type AppT = StateT (TryServer,MapUserN) 
 
 class (MonadState (s1,s2) m) => MonadStateTwo s1 s2 m | m -> s1 s2 where
   get1 :: m s1
@@ -25,7 +25,7 @@ class (MonadState (s1,s2) m) => MonadStateTwo s1 s2 m | m -> s1 s2 where
   modify1 :: (s1 -> s1) -> m ()
   modify2 :: (s2 -> s2) -> m ()
   
-instance (Monad m) => MonadStateTwo TryServerInfo MapUserN (StateT (TryServerInfo,MapUserN) m) where
+instance (Monad m) => MonadStateTwo TryServer MapUserN (StateT (TryServer,MapUserN) m) where
   get1 = gets fst
   get2 = gets snd
   put1 s1 = modify (\(_,s2) -> (s1,s2))
@@ -33,33 +33,32 @@ instance (Monad m) => MonadStateTwo TryServerInfo MapUserN (StateT (TryServerInf
   modify1 f = modify (\(s1,s2) -> (f s1,s2))
   modify2 f = modify (\(s1,s2) -> (s1,f s2))
   
-data TryServerInfo = 
-  FirstTry ServerInfo
-  | SecondTry ServerInfo
-  | ThirdTry ServerInfo
-    deriving (Eq)
+data TryServer = TryServer {tryNum ::Int, servInf :: ServerInfo}
+ deriving (Eq,Show)
 
-nextTry :: TryServerInfo -> TryServerInfo
-nextTry (FirstTry sI) = SecondTry sI
-nextTry (SecondTry sI) = ThirdTry sI
-nextTry (ThirdTry sI) = ThirdTry sI
+instance Ord TryServer where
+  compare a b = compare (tryNum a) (tryNum b)
 
-resetTry :: TryServerInfo -> TryServerInfo
-resetTry (FirstTry sI) = (FirstTry sI)
-resetTry (SecondTry sI) = (FirstTry sI)
-resetTry (ThirdTry sI) = (FirstTry sI)
+nextTry :: TryServer -> TryServer
+nextTry (TryServer num sI) = TryServer (succ num) sI
 
-changeServInfo :: ServerInfo -> TryServerInfo -> TryServerInfo
-changeServInfo sI (FirstTry _) = FirstTry sI
-changeServInfo sI (SecondTry _) = SecondTry sI
-changeServInfo sI (ThirdTry _) = ThirdTry sI
+resetTry :: TryServer -> TryServer
+resetTry (TryServer _ sI) = TryServer 1 sI
 
-changeTs :: Integer -> TryServerInfo -> TryServerInfo
-changeTs ts (FirstTry sI) = (FirstTry sI{tsSI=ts})
-changeTs ts (SecondTry sI) = (SecondTry sI{tsSI=ts})
-changeTs ts (ThirdTry sI) = (ThirdTry sI{tsSI=ts})
+changeServInfo :: ServerInfo -> TryServer -> TryServer
+changeServInfo sI (TryServer num _) = TryServer num sI
 
-unTry ::  TryServerInfo -> ServerInfo
-unTry (FirstTry sI) = sI
-unTry (SecondTry sI) = sI
-unTry (ThirdTry sI) = sI
+changeTs :: Integer -> TryServer -> TryServer
+changeTs ts (TryServer num sI) = TryServer num sI{tsSI=ts}
+
+firstTry :: ServerInfo -> TryServer 
+firstTry sI = TryServer 1 sI
+
+secondTry :: ServerInfo -> TryServer 
+secondTry sI = TryServer 2 sI
+
+thirdTry :: ServerInfo -> TryServer 
+thirdTry sI = TryServer 3 sI
+
+fourthTry :: ServerInfo -> TryServer 
+fourthTry sI = TryServer 4 sI
