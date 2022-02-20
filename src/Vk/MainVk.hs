@@ -1,14 +1,14 @@
-{-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Werror #-}
 
 module Vk.MainVk where
 
 import qualified Data.Map as Map (fromList)
 import Vk.App (run)
 import qualified Vk.App (makeH)
-import Vk.Conf (Config(..), getTime, parseConf)
-import Vk.Logger (LogConfig(..), LogHandle(..), logger)
+import Vk.Conf (Config (..), getTime, parseConf)
+import Vk.Logger (LogConfig (..), LogHandle (..), logger)
 
 mainVk :: IO ()
 mainVk = do
@@ -21,4 +21,3 @@ mainVk = do
   let handle = Vk.App.makeH config handleLog
   putStrLn "App started"
   run handle (Map.fromList [])
-  

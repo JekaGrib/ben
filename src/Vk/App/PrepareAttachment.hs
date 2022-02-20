@@ -1,76 +1,76 @@
-{-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Werror #-}
 
 module Vk.App.PrepareAttachment where
 
-import Control.Monad.Catch (MonadCatch(catch))
-import Control.Monad.Except (ExceptT,throwError,lift)
+import Control.Monad.Catch (MonadCatch (catch))
+import Control.Monad.Except (ExceptT, lift, throwError)
 import Data.Aeson (decode)
 import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import Data.List (sortOn)
-import Data.Ord (Down(Down))
+import Data.Ord (Down (Down))
 import Data.String (fromString)
 import qualified Data.Text as T
 import Network.HTTP.Client
-  ( RequestBody(..)
-  , httpLbs
-  , parseRequest
-  , responseBody
-  , urlEncodedBody
+  ( RequestBody (..),
+    httpLbs,
+    parseRequest,
+    responseBody,
+    urlEncodedBody,
   )
 import Network.HTTP.Client.MultipartFormData (formDataBody, partFileRequestBody)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Vk.Api.Response
-import Vk.Conf (Config(..))
-import Vk.Logger (LogHandle(..),logDebug)
+import Vk.Conf (Config (..))
+import Vk.Logger (LogHandle (..), logDebug)
 import Vk.Oops
-  ( PrependAttachmetException(..)
-  , handleExGetUploadServ
-  , handleExGoToUrl
-  , handleExLoadToServ
-  , handleExSaveOnServ
-  , throwAndLogPrepAttEx
+  ( PrependAttachmetException (..),
+    handleExGetUploadServ,
+    handleExGoToUrl,
+    handleExLoadToServ,
+    handleExSaveOnServ,
+    throwAndLogPrepAttEx,
   )
 import Vk.Types
 
-data Handle m =
-  Handle
-    { hConf :: Config
-    , hLog :: LogHandle m
-    , getPhotoServer :: UserId -> m Response
-    , loadPhotoToServ :: ServerUrl -> PicUrl -> ResponseS -> m Response
-    , savePhotoOnServ :: LoadPhotoResp -> m Response
-    , getDocServer :: UserId -> TypeInGetServerReq -> m Response
-    , loadDocToServ :: ServerUrl -> DocUrl -> ResponseS -> Extention -> m Response
-    , saveDocOnServ :: LoadDocResp -> Title -> m Response
-    , goToUrl :: Url -> m ResponseS
-    }
+data Handle m = Handle
+  { hConf :: Config,
+    hLog :: LogHandle m,
+    getPhotoServer :: UserId -> m Response,
+    loadPhotoToServ :: ServerUrl -> PicUrl -> ResponseS -> m Response,
+    savePhotoOnServ :: LoadPhotoResp -> m Response,
+    getDocServer :: UserId -> TypeInGetServerReq -> m Response,
+    loadDocToServ :: ServerUrl -> DocUrl -> ResponseS -> Extention -> m Response,
+    saveDocOnServ :: LoadDocResp -> Title -> m Response,
+    goToUrl :: Url -> m ResponseS
+  }
 
 makeH :: Config -> LogHandle IO -> Handle IO
-makeH conf logH = Handle 
-  conf
-  logH
-  (getPhotoServer' conf)
-  loadPhotoToServ'
-  (savePhotoOnServ' conf)
-  (getDocServer' conf)
-  loadDocToServ'
-  (saveDocOnServ' conf)
-  goToUrl'
+makeH conf logH =
+  Handle
+    conf
+    logH
+    (getPhotoServer' conf)
+    loadPhotoToServ'
+    (savePhotoOnServ' conf)
+    (getDocServer' conf)
+    loadDocToServ'
+    (saveDocOnServ' conf)
+    goToUrl'
 
 -- logic functions:
 
 getAttachmentString ::
-     (MonadCatch m)
-  => Handle m
-  -> UserId
-  -> Attachment
-  -> ExceptT SomethingWrong m AttachmentString
-getAttachmentString _ _ (PhotoAttachment (Photo [])) = 
+  (MonadCatch m) =>
+  Handle m ->
+  UserId ->
+  Attachment ->
+  ExceptT SomethingWrong m AttachmentString
+getAttachmentString _ _ (PhotoAttachment (Photo [])) =
   throwError "Unknown photo attachment, empty sizes"
-getAttachmentString h usId (PhotoAttachment (Photo sizes) ) = do
+getAttachmentString h usId (PhotoAttachment (Photo sizes)) = do
   let picUrl = url . head . sortOn (Down . height) $ sizes
   (DocInfo idDoc owner_id) <- lift $ getPhotoDocInfo h usId picUrl
   return $ "photo" ++ show owner_id ++ "_" ++ show idDoc
@@ -91,15 +91,19 @@ getAttachmentString _ _ (WallAttachment (WallInfo idWall owner_id)) =
 getAttachmentString _ _ (PollAttachment (DocInfo idDoc owner_id)) =
   return $ "poll" ++ show owner_id ++ "_" ++ show idDoc
 getAttachmentString _ usId (StickerAttachment _) =
-  throwError $ "Wrong sticker attachment from user: " ++
-  show usId ++ ". Sticker not alone in msg.\n"
+  throwError $
+    "Wrong sticker attachment from user: "
+      ++ show usId
+      ++ ". Sticker not alone in msg.\n"
 getAttachmentString _ _ (UnknownAttachment x) =
   throwError $ "Unknown attachment:" ++ show x ++ "\n"
 
-getPhotoDocInfo :: (MonadCatch m) => Handle m
-  -> UserId
-  -> Url
-  -> m DocInfo
+getPhotoDocInfo ::
+  (MonadCatch m) =>
+  Handle m ->
+  UserId ->
+  Url ->
+  m DocInfo
 getPhotoDocInfo h usId picUrl = do
   serRespJson <- getPhotoServer h usId `catch` handleExGetUploadServ (hLog h)
   serUrl <- checkGetUploadServResponse h serRespJson
@@ -111,10 +115,12 @@ getPhotoDocInfo h usId picUrl = do
     savePhotoOnServ h loadPhotoResp `catch` handleExSaveOnServ (hLog h)
   checkSavePhotoResponse h savePhotoJson
 
-getDocInfo :: (MonadCatch m) => Handle m
-  -> UserId
-  -> Doc
-  -> m DocInfo
+getDocInfo ::
+  (MonadCatch m) =>
+  Handle m ->
+  UserId ->
+  Doc ->
+  m DocInfo
 getDocInfo h usId (Doc docUrl ext title) = do
   serRespJson <-
     getDocServer h usId "doc" `catch` handleExGetUploadServ (hLog h)
@@ -127,27 +133,28 @@ getDocInfo h usId (Doc docUrl ext title) = do
     saveDocOnServ h loadDocResp title `catch` handleExSaveOnServ (hLog h)
   checkSaveDocResponse h saveDocJson
 
-
-getAudioMsgDocInfo :: (MonadCatch m) => Handle m
-  -> UserId
-  -> Audio
-  -> m DocInfo
+getAudioMsgDocInfo ::
+  (MonadCatch m) =>
+  Handle m ->
+  UserId ->
+  Audio ->
+  m DocInfo
 getAudioMsgDocInfo h usId (Audio docUrl) = do
   serRespJson <-
     getDocServer h usId "audio_message" `catch` handleExGetUploadServ (hLog h)
   serUrl <- checkGetUploadServResponse h serRespJson
   bsDoc <- goToUrl h docUrl `catch` handleExGoToUrl (hLog h)
   loadDocJson <-
-    loadDocToServ h serUrl docUrl bsDoc "ogg" `catch`
-    handleExLoadToServ (hLog h)
+    loadDocToServ h serUrl docUrl bsDoc "ogg"
+      `catch` handleExLoadToServ (hLog h)
   loadDocResp <- checkLoadDocResponse h loadDocJson
   saveDocJson <-
-    saveDocOnServ h loadDocResp "audio_message" `catch`
-    handleExSaveOnServ (hLog h)
+    saveDocOnServ h loadDocResp "audio_message"
+      `catch` handleExSaveOnServ (hLog h)
   checkSaveDocAuMesResponse h saveDocJson
 
 checkGetUploadServResponse ::
-     (MonadCatch m) => Handle m -> Response -> m ServerUrl
+  (MonadCatch m) => Handle m -> Response -> m ServerUrl
 checkGetUploadServResponse h json =
   case decode json of
     Just (UploadServerResponse (UploadUrl serUrl)) -> do
@@ -156,11 +163,11 @@ checkGetUploadServResponse h json =
     _ -> do
       let ex =
             CheckGetUploadServerResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+              "UNKNOWN RESPONSE:\n" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 checkLoadDocResponse ::
-     (MonadCatch m) => Handle m -> Response -> m LoadDocResp
+  (MonadCatch m) => Handle m -> Response -> m LoadDocResp
 checkLoadDocResponse h json =
   case decode json of
     Just loadDocResp@(LoadDocResp _) -> do
@@ -169,11 +176,11 @@ checkLoadDocResponse h json =
     _ -> do
       let ex =
             CheckLoadToServResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+              "UNKNOWN RESPONSE:\n" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSaveDocResponse ::
-     (MonadCatch m) => Handle m -> Response -> m DocInfo
+  (MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSaveDocResponse h json =
   case decode json of
     Just (SaveDocResp (ResponseSDR "doc" docInf)) -> do
@@ -182,11 +189,11 @@ checkSaveDocResponse h json =
     _ -> do
       let ex =
             CheckSaveOnServResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+              "UNKNOWN RESPONSE:\n" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSaveDocAuMesResponse ::
-     (MonadCatch m) => Handle m -> Response -> m DocInfo
+  (MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSaveDocAuMesResponse h json =
   case decode json of
     Just (SaveDocAuMesResp (ResponseSDAMR "audio_message" docInf)) -> do
@@ -195,11 +202,11 @@ checkSaveDocAuMesResponse h json =
     _ -> do
       let ex =
             CheckSaveOnServResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+              "UNKNOWN RESPONSE:\n" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 checkLoadPhotoResponse ::
-     (MonadCatch m) => Handle m -> Response -> m LoadPhotoResp
+  (MonadCatch m) => Handle m -> Response -> m LoadPhotoResp
 checkLoadPhotoResponse h json =
   case decode json of
     Just loadPhotoResp -> do
@@ -208,11 +215,11 @@ checkLoadPhotoResponse h json =
     _ -> do
       let ex =
             CheckLoadToServResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+              "UNKNOWN RESPONSE:\n" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 checkSavePhotoResponse ::
-     (MonadCatch m) => Handle m -> Response -> m DocInfo
+  (MonadCatch m) => Handle m -> Response -> m DocInfo
 checkSavePhotoResponse h json =
   case decode json of
     Just (SavePhotoResp [DocInfo id' ownerId]) -> do
@@ -221,7 +228,7 @@ checkSavePhotoResponse h json =
     _ -> do
       let ex =
             CheckSaveOnServResponseException $
-            "UNKNOWN RESPONSE:\n" ++ show json
+              "UNKNOWN RESPONSE:\n" ++ show json
       throwAndLogPrepAttEx (hLog h) ex
 
 -- IO handle functions:
@@ -231,10 +238,13 @@ getDocServer' conf usId type' = do
   manager <- newTlsManager
   req <-
     parseRequest $
-    "https://api.vk.com/method/docs.getMessagesUploadServer?type=" ++
-    type' ++
-    "&peer_id=" ++
-    show usId ++ "&access_token=" ++ cBotToken conf ++ "&v=5.103"
+      "https://api.vk.com/method/docs.getMessagesUploadServer?type="
+        ++ type'
+        ++ "&peer_id="
+        ++ show usId
+        ++ "&access_token="
+        ++ cBotToken conf
+        ++ "&v=5.103"
   responseBody <$> httpLbs req manager
 
 loadDocToServ' :: ServerUrl -> DocUrl -> ResponseS -> Extention -> IO Response
@@ -244,7 +254,7 @@ loadDocToServ' serUrl docUrl bs ext = do
   req <-
     formDataBody
       [ partFileRequestBody "file" (T.unpack docUrl ++ " file." ++ ext) $
-        RequestBodyBS bs
+          RequestBodyBS bs
       ]
       initReq
   responseBody <$> httpLbs req manager
@@ -266,8 +276,11 @@ getPhotoServer' conf usId = do
   manager <- newTlsManager
   req <-
     parseRequest $
-    "https://api.vk.com/method/photos.getMessagesUploadServer?peer_id=" ++
-    show usId ++ "&access_token=" ++ cBotToken conf ++ "&v=5.103"
+      "https://api.vk.com/method/photos.getMessagesUploadServer?peer_id="
+        ++ show usId
+        ++ "&access_token="
+        ++ cBotToken conf
+        ++ "&v=5.103"
   res <- httpLbs req manager
   return (responseBody res)
 
@@ -303,5 +316,3 @@ goToUrl' urlTxt = do
   res <- httpLbs req manager
   let bs = LBS.toStrict . responseBody $ res
   return bs
-
-

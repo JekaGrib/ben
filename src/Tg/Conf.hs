@@ -1,6 +1,6 @@
-{-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Werror #-}
 
 module Tg.Conf where
 
@@ -9,25 +9,22 @@ import Data.Char (toUpper)
 import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
 import Data.Time.LocalTime (getZonedTime)
-import Tg.Logger (Priority(..))
+import Tg.Logger (Priority (..))
 import Tg.Oops
-  ( handleExGetTime
-  , handleExInput
-  , handleExParseConf
-  , handleExPullConf
+  ( handleExGetTime,
+    handleExInput,
+    handleExParseConf,
+    handleExPullConf,
   )
 import Tg.Types
 
-
-data Config =
-  Config
-    { cStartN :: N
-    , cBotToken :: String
-    , cHelpMsg :: String
-    , cRepeatQ :: String
-    , cPriority :: Priority
-    }
-
+data Config = Config
+  { cStartN :: N,
+    cBotToken :: String,
+    cHelpMsg :: String,
+    cRepeatQ :: String,
+    cPriority :: Priority
+  }
 
 parseConf :: IO Config
 parseConf = do
@@ -39,24 +36,24 @@ parseConf = do
   helpMsg <-
     parseConfHelpMsg conf `E.catch` handleExParseConf "telegram.help_Info_Msg"
   repeatQuestion <-
-    parseConfRepeatQ conf `E.catch`
-    handleExParseConf "telegram.repeat_Info_Question"
+    parseConfRepeatQ conf
+      `E.catch` handleExParseConf "telegram.repeat_Info_Question"
   return $ Config startN botToken helpMsg repeatQuestion prio
 
 pullConfig :: IO C.Config
 pullConfig =
-  C.load [C.Required "./bot.config"] `E.catch`
-  (\e -> print (e :: C.ConfigError) >> return C.empty) `E.catch`
-  (\e -> print (e :: C.KeyError) >> return C.empty) `E.catch`
-  (\e -> print (e :: E.IOException) >> return C.empty)
+  C.load [C.Required "./bot.config"]
+    `E.catch` (\e -> print (e :: C.ConfigError) >> return C.empty)
+    `E.catch` (\e -> print (e :: C.KeyError) >> return C.empty)
+    `E.catch` (\e -> print (e :: E.IOException) >> return C.empty)
 
 -- parse config values functions:
 parseConfStartN :: C.Config -> IO N
 parseConfStartN conf = do
   str <-
-    (C.lookup conf "telegram.startN" :: IO (Maybe N)) `E.catch`
-    ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe N)) `E.catch`
-    ((\_ -> return Nothing) :: E.IOException -> IO (Maybe N))
+    (C.lookup conf "telegram.startN" :: IO (Maybe N))
+      `E.catch` ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe N))
+      `E.catch` ((\_ -> return Nothing) :: E.IOException -> IO (Maybe N))
   case str of
     Nothing -> inputStartN `E.catch` handleExInput "startN"
     Just 1 -> return 1
@@ -69,9 +66,9 @@ parseConfStartN conf = do
 parseConfBotToken :: C.Config -> IO String
 parseConfBotToken conf = do
   str <-
-    (C.lookup conf "telegram.botToken" :: IO (Maybe String)) `E.catch`
-    ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe String)) `E.catch`
-    ((\_ -> return Nothing) :: E.IOException -> IO (Maybe String))
+    (C.lookup conf "telegram.botToken" :: IO (Maybe String))
+      `E.catch` ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe String))
+      `E.catch` ((\_ -> return Nothing) :: E.IOException -> IO (Maybe String))
   case str of
     Nothing -> inputBotToken
     Just n -> return n
@@ -79,9 +76,9 @@ parseConfBotToken conf = do
 parseConfPrio :: C.Config -> IO Priority
 parseConfPrio conf = do
   str <-
-    (C.lookup conf "telegram.logLevel" :: IO (Maybe String)) `E.catch`
-    ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe String)) `E.catch`
-    ((\_ -> return Nothing) :: E.IOException -> IO (Maybe String))
+    (C.lookup conf "telegram.logLevel" :: IO (Maybe String))
+      `E.catch` ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe String))
+      `E.catch` ((\_ -> return Nothing) :: E.IOException -> IO (Maybe String))
   case str of
     Nothing -> inputLogLevel `E.catch` handleExInput "logLevel"
     Just "DEBUG" -> return DEBUG
@@ -93,9 +90,9 @@ parseConfPrio conf = do
 parseConfHelpMsg :: C.Config -> IO String
 parseConfHelpMsg conf = do
   str <-
-    (C.lookup conf "telegram.help_Info_Msg" :: IO (Maybe String)) `E.catch`
-    ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe String)) `E.catch`
-    ((\_ -> return Nothing) :: E.IOException -> IO (Maybe String))
+    (C.lookup conf "telegram.help_Info_Msg" :: IO (Maybe String))
+      `E.catch` ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe String))
+      `E.catch` ((\_ -> return Nothing) :: E.IOException -> IO (Maybe String))
   case str of
     Nothing -> inputHelpMsg `E.catch` handleExInput "help_Info_Msg"
     Just n -> return n
@@ -103,9 +100,9 @@ parseConfHelpMsg conf = do
 parseConfRepeatQ :: C.Config -> IO String
 parseConfRepeatQ conf = do
   str <-
-    (C.lookup conf "telegram.repeat_Info_Question" :: IO (Maybe String)) `E.catch`
-    ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe String)) `E.catch`
-    ((\_ -> return Nothing) :: E.IOException -> IO (Maybe String))
+    (C.lookup conf "telegram.repeat_Info_Question" :: IO (Maybe String))
+      `E.catch` ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe String))
+      `E.catch` ((\_ -> return Nothing) :: E.IOException -> IO (Maybe String))
   case str of
     Nothing -> inputRepeatQ `E.catch` handleExInput "repeat_Info_Question"
     Just n -> return n
@@ -155,13 +152,14 @@ inputRepeatQ = do
   getLine
 
 inputLocalTime :: IO String
-inputLocalTime = do 
+inputLocalTime = do
   putStrLn
     "Local time not found\nPlease, enter your local time in any form\nExample: 06.07.2020 16:21"
-  getLine 
+  getLine
 
 -- getTime function:
 getTime :: IO String
-getTime = (show <$> getZonedTime) `E.catch`
-  (\e -> print (e :: E.SomeException) >> inputLocalTime `E.catch` handleExInput "local_time") `E.catch`
-    handleExGetTime
+getTime =
+  (show <$> getZonedTime)
+    `E.catch` (\e -> print (e :: E.SomeException) >> inputLocalTime `E.catch` handleExInput "local_time")
+    `E.catch` handleExGetTime

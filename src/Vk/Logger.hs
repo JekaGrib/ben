@@ -1,21 +1,19 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 
 module Vk.Logger where
 
-import Prelude hiding (log)
 import Control.Monad (when)
+import Prelude hiding (log)
 
-data LogHandle m =
-  LogHandle
-    { hLogConf :: LogConfig
-    , log :: Priority -> String -> m ()
-    }
+data LogHandle m = LogHandle
+  { hLogConf :: LogConfig,
+    log :: Priority -> String -> m ()
+  }
 
-newtype LogConfig =
-  LogConfig
-    { cLogLevel :: Priority
-    }
+newtype LogConfig = LogConfig
+  { cLogLevel :: Priority
+  }
 
 data Priority
   = DEBUG
@@ -26,16 +24,16 @@ data Priority
 
 logger :: String -> Priority -> String -> IO ()
 logger logPath currP str = do
-    putStrLn (show currP ++ ": " ++ str)
-    appendFile logPath (show currP ++ ": " ++ str ++ "\n")
+  putStrLn (show currP ++ ": " ++ str)
+  appendFile logPath (show currP ++ ": " ++ str ++ "\n")
 
 checkPrioAndLog :: (Applicative m) => LogHandle m -> Priority -> String -> m ()
-checkPrioAndLog h prio = when (prio >= configP) . log h prio 
-  where configP = cLogLevel (hLogConf h)
+checkPrioAndLog h prio = when (prio >= configP) . log h prio
+  where
+    configP = cLogLevel (hLogConf h)
 
 logDebug, logInfo, logWarning, logError :: (Applicative m) => LogHandle m -> String -> m ()
 logDebug h = checkPrioAndLog h DEBUG
 logInfo h = checkPrioAndLog h INFO
 logWarning h = checkPrioAndLog h WARNING
 logError h = checkPrioAndLog h ERROR
-

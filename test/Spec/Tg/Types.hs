@@ -1,9 +1,9 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 
 module Spec.Tg.Types where
 
-import Tg.Logger ( Priority(..))
+import Tg.Logger (Priority (..))
 import Tg.Types
 
 data MockAction
@@ -15,4 +15,3 @@ data MockAction
   | LOG Priority
   | LOGMSG Priority String
   deriving (Eq, Show)
-

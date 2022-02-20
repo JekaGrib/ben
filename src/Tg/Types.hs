@@ -1,5 +1,5 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 
 module Tg.Types where
 
@@ -29,18 +29,18 @@ type TextOfKeyb = T.Text
 
 type TextOfButton = T.Text
 
-newtype OpenRepeat =
-  OpenRepeat N
+newtype OpenRepeat
+  = OpenRepeat N
   deriving (Eq, Show)
 
-newtype Msg =
-  Msg T.Text
+newtype Msg
+  = Msg T.Text
   deriving (Eq, Show)
 
-newtype ToUserId =
-  ToUserId UserId
+newtype ToUserId
+  = ToUserId UserId
   deriving (Eq, Show)
 
-newtype MsgId =
-  MsgId MessageId
+newtype MsgId
+  = MsgId MessageId
   deriving (Eq, Show)

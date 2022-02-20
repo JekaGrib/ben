@@ -1,12 +1,12 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 
 module Vk.Oops where
 
 import qualified Control.Exception as E
 import Control.Monad.Catch (Exception, MonadCatch, SomeException, throwM)
 import qualified Data.Configurator.Types as C
-import Vk.Logger (LogHandle(..), logError)
+import Vk.Logger (LogHandle (..), logError)
 import Vk.Types
 
 data VKBotException
@@ -52,64 +52,64 @@ throwAndLogEx logH ex = do
   throwM ex
 
 throwAndLogPrepAttEx ::
-     (MonadCatch m) => LogHandle m -> PrependAttachmetException -> m a
+  (MonadCatch m) => LogHandle m -> PrependAttachmetException -> m a
 throwAndLogPrepAttEx logH ex =
   throwAndLogEx logH (PrependAttachmetToSendException ex)
 
 -- handles to catch exceptions in logic functions:
 handleExGetLongPollServ ::
-     (MonadCatch m) => LogHandle m -> SomeException -> m Response
+  (MonadCatch m) => LogHandle m -> SomeException -> m Response
 handleExGetLongPollServ logH e = do
   let ex = GetLongPollServerException $ show e
   throwAndLogEx logH ex
 
 handleExGetUpd ::
-     (MonadCatch m) => LogHandle m -> SomeException -> m Response
+  (MonadCatch m) => LogHandle m -> SomeException -> m Response
 handleExGetUpd logH e = do
   let ex = GetUpdatesException $ show e
   throwAndLogEx logH ex
 
 handleExSendMsg ::
-     (MonadCatch m)
-  => LogHandle m
-  -> UserId
-  -> MSG
-  -> SomeException
-  -> m Response
+  (MonadCatch m) =>
+  LogHandle m ->
+  UserId ->
+  MSG ->
+  SomeException ->
+  m Response
 handleExSendMsg logH usId msg e = do
   let ex = SendMsgException msg (ToUserId usId) $ show e
   throwAndLogEx logH ex
 
 handleExSendKeyb ::
-     (MonadCatch m)
-  => LogHandle m
-  -> UserId
-  -> SomeException
-  -> m Response
+  (MonadCatch m) =>
+  LogHandle m ->
+  UserId ->
+  SomeException ->
+  m Response
 handleExSendKeyb logH usId e = do
   let ex = SendKeybException (ToUserId usId) $ show e
   throwAndLogEx logH ex
 
 handleExGetUploadServ ::
-     (MonadCatch m) => LogHandle m -> SomeException -> m Response
+  (MonadCatch m) => LogHandle m -> SomeException -> m Response
 handleExGetUploadServ logH e = do
   let ex = GetUploadServerException $ show e
   throwAndLogPrepAttEx logH ex
 
 handleExLoadToServ ::
-     (MonadCatch m) => LogHandle m -> SomeException -> m Response
+  (MonadCatch m) => LogHandle m -> SomeException -> m Response
 handleExLoadToServ logH e = do
   let ex = LoadToServException $ show e
   throwAndLogPrepAttEx logH ex
 
 handleExSaveOnServ ::
-     (MonadCatch m) => LogHandle m -> SomeException -> m Response
+  (MonadCatch m) => LogHandle m -> SomeException -> m Response
 handleExSaveOnServ logH e = do
   let ex = SaveOnServException $ show e
   throwAndLogPrepAttEx logH ex
 
 handleExGoToUrl ::
-     (MonadCatch m) => LogHandle m -> SomeException -> m ResponseS
+  (MonadCatch m) => LogHandle m -> SomeException -> m ResponseS
 handleExGoToUrl logH e = do
   let ex = GoToUrlException $ show e
   throwAndLogPrepAttEx logH ex

@@ -1,15 +1,14 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 
 module Tg.MainTg where
 
 import Control.Monad.State (evalStateT, forever)
-import Tg.App (startApp,run)
+import qualified Data.Map as Map (fromList)
+import Tg.App (run, startApp)
 import qualified Tg.App (makeH)
-import Tg.Conf (Config(..), getTime, parseConf)
-import Tg.Logger (LogConfig(..), LogHandle(..), logger)
-import qualified Data.Map as Map(fromList) 
-
+import Tg.Conf (Config (..), getTime, parseConf)
+import Tg.Logger (LogConfig (..), LogHandle (..), logger)
 
 mainTg :: IO ()
 mainTg = do

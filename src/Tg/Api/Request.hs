@@ -1,55 +1,51 @@
-{-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Werror #-}
 
 module Tg.Api.Request where
 
-import Tg.Types
 import Data.Aeson
-  ( ToJSON(toEncoding,toJSON)
-  , (.=)
-  , defaultOptions
-  , genericToEncoding
-  , object
-  , pairs
+  ( (.=),
+    ToJSON (toEncoding, toJSON),
+    defaultOptions,
+    genericToEncoding,
+    object,
+    pairs,
   )
 import GHC.Generics (Generic)
+import Tg.Types
 
-newtype JSONBodyOffset =
-  JSONBodyOffset
-    { offset :: Offset
-    }
+newtype JSONBodyOffset = JSONBodyOffset
+  { offset :: Offset
+  }
   deriving (Generic, Show)
 
 instance ToJSON JSONBodyOffset where
   toEncoding = genericToEncoding defaultOptions
 
-newtype JSONBodyTimeOut =
-  JSONBodyTimeOut
-    { timeout :: Integer
-    }
+newtype JSONBodyTimeOut = JSONBodyTimeOut
+  { timeout :: Integer
+  }
   deriving (Generic, Show)
 
 instance ToJSON JSONBodyTimeOut where
   toEncoding = genericToEncoding defaultOptions
 
-data SendMsgJSONBody =
-  SendMsgJSONBody
-    { chat_id :: UserId
-    , text :: TextOfMsg
-    }
+data SendMsgJSONBody = SendMsgJSONBody
+  { chat_id :: UserId,
+    text :: TextOfMsg
+  }
   deriving (Generic, Show)
 
 instance ToJSON SendMsgJSONBody where
   toEncoding = genericToEncoding defaultOptions
 
-data CopyMsgJSONBody =
-  CopyMsgJSONBody
-    { chat_idCM :: UserId
-    , from_chat_idCM :: UserId
-    , msg_idCM :: MessageId
-    }
+data CopyMsgJSONBody = CopyMsgJSONBody
+  { chat_idCM :: UserId,
+    from_chat_idCM :: UserId,
+    msg_idCM :: MessageId
+  }
   deriving (Generic, Show)
 
 instance ToJSON CopyMsgJSONBody where
@@ -58,12 +54,11 @@ instance ToJSON CopyMsgJSONBody where
   toEncoding (CopyMsgJSONBody a b c) =
     pairs ("chat_id" .= a <> "from_chat_id" .= b <> "message_id" .= c)
 
-data KeybJSONBody =
-  KeybJSONBody
-    { chat_idKeyb :: UserId
-    , textKeyb :: TextOfKeyb
-    , reply_markup :: KeyBoard
-    }
+data KeybJSONBody = KeybJSONBody
+  { chat_idKeyb :: UserId,
+    textKeyb :: TextOfKeyb,
+    reply_markup :: KeyBoard
+  }
   deriving (Generic, Show)
 
 instance ToJSON KeybJSONBody where
@@ -72,11 +67,10 @@ instance ToJSON KeybJSONBody where
   toEncoding (KeybJSONBody a b c) =
     pairs ("chat_id" .= a <> "text" .= b <> "reply_markup" .= c)
 
-data KeyBoard =
-  KeyBoard
-    { keyboard :: [[KeyButton]]
-    , one_time_keyboard :: Bool
-    }
+data KeyBoard = KeyBoard
+  { keyboard :: [[KeyButton]],
+    one_time_keyboard :: Bool
+  }
   deriving (Generic, Show)
 
 instance ToJSON KeyBoard where
@@ -84,13 +78,11 @@ instance ToJSON KeyBoard where
   toEncoding (KeyBoard a b) =
     pairs ("keyboard" .= a <> "one_time_keyboard" .= b)
 
-newtype KeyButton =
-  KeyButton
-    { textBtn :: TextOfButton
-    }
+newtype KeyButton = KeyButton
+  { textBtn :: TextOfButton
+  }
   deriving (Generic, Show)
 
 instance ToJSON KeyButton where
   toJSON (KeyButton a) = object ["text" .= a]
   toEncoding (KeyButton a) = pairs ("text" .= a)
-

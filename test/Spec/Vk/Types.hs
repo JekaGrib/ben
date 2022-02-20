@@ -1,11 +1,10 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 
 module Spec.Vk.Types where
 
-
-import Vk.Logger ( Priority(..))
-import Vk.Api.Response (ServerInfo,LoadPhotoResp,LoadDocResp)
+import Vk.Api.Response (LoadDocResp, LoadPhotoResp, ServerInfo)
+import Vk.Logger (Priority (..))
 import Vk.Types
 
 data MockAction
@@ -16,7 +15,7 @@ data MockAction
   | GOTPhotoSERVER UserId
   | LOADPhotoTOSERV ServerUrl PicUrl ResponseS
   | SAVEPhotoONSERV LoadPhotoResp
-  | GOTDocSERVER UserId TypeInGetServerReq 
+  | GOTDocSERVER UserId TypeInGetServerReq
   | LOADDocTOSERV ServerUrl DocUrl ResponseS Extention
   | SAVEDocONSERV LoadDocResp Title
   | GOTOURL Url

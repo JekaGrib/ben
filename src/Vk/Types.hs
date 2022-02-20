@@ -1,5 +1,5 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 
 module Vk.Types where
 
@@ -58,9 +58,8 @@ type SomethingWrong = String
 
 type Counter = Int
 
-
-newtype OpenRepeat =
-  OpenRepeat N
+newtype OpenRepeat
+  = OpenRepeat N
   deriving (Eq, Show)
 
 data MSG
@@ -69,7 +68,6 @@ data MSG
   | StickerMsg StickerId
   deriving (Eq, Show)
 
-newtype ToUserId =
-  ToUserId UserId
+newtype ToUserId
+  = ToUserId UserId
   deriving (Eq, Show)
-

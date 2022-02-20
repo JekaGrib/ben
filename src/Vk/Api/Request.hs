@@ -1,47 +1,44 @@
-{-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Werror #-}
 
 module Vk.Api.Request where
 
 import Data.Aeson
-  ( ToJSON(toEncoding, toJSON)
-  , (.=)
-  , defaultOptions
-  , genericToEncoding
-  , object
-  , pairs
+  ( (.=),
+    ToJSON (toEncoding, toJSON),
+    defaultOptions,
+    genericToEncoding,
+    object,
+    pairs,
   )
 import qualified Data.Text as T
 import GHC.Generics (Generic)
 
-data KeyBoard =
-  KeyBoard
-    { one_time :: Bool
-    , buttons :: [[Button]]
-    , inline :: Bool
-    }
+data KeyBoard = KeyBoard
+  { one_time :: Bool,
+    buttons :: [[Button]],
+    inline :: Bool
+  }
   deriving (Generic, Show)
 
 instance ToJSON KeyBoard where
   toEncoding = genericToEncoding defaultOptions
 
-data Button =
-  Button
-    { action :: Action
-    , color :: T.Text
-    }
+data Button = Button
+  { action :: Action,
+    color :: T.Text
+  }
   deriving (Generic, Show)
 
 instance ToJSON Button where
   toEncoding = genericToEncoding defaultOptions
 
-data Action =
-  Action
-    { typeA :: T.Text
-    , label :: T.Text
-    }
+data Action = Action
+  { typeA :: T.Text,
+    label :: T.Text
+  }
   deriving (Generic, Show)
 
 instance ToJSON Action where

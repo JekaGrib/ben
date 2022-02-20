@@ -1,12 +1,11 @@
+{-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Werror #-}
-{-# OPTIONS_GHC  -Wall  #-}
-
 
 module Spec.Vk.Log where
 
-import Vk.Logger 
+import Control.Monad.State (StateT (..))
 import Spec.Vk.Types
-import           Control.Monad.State  (StateT(..))          
+import Vk.Logger
 
 handLogDebug :: LogHandle (StateT [MockAction] IO)
 handLogDebug = LogHandle (LogConfig DEBUG) logTest
@@ -21,14 +20,9 @@ handLogMsgInfo :: LogHandle (StateT [MockAction] IO)
 handLogMsgInfo = LogHandle (LogConfig INFO) logMsgTest
 
 logTest :: Priority -> String -> StateT [MockAction] IO ()
-logTest prio _ = StateT $ \acts -> 
-  return (() , LOG prio : acts)   
+logTest prio _ = StateT $ \acts ->
+  return ((), LOG prio : acts)
 
 logMsgTest :: Priority -> String -> StateT [MockAction] IO ()
-logMsgTest prio msg = StateT $ \acts -> 
-  return (() , LOGMSG prio msg : acts)
-
-
-
-
-
+logMsgTest prio msg = StateT $ \acts ->
+  return ((), LOGMSG prio msg : acts)
