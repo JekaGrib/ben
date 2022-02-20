@@ -2,17 +2,17 @@
 {-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module TgTest.Handlers where
+module Spec.Tg.App.Handlers where
 
 import Control.Monad.State (StateT(..))
 import Tg.App (Handle(..))
 import Tg.Types
-import TgTest.Types
-import TgTest.Log
+import Spec.Tg.Types
+import Spec.Tg.Log
 import Control.Monad.Catch (throwM)
 import Network.HTTP.Client (HttpException( InvalidUrlException ))
-import TgTest.ResponseExample
-import TgTest.Conf (config1)
+import Spec.Tg.App.ResponseExample
+import Spec.Tg.Conf (config1)
 
 
 getUpdatesTest :: Response -> StateT [MockAction] IO Response

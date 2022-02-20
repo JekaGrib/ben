@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
 
-module VkTest.Oops where
+module Spec.Vk.App.Oops where
 
 import Vk.Oops (VKBotException(..))
 

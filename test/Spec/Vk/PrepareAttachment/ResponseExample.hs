@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module VkTest.PrepareAttachment.ResponseExample where
+module Spec.Vk.PrepareAttachment.ResponseExample where
 
 import Vk.Types (Response)
 import Data.String (fromString)

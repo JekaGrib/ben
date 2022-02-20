@@ -2,13 +2,13 @@
 {-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-} 
 
-module VkTest.PrepareAttachment.Handlers where
+module Spec.Vk.PrepareAttachment.Handlers where
 
 import Vk.App.PrepareAttachment
-import VkTest.PrepareAttachment.ResponseExample
-import VkTest.Log
-import VkTest.Types
-import VkTest.Conf
+import Spec.Vk.PrepareAttachment.ResponseExample
+import Spec.Vk.Log
+import Spec.Vk.Types
+import Spec.Vk.Conf
 import Vk.Types
 import Control.Monad.State (StateT(..))
 import Vk.Api.Response (LoadPhotoResp,LoadDocResp)

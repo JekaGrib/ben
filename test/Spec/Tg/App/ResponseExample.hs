@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module TgTest.ResponseExample where
+module Spec.Tg.App.ResponseExample where
 
 import Tg.Types (Response)
 

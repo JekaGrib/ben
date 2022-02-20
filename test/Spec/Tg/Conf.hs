@@ -1,11 +1,13 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
+{-# LANGUAGE OverloadedStrings #-}
 
-module VkTest.Conf where
+module Spec.Tg.Conf where
 
 
-import Vk.Conf (Config(..))
-import Vk.Logger (Priority(..))
+import Tg.Conf (Config(..))
+import Tg.Logger (Priority(..))
+
 
 config1 :: Config
 config1 =
@@ -14,10 +16,8 @@ config1 =
     , cBotToken = "ABC123"
     , cHelpMsg = "Hello"
     , cRepeatQ = "Why?"
-    , cGroupId = 321
     , cPriority = DEBUG
     }
-
 
 
 

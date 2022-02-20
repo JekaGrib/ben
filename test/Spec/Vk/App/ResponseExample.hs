@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module VkTest.ResponseExample where
+module Spec.Vk.App.ResponseExample where
 
 import Vk.Types (Response)
 

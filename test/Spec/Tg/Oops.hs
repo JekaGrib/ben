@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
 
-module TgTest.Oops where
+module Spec.Tg.Oops where
 
 import Tg.Oops
 

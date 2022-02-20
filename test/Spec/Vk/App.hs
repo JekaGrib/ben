@@ -2,20 +2,19 @@
 {-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-} 
 
-module VkTest.Test where
+module Spec.Vk.App where
 
-import VkTest.PrepareAttachment (testVkPrAtt)
 import Vk.App (run,getServInfoAndCheckResp,runServ,startApp)
 import Vk.AppT (TryServer(..),firstTry,secondTry,thirdTry,nextTry)
 import Vk.Types
 import qualified Data.Map as Map
 import Vk.Oops (VKBotException(..))
-import VkTest.ResponseExample
+import Spec.Vk.App.ResponseExample
 import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow,shouldNotBe)
-import VkTest.Handlers
-import VkTest.Oops
+import Spec.Vk.App.Handlers
+import Spec.Vk.App.Oops
 import Control.Monad.State (evalStateT,execStateT,runStateT)
-import VkTest.Types
+import Spec.Vk.Types
 import Vk.Logger ( Priority(..))
 import Vk.Api.Response (ServerInfo(..),LoadPhotoResp(..),LoadDocResp(..))
 
@@ -33,9 +32,8 @@ emptyTryServInf :: TryServer
 emptyTryServInf = firstTry emptyServInf
 
 
-testVk :: IO ()
-testVk = do
-  testVkPrAtt
+testVkApp :: IO ()
+testVkApp = do
   hspec $ do
     describe "getServInfoAndCheckResp" $ do
       it "throw Exception with error answer" $

@@ -2,12 +2,12 @@
 {-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-} 
 
-module VkTest.PrepareAttachment where
+module Spec.Vk.PrepareAttachment where
 
 import Vk.App.PrepareAttachment
-import VkTest.PrepareAttachment.Handlers
-import VkTest.Types
-import VkTest.PrepareAttachment.Oops
+import Spec.Vk.PrepareAttachment.Handlers
+import Spec.Vk.Types
+import Spec.Vk.PrepareAttachment.Oops
 import Control.Monad.State (runStateT,evalStateT)
 import Control.Monad.Except (runExceptT)
 import Vk.Logger (Priority(..))

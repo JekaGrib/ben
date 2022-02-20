@@ -1,17 +1,17 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
 
-module VkTest.Handlers where
+module Spec.Vk.App.Handlers where
   
 import Vk.App (Handle(..))
 import Control.Monad.State (StateT(..))
-import VkTest.Log
-import VkTest.Conf
-import VkTest.Types 
+import Spec.Vk.Log
+import Spec.Vk.Conf
+import Spec.Vk.Types 
 import Vk.Types
 import Vk.Api.Response (ServerInfo(..))
-import VkTest.ResponseExample
-import qualified VkTest.PrepareAttachment.Handlers as PrAtt
+import Spec.Vk.App.ResponseExample
+import qualified Spec.Vk.PrepareAttachment.Handlers as PrAtt
 import Network.HTTP.Client (HttpException( InvalidUrlException ))
 import Control.Monad.Catch (throwM)
 

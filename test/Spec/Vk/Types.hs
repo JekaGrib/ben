@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
 
-module VkTest.Types where
+module Spec.Vk.Types where
 
 
 import Vk.Logger ( Priority(..))

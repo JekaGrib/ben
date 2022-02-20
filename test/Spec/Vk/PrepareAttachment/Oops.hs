@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
 
-module VkTest.PrepareAttachment.Oops where
+module Spec.Vk.PrepareAttachment.Oops where
 
 import Vk.Oops (VKBotException(PrependAttachmetToSendException),PrependAttachmetException(..))
 

@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC  -Wall  #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module TgTest.Test where
+module Spec.Tg.App where
 
 import Control.Monad.State (evalStateT, execStateT)
 import qualified Data.Map as Map
@@ -11,10 +11,10 @@ import Tg.App (run, startApp)
 import Tg.Logger (Priority(..))
 import Tg.Oops (TGBotException(..))
 import Tg.Types
-import TgTest.Types
-import TgTest.Oops
-import TgTest.Handlers
-import TgTest.ResponseExample
+import Spec.Tg.Types
+import Spec.Tg.Oops
+import Spec.Tg.App.Handlers
+import Spec.Tg.App.ResponseExample
 
 
 initialDB1,initialDB2,initialDB3 :: MapUserN
@@ -22,8 +22,8 @@ initialDB1 = Map.fromList []
 initialDB2 = Map.fromList [(1118, Left (OpenRepeat 2)),(1234, Right 3),(2581, Left (OpenRepeat 4))]
 initialDB3 = Map.fromList [(1118, Right 2),(1234, Right 3),(2581, Left (OpenRepeat 4))]
 
-testTG :: IO ()
-testTG =
+testTGApp :: IO ()
+testTGApp =
   hspec $ do
     describe "startApp" $ do
       it

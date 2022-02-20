@@ -1,12 +1,17 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
 
-import TgTest.Test (testTG)
-import VkTest.Test (testVk)
+import Spec.Tg.App (testTGApp)
+import Spec.Vk.App (testVkApp)
+import Spec.Vk.PrepareAttachment (testVkPrAtt)
 
 main :: IO ()
 main = do
-  putStrLn "Test telegram app"
-  testTG
-  putStrLn "Test vkontakte app"
-  testVk
+  putStrLn "Test TELEGRAM"
+  putStrLn "Test Tg.App.hs"
+  testTGApp
+  putStrLn "Test Vkontakte"
+  putStrLn "Test Vk.App.PrepareAttachment.hs"
+  testVkPrAtt
+  putStrLn "Test Vk.App.hs"
+  testVkApp

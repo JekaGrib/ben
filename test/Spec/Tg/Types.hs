@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -Werror #-}
 {-# OPTIONS_GHC  -Wall  #-}
 
-module TgTest.Types where
+module Spec.Tg.Types where
 
 import Tg.Logger ( Priority(..))
 import Tg.Types
