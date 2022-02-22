@@ -24,7 +24,7 @@ data Priority
 
 logger :: String -> Priority -> String -> IO ()
 logger logPath currP str = do
-  putStr (show currP ++ ": " ++ str)
+  putStrLn (show currP ++ ": " ++ str )
   appendFile logPath (show currP ++ ": " ++ str ++ "\n")
 
 checkPrioAndLog :: (Applicative m) => LogHandle m -> Priority -> String -> m ()

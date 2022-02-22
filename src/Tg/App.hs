@@ -41,7 +41,7 @@ import Tg.Oops
     handleExGetUpd,
     handleExSendKeyb,
     handleExSendMsg,
-    throwAndLogEx,
+    throwAndLogEx
   )
 import Tg.Types
 
