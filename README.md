@@ -4,18 +4,17 @@ Ben is echo-bot application for Telegram and Vk.
 Bot can send a message from the user to him back. Bot send response message several times. This number is set by the user.
 # Bot commands
 | Command              | Action                             |
-| :------------------- | ---------------------------------: |
+| :------------------- | :--------------------------------- |
 | /help                | bot send info about itself         | 
 | /repeat              | bot send keyboard, where user can change number of repeats messages. Keyboard also has info msg about current number of repeats        |
 # Types of messages sent
 | Telegram             | Vk                                 |
-| :------------------- | ---------------------------------: |
+| :------------------- | :--------------------------------- |
 | all types            | Text, sticker, photo, doc, audioMessage, video, audio, market, wall, poll         | 
 
 Unsupported types will be ignored
 # Installing
 You can install bot with:
-.. code:: shell
 
     $ git clone https://github.com/JekaGrib/ben.git
     $ stack build
@@ -23,6 +22,7 @@ You can install bot with:
 # Getting started
 ## 1.Create your bot
 You should create your bot in Tg or Vk.
+
 Necessary info for Tg: https://core.telegram.org/bots#3-how-do-i-create-a-bot
 Necessary info for Vk: https://vk.com/dev/bots_docs
 
@@ -34,7 +34,7 @@ Then you should make changes in this file.
 There is table with descriptions of each values in configuration file, that should be replace to your values.
 
 |App  | Value                | Description                            | 
-|:----| :------------------- |-----------------------------------------: |
+|:----| :------------------- |:----------------------------------------- |
 |Tg,Vk| startN               | Default number of repeats messages. This number is set automatically, when user start work with bot.  This number can then be changed by the user with the command "/repeat". It can be whole number from 1 to 5|
 |Tg,Vk| botToken             | Bot token                                 |
 |Tg,Vk| logLevel             | The logging level is specified here. The log will only display entries of this level and levels above.   |
@@ -45,12 +45,9 @@ There is table with descriptions of each values in configuration file, that shou
 ## 3.Run
 You can run Tg bot with:
 
-.. code:: shell
-
     $ stack exec ben-exe  Tg
 
 You can run Vk bot with:
-.. code:: shell
 
     $ stack exec ben-exe  Vk
 
