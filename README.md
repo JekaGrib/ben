@@ -61,6 +61,6 @@ There are 4 logging levels from lowest to highest:
 3. WARNING
 4. ERROR
 
-The logging level is specified in [Configuration](#configuration). The log will only display entries of this level and levels above.
+The logging level is specified in [Configuration](#2.-configuration). The log will only display entries of this level and levels above.
 
 # Structure
