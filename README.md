@@ -38,7 +38,7 @@ There is table with descriptions of each values in configuration file, that shou
 |:----| :------------------- |:----------------------------------------- |
 |Tg,Vk| startN               | Default number of repeats messages. This number is set automatically, when user start work with bot.  This number can then be changed by the user with the command "/repeat". It can be whole number from 1 to 5|
 |Tg,Vk| botToken             | Bot token                                 |
-|Tg,Vk| logLevel             | The logging level is specified here. The log will only display entries of this level and levels above. It can be one of four levels: DEBUG,INFO,WARNING,ERROR. More information here  |
+|Tg,Vk| logLevel             | The logging level is specified here. The log will only display entries of this level and levels above. It can be one of four levels: DEBUG,INFO,WARNING,ERROR. More information [here](#logging)  |
 |Tg,Vk| help_Info_Msg        | The message that is sent to the user for the command "/help" |
 |Tg,Vk| repeat_Info_Question | The question that is sent to the user for the command "/repeat" |
 | Vk  | group_id             | Id of bot group                           |
@@ -61,6 +61,6 @@ There are 4 logging levels from lowest to highest:
 3. WARNING
 4. ERROR
 
-The logging level is specified in Configuration. The log will only display entries of this level and levels above.
+The logging level is specified in [Configuration](#configuration). The log will only display entries of this level and levels above.
 
 # Structure
