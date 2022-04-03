@@ -65,4 +65,4 @@ The logging level is specified in [Configuration](#2-configuration). The log wil
 
 # Structure
 
-![](https://github.com/JekaGrib/ben/pic/structure.odg)
+![](https://github.com/JekaGrib/ben/pic/structure.png)
