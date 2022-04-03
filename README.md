@@ -85,6 +85,10 @@ Modules, which has handlers, have [Tests](#tests)
 
 # Tests
 
+You can test bot with:
+
+    $ stack test
+
 Modules, which has handlers, have unit-tests:
 
 1. Tg.App.hs
