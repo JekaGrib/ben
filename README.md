@@ -83,7 +83,7 @@ PrepareAttachment - module with prepare attachment messages functionality for Vk
 
 Modules, which has handlers, have [Tests](#tests)
 
-# Test
+# Tests
 
 Modules, which has handlers, have unit-tests:
 
