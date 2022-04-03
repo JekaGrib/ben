@@ -66,3 +66,23 @@ The logging level is specified in [Configuration](#2-configuration). The log wil
 # Structure
 
 ![](https://github.com/JekaGrib/ben/raw/master/pic/structure.png)
+
+Application has two main parts. For Vk and Tg messengers.
+
+Conf - module with configuration
+Logger - module with logging (has handler)
+Oops - module with exceptions processing 
+Api - folder with parsing requests and responses modules
+App - module with bot main functionality (has handler)
+PrepareAttachment - module with prepare attachment messages functionality for Vk (has handler)
+
+Modules, which has handlers, have [Tests](#tests)
+
+# Test
+
+Modules, which has handlers, have unit-tests:
+
+1. Tg.App.hs
+1. Vk.App.hs
+1. Vk.App.PrepareAttachment.hs
+
