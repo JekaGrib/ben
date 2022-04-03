@@ -70,10 +70,15 @@ The logging level is specified in [Configuration](#2-configuration). The log wil
 Application has two main parts. For Vk and Tg messengers.
 
 Conf - module with configuration
+
 Logger - module with logging (has handler)
-Oops - module with exceptions processing 
+
+Oops - module with exceptions processing
+
 Api - folder with parsing requests and responses modules
+
 App - module with bot main functionality (has handler)
+
 PrepareAttachment - module with prepare attachment messages functionality for Vk (has handler)
 
 Modules, which has handlers, have [Tests](#tests)
