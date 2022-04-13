@@ -4,7 +4,7 @@
 module Tg.MainTg where
 
 import Control.Monad.State (evalStateT, forever)
-import qualified Data.Map as Map (fromList)
+import qualified Data.Map as Map (empty)
 import Tg.App (run, startApp)
 import qualified Tg.App (makeH)
 import Tg.Conf (Config (..), getTime, parseConf)
@@ -20,4 +20,4 @@ mainTg = do
   let handleLog = LogHandle (LogConfig prio) (logger currLogPath)
   let handle = Tg.App.makeH config handleLog
   startApp handle
-  evalStateT (forever $ run handle) $ Map.fromList []
+  evalStateT (forever $ run handle) Map.empty

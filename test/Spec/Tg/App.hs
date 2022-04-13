@@ -17,7 +17,7 @@ import Tg.Oops (TGBotException (..))
 import Tg.Types
 
 initialDB1, initialDB2, initialDB3 :: MapUserN
-initialDB1 = Map.fromList []
+initialDB1 = Map.empty
 initialDB2 = Map.fromList [(1118, Left (OpenRepeat 2)), (1234, Right 3), (2581, Left (OpenRepeat 4))]
 initialDB3 = Map.fromList [(1118, Right 2), (1234, Right 3), (2581, Left (OpenRepeat 4))]
 

@@ -19,7 +19,7 @@ import Vk.Oops (VKBotException (..))
 import Vk.Types
 
 initialDB1, initialDB2, initialDB3 :: MapUserN
-initialDB1 = Map.fromList []
+initialDB1 = Map.empty
 initialDB2 = Map.fromList [(1118, Left (OpenRepeat 2)), (1234, Right 3), (123, Left (OpenRepeat 4))]
 initialDB3 = Map.fromList [(1118, Left (OpenRepeat 2)), (123, Right 3), (1606, Right 2)]
 
@@ -30,7 +30,7 @@ emptyTryServInf :: TryServer
 emptyTryServInf = firstTry emptyServInf
 
 testVkApp :: IO ()
-testVkApp = do
+testVkApp = 
   hspec $ do
     describe "getServInfoAndCheckResp" $ do
       it "throw Exception with error answer" $
