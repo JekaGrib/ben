@@ -20,4 +20,4 @@ mainTg = do
   let handleLog = LogHandle (LogConfig prio) (logger currLogPath)
   let handle = Tg.App.makeH config handleLog
   startApp handle
-  evalStateT (forever $ run handle) $ Map.empty
+  evalStateT (forever $ run handle) Map.empty
