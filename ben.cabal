@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 831f5bb2e121dafb0ec12e25b4f019403d5d23a5abb86e087b14521249dc12eb
+-- hash: 33abb0d347b4a70e651a568d81a42cfc83230f132e25daa3caa0b118c1c8d040
 
 name:           ben
 version:        0.1.0.0
@@ -49,6 +49,7 @@ library
       Paths_ben
   hs-source-dirs:
       src
+  ghc-options: -Wall -Werror
   build-depends:
       aeson
     , base >=4.7 && <5

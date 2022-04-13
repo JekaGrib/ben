@@ -1,5 +1,3 @@
-{-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Werror #-}
 
 import Spec.Tg.App (testTGApp)
 import Spec.Vk.App (testVkApp)
