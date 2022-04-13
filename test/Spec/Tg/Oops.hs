@@ -1,4 +1,3 @@
-
 module Spec.Tg.Oops where
 
 import Tg.Oops

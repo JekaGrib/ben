@@ -1,4 +1,3 @@
-
 module Spec.Tg.Log where
 
 import Control.Monad.State (StateT (..))

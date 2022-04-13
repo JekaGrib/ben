@@ -1,4 +1,3 @@
-
 module Tg.Logger where
 
 import Control.Monad (when)

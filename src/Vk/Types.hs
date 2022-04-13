@@ -1,4 +1,3 @@
-
 module Vk.Types where
 
 import qualified Data.ByteString as BS

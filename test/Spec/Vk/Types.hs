@@ -1,4 +1,3 @@
-
 module Spec.Vk.Types where
 
 import Vk.Api.Response (LoadDocResp, LoadPhotoResp, ServerInfo)

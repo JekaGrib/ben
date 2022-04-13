@@ -1,4 +1,3 @@
-
 module Tg.Types where
 
 import qualified Data.ByteString.Lazy as LBS

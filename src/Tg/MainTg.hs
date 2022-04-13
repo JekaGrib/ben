@@ -1,4 +1,3 @@
-
 module Tg.MainTg where
 
 import Control.Monad.State (evalStateT, forever)

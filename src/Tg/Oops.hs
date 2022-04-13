@@ -1,4 +1,3 @@
-
 module Tg.Oops where
 
 import qualified Control.Exception as E

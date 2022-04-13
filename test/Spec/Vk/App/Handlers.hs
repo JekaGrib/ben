@@ -1,4 +1,3 @@
-
 module Spec.Vk.App.Handlers where
 
 import Control.Monad.Catch (throwM)

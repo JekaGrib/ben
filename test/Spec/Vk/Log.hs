@@ -1,4 +1,3 @@
-
 module Spec.Vk.Log where
 
 import Control.Monad.State (StateT (..))

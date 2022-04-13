@@ -1,4 +1,3 @@
-
 module Vk.Logger where
 
 import Control.Monad (when)

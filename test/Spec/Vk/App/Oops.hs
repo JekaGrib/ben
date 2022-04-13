@@ -1,4 +1,3 @@
-
 module Spec.Vk.App.Oops where
 
 import Vk.Oops (VKBotException (..))

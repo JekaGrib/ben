@@ -1,4 +1,3 @@
-
 module Spec.Tg.Types where
 
 import Tg.Logger (Priority (..))

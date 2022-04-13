@@ -1,4 +1,3 @@
-
 module Spec.Vk.Conf where
 
 import Vk.Conf (Config (..))

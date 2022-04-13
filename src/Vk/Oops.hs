@@ -1,4 +1,3 @@
-
 module Vk.Oops where
 
 import qualified Control.Exception as E
