@@ -526,10 +526,7 @@ changeMapUserN ::
 changeMapUserN = Map.insert
 
 checkButton :: Message -> Maybe N
-checkButton msg =
-  case textMsg msg of
-    Just txt -> checkTextButton txt
-    Nothing -> Nothing
+checkButton msg = maybe Nothing checkTextButton (textMsg msg)
 
 checkTextButton :: TextOfButton -> Maybe N
 checkTextButton txt =

@@ -69,9 +69,7 @@ parseConfBotToken conf = do
     (C.lookup conf "telegram.botToken" :: IO (Maybe String))
       `E.catch` ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe String))
       `E.catch` ((\_ -> return Nothing) :: E.IOException -> IO (Maybe String))
-  case str of
-    Nothing -> inputBotToken
-    Just n -> return n
+  maybe inputBotToken return str
 
 parseConfPrio :: C.Config -> IO Priority
 parseConfPrio conf = do

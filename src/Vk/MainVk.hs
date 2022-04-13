@@ -4,7 +4,7 @@
 
 module Vk.MainVk where
 
-import qualified Data.Map as Map (fromList)
+import qualified Data.Map as Map (empty)
 import Vk.App (run)
 import qualified Vk.App (makeH)
 import Vk.Conf (Config (..), getTime, parseConf)
@@ -20,4 +20,4 @@ mainVk = do
         LogHandle (LogConfig (cPriority config)) (logger currLogPath)
   let handle = Vk.App.makeH config handleLog
   putStrLn "App started"
-  run handle (Map.fromList [])
+  run handle Map.empty
