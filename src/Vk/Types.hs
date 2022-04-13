@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Werror #-}
-
 module Vk.Types where
 
 import qualified Data.ByteString as BS

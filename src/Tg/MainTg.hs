@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Werror #-}
-
 module Tg.MainTg where
 
 import Control.Monad.State (evalStateT, forever)

@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Werror #-}
-
 module Tg.Types where
 
 import qualified Data.ByteString.Lazy as LBS

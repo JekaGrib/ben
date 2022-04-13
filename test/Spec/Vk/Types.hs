@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Werror #-}
-
 module Spec.Vk.Types where
 
 import Vk.Api.Response (LoadDocResp, LoadPhotoResp, ServerInfo)
