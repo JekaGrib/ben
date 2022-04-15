@@ -26,7 +26,7 @@ import Vk.App.PrepareAttachment (getAttachmentString)
 import qualified Vk.App.PrepareAttachment (Handle, makeH)
 import Vk.AppT (AppT, MonadStateTwo (..), TryServer (..), changeServInfo, changeTs, firstTry, nextTry, resetTry)
 import Vk.Conf (Config (..))
-import Vk.Logger (LogHandle (..), logDebug, logInfo, logWarning)
+import Logger (LogHandle (..), logDebug, logInfo, logWarning)
 import Vk.Oops
   ( VKBotException (..),
     handleExGetLongPollServ,

@@ -7,7 +7,7 @@ import Data.Char (isNumber, toUpper)
 import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
 import Data.Time.LocalTime (getZonedTime)
-import Vk.Logger (Priority (..))
+import Logger (Priority (..))
 import Vk.Oops
   ( handleExGetTime,
     handleExInput,

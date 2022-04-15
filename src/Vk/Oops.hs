@@ -3,7 +3,7 @@ module Vk.Oops where
 import qualified Control.Exception as E
 import Control.Monad.Catch (Exception, MonadCatch, SomeException, throwM)
 import qualified Data.Configurator.Types as C
-import Vk.Logger (LogHandle (..), logError)
+import Logger (LogHandle (..), logError)
 import Vk.Types
 
 data VKBotException

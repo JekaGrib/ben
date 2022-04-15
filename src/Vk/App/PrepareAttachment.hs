@@ -22,7 +22,7 @@ import Network.HTTP.Client.MultipartFormData (formDataBody, partFileRequestBody)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Vk.Api.Response
 import Vk.Conf (Config (..))
-import Vk.Logger (LogHandle (..), logDebug)
+import Logger (LogHandle (..), logDebug)
 import Vk.Oops
   ( PrependAttachmetException (..),
     handleExGetUploadServ,

@@ -5,7 +5,7 @@ import qualified Data.Map as Map (empty)
 import Tg.App (run, startApp)
 import qualified Tg.App (makeH)
 import Tg.Conf (Config (..), getTime, parseConf)
-import Tg.Logger (LogConfig (..), LogHandle (..), logger)
+import Logger (LogConfig (..), LogHandle (..), logger)
 
 mainTg :: IO ()
 mainTg = do

@@ -1,8 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Tg.App where
+module App where
 
-import Control.Monad (when)
+{-import Control.Monad (when)
 import Control.Monad.Catch (MonadCatch (catch))
 import Control.Monad.State (StateT, get, lift, modify, replicateM_)
 import Data.Aeson (decode, encode)
@@ -82,25 +82,27 @@ run h = do
   lift $ confirmUpdatesAndCheckResp h upds
   mapM_ (chooseActionOfUpd h) upds
 
+data IsValidUpdate = InvalidUpdate | ValidUpdate UserId UpdateType
+
+data UpdateType = TextMsgUpd Text | NotTextUpd MessageId | ObjectUpd AboutObj
+
 chooseActionOfUpd ::
   (MonadCatch m) =>
-  Handle m ->
-  Update ->
+  LogHandle m ->
+  IsValidUpdate ->
   StateT MapUserN m ()
-chooseActionOfUpd h upd = do
-  lift $ logInfo (hLog h) "Analysis update from the list"
+chooseActionOfUpd logH upd = do
+  lift $ logInfo logH "Analysis update from the list"
   case upd of
-    UnknownUpdate _ -> do
-      lift $ logWarning (hLog h) "There is UNKNOWN UPDATE. Bot will ignore it"
+    InvalidUpdate -> do
+      lift $ logWarning logH "There is UNKNOWN UPDATE. Bot will ignore it"
       return ()
-    Update _ msg -> do
-      let msgId = message_id msg
-      let usId = extractUserId upd
+    ValidUpdate usId updType -> do
       lift $
         logInfo
           (hLog h)
           ("Get msg_id: " ++ show msgId ++ " from user " ++ show usId )
-      chooseActionOfMapUserN h msg msgId usId
+      chooseActionOfMapUserN h usId updType
 
 chooseActionOfMapUserN ::
   (MonadCatch m) =>
@@ -109,20 +111,20 @@ chooseActionOfMapUserN ::
   MessageId ->
   UserId ->
   StateT MapUserN m ()
-chooseActionOfMapUserN h msg msgId usId = do
+chooseActionOfMapUserN h usId updType = do
   mapUN <- get
   let nState = Map.lookup usId mapUN
   case nState of
     Just (Left (OpenRepeat oldN)) -> do
       lift $
         logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode")
-      chooseActionOfButton h msg usId oldN
+      chooseActionOfButton h usId updType oldN
     Just (Right n) -> do
       let currN = n
-      chooseActionOfTryPullTxt h msg msgId usId currN
+      chooseActionOfTryPullTxt h usId updType currN
     Nothing -> do
       let currN = cStartN (hConf h)
-      chooseActionOfTryPullTxt h msg msgId usId currN
+      chooseActionOfTryPullTxt h usId updType currN
 
 chooseActionOfTryPullTxt ::
   (MonadCatch m) =>
@@ -132,15 +134,15 @@ chooseActionOfTryPullTxt ::
   UserId ->
   N ->
   StateT MapUserN m ()
-chooseActionOfTryPullTxt h msg msgId usId currN =
-  case textMsg msg of
-    Just txt -> do
+chooseActionOfTryPullTxt h usId updType currN =
+  case updType of
+    TextMsgUpd txt -> do
       lift $
         logInfo
           (hLog h)
           ("Msg_id:" ++ show msgId ++ " is text: " ++ show txt)
       chooseActionOfTxt h currN usId txt
-    Nothing -> do
+    NotTextUpd MessageId -> do
       lift $ logInfo (hLog h) ("Msg_id:" ++ show msgId ++ " is attachment")
       lift $ replicateM_ currN $ copyMsgAndCheckResp h usId msgId
 
@@ -151,8 +153,8 @@ chooseActionOfButton ::
   UserId ->
   N ->
   StateT MapUserN m ()
-chooseActionOfButton h msg usId oldN =
-  case checkButton msg of
+chooseActionOfButton h usId updType oldN =
+  case checkButton updType of
     Just newN -> do
       lift $
         logInfo
@@ -561,3 +563,4 @@ makeKeybBody usId msg n =
             one_time_keyboard = True
           }
     }
+-}

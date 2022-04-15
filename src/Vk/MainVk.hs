@@ -6,7 +6,7 @@ import qualified Data.Map as Map (empty)
 import Vk.App (run)
 import qualified Vk.App (makeH)
 import Vk.Conf (Config (..), getTime, parseConf)
-import Vk.Logger (LogConfig (..), LogHandle (..), logger)
+import Logger (LogConfig (..), LogHandle (..), logger)
 
 mainVk :: IO ()
 mainVk = do

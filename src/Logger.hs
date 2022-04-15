@@ -1,4 +1,4 @@
-module Vk.Logger where
+module Logger where
 
 import Control.Monad (when)
 import Prelude hiding (log)
