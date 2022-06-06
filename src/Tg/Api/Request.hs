@@ -13,6 +13,8 @@ import Data.Aeson
   )
 import GHC.Generics (Generic)
 import Tg.Types
+import Types
+
 
 newtype JSONBodyOffset = JSONBodyOffset
   { offset :: Offset

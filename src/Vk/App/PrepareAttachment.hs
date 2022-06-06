@@ -21,7 +21,7 @@ import Network.HTTP.Client
 import Network.HTTP.Client.MultipartFormData (formDataBody, partFileRequestBody)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Vk.Api.Response
-import Vk.Conf (Config (..))
+import Conf (Config (..))
 import Logger (LogHandle (..), logDebug)
 import Vk.Oops
   ( PrependAttachmetException (..),
@@ -32,6 +32,7 @@ import Vk.Oops
     throwAndLogPrepAttEx,
   )
 import Vk.Types
+import Types
 
 data Handle m = Handle
   { hConf :: Config,

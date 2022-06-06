@@ -1,12 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Tg.App where
 
+import qualified App 
 import Control.Monad (when)
 import Control.Monad.Catch (MonadCatch (catch))
-import Control.Monad.State (StateT, get, lift, modify, replicateM_)
+import Control.Monad.State (StateT, lift)
 import Data.Aeson (decode, encode)
-import qualified Data.Map as Map (insert, lookup)
 import qualified Data.Text as T
 import Network.HTTP.Client
   ( Manager,
@@ -30,18 +31,19 @@ import Tg.Api.Request
     SendMsgJSONBody (..),
   )
 import Tg.Api.Response (Answer (..), From (..), GetUpdResp (..), Message (..), Update (..))
-import Tg.Conf (Config (..))
-import Logger (LogHandle (..), logDebug, logInfo, logWarning)
+import Conf (Config (..))
+import Logger (LogHandle (..), logDebug, logInfo)
 import Tg.Oops
   ( TGBotException (..),
     handleExConfUpd,
-    handleExCopyMsg,
+--    handleExCopyMsg,
     handleExGetUpd,
-    handleExSendKeyb,
-    handleExSendMsg,
+--    handleExSendKeyb,
+--    handleExSendMsg,
     throwAndLogEx
   )
 import Tg.Types
+import Types
 
 data Handle m = Handle
   { hConf :: Config,
@@ -49,9 +51,7 @@ data Handle m = Handle
     getUpdates :: m Response,
     getShortUpdates :: m Response,
     confirmUpdates :: UpdateId -> m Response,
-    sendMsg :: UserId -> TextOfMsg -> m Response,
-    sendKeyb :: UserId -> N -> TextOfKeyb -> m Response,
-    copyMsg :: UserId -> MessageId -> m Response
+    hApp :: App.Handle m MessageId
   }
 
 makeH :: Config -> LogHandle IO -> Handle IO
@@ -62,9 +62,18 @@ makeH conf logH =
     (getUpdates' conf)
     (getShortUpdates' conf)
     (confirmUpdates' conf)
+    (makeAppH conf logH)
+
+makeAppH :: Config -> LogHandle IO -> App.Handle IO MessageId
+makeAppH conf logH =
+  App.Handle 
+    conf
+    logH
     (sendMsg' conf)
     (sendKeyb' conf)
     (copyMsg' conf)
+    isValidResponse'
+
 
 -- logic functions:
 startApp :: (MonadCatch m) => Handle m -> m ()
@@ -80,133 +89,17 @@ run ::
 run h = do
   upds <- lift $ getUpdatesAndCheckResp h
   lift $ confirmUpdatesAndCheckResp h upds
-  mapM_ (chooseActionOfUpd h) upds
+  mapM_ (App.chooseActionOfUpd (hApp h) . isValidUpdate) upds
 
-chooseActionOfUpd ::
-  (MonadCatch m) =>
-  Handle m ->
-  Update ->
-  StateT MapUserN m ()
-chooseActionOfUpd h upd = do
-  lift $ logInfo (hLog h) "Analysis update from the list"
-  case upd of
-    UnknownUpdate _ -> do
-      lift $ logWarning (hLog h) "There is UNKNOWN UPDATE. Bot will ignore it"
-      return ()
-    Update _ msg -> do
-      let msgId = message_id msg
-      let usId = extractUserId upd
-      lift $
-        logInfo
-          (hLog h)
-          ("Get msg_id: " ++ show msgId ++ " from user " ++ show usId )
-      chooseActionOfMapUserN h msg msgId usId
 
-chooseActionOfMapUserN ::
-  (MonadCatch m) =>
-  Handle m ->
-  Message ->
-  MessageId ->
-  UserId ->
-  StateT MapUserN m ()
-chooseActionOfMapUserN h msg msgId usId = do
-  mapUN <- get
-  let nState = Map.lookup usId mapUN
-  case nState of
-    Just (Left (OpenRepeat oldN)) -> do
-      lift $
-        logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode")
-      chooseActionOfButton h msg usId oldN
-    Just (Right n) -> do
-      let currN = n
-      chooseActionOfTryPullTxt h msg msgId usId currN
-    Nothing -> do
-      let currN = cStartN (hConf h)
-      chooseActionOfTryPullTxt h msg msgId usId currN
 
-chooseActionOfTryPullTxt ::
-  (MonadCatch m) =>
-  Handle m ->
-  Message ->
-  MessageId ->
-  UserId ->
-  N ->
-  StateT MapUserN m ()
-chooseActionOfTryPullTxt h msg msgId usId currN =
-  case textMsg msg of
-    Just txt -> do
-      lift $
-        logInfo
-          (hLog h)
-          ("Msg_id:" ++ show msgId ++ " is text: " ++ show txt)
-      chooseActionOfTxt h currN usId txt
-    Nothing -> do
-      lift $ logInfo (hLog h) ("Msg_id:" ++ show msgId ++ " is attachment")
-      lift $ replicateM_ currN $ copyMsgAndCheckResp h usId msgId
+isValidUpdate :: Update -> IsValidUpdate MessageId
+isValidUpdate (UnknownUpdate _) = InvalidUpdate
+isValidUpdate (Update _ msg) = case msg of
+  Message _     (From usId) (Just txt) -> ValidUpdate usId (TextMsg txt)
+  Message msgId (From usId) _          -> ValidUpdate usId (AttachMsg msgId)
 
-chooseActionOfButton ::
-  (MonadCatch m) =>
-  Handle m ->
-  Message ->
-  UserId ->
-  N ->
-  StateT MapUserN m ()
-chooseActionOfButton h msg usId oldN =
-  case checkButton msg of
-    Just newN -> do
-      lift $
-        logInfo
-          (hLog h)
-          ( "Change number of repeats to "
-              ++ show newN
-              ++ " for user "
-              ++ show usId
-          )
-      modify (changeMapUserN usId (Right newN))
-      let infoMsg =
-            T.pack $
-              "Number of repeats successfully changed from "
-                ++ show oldN
-                ++ " to "
-                ++ show newN
-      lift $ sendMsgAndCheckResp h usId infoMsg
-    Nothing -> do
-      lift $
-        logWarning
-          (hLog h)
-          ( "User "
-              ++ show usId
-              ++ " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: "
-              ++ show oldN
-          )
-      modify (changeMapUserN usId (Right oldN))
-      let infoMsg =
-            T.pack $
-              "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still "
-                ++ show oldN
-                ++ "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later"
-      lift $ sendMsgAndCheckResp h usId infoMsg
-
-chooseActionOfTxt ::
-  (MonadCatch m) =>
-  Handle m ->
-  N ->
-  UserId ->
-  TextOfMsg ->
-  StateT MapUserN m ()
-chooseActionOfTxt h currN usId txt =
-  case filter (' ' /=) . T.unpack $ txt of
-    "/help" -> do
-      let infoMsg = T.pack $ cHelpMsg (hConf h)
-      lift $ sendMsgAndCheckResp h usId infoMsg
-    "/repeat" -> do
-      lift $ sendKeybAndCheckResp h usId currN
-      lift $
-        logInfo (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode")
-      modify (changeMapUserN usId (Left $ OpenRepeat currN))
-    _ ->
-      lift $ replicateM_ currN $ sendMsgAndCheckResp h usId txt
-
+{-
 sendMsgAndCheckResp ::
   (MonadCatch m) => Handle m -> UserId -> TextOfMsg -> m ()
 sendMsgAndCheckResp h usId msg = do
@@ -269,6 +162,7 @@ sendKeybAndCheckResp h usId currN = do
     sendKeyb h usId currN infoMsg `catch` handleExSendKeyb (hLog h) usId
   logDebug (hLog h) ("Get response: " ++ show keybResponse )
   checkSendKeybResponse h usId currN infoMsg keybResponse
+-}
 
 getUpdatesAndCheckResp :: (MonadCatch m) => Handle m -> m [Update]
 getUpdatesAndCheckResp h = do
@@ -366,6 +260,7 @@ checkConfirmUpdatesResponse h offsetArg upds responseJson =
           ++ show offsetArg
     Just _ -> logInfo (hLog h) "Received updates confirmed"
 
+{-
 checkSendMsgResponse ::
   (MonadCatch m) =>
   Handle m ->
@@ -439,6 +334,18 @@ checkSendKeybResponse h usId n msg json =
             ++ " was sent to user "
             ++ show usId
         )
+-}
+
+isValidResponse' ::
+  Response ->
+  Result
+isValidResponse' json =
+  case decode json of
+    Nothing -> NotSuccess
+        $ "UNKNOWN RESPONSE:" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
+    Just (Answer False) -> NotSuccess
+        $ "NEGATIVE RESPONSE:" ++ show json ++ "\nMESSAGE NOT SENT"
+    Just _ -> Success
 
 -- IO methods functions:
 getShortUpdates' :: Config -> IO Response
@@ -479,8 +386,8 @@ sendMsg' conf usId msg = do
   let req = addBodyToReq initReq (RequestBodyLBS msgBody)
   sendReqAndGetRespBody manager req
 
-copyMsg' :: Config -> UserId -> MessageId -> IO Response
-copyMsg' conf usId msgId = do
+copyMsg' :: Config -> MessageId -> UserId -> IO Response
+copyMsg' conf msgId usId = do
   let msgBody =
         encode
           ( CopyMsgJSONBody
@@ -515,26 +422,6 @@ extractNextUpdate = succ . update_id . last
 
 extractUserId :: Update -> UserId
 extractUserId = idUser . fromUser . message
-
-changeMapUserN ::
-  UserId ->
-  NState ->
-  MapUserN ->
-  MapUserN
-changeMapUserN = Map.insert
-
-checkButton :: Message -> Maybe N
-checkButton msg = checkTextButton =<< textMsg msg
-
-checkTextButton :: TextOfButton -> Maybe N
-checkTextButton txt =
-  case txt of
-    "1" -> Just 1
-    "2" -> Just 2
-    "3" -> Just 3
-    "4" -> Just 4
-    "5" -> Just 5
-    _ -> Nothing
 
 addBodyToReq :: Request -> RequestBody -> Request
 addBodyToReq initReq reqBody =

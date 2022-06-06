@@ -6,11 +6,10 @@ import Control.Applicative (empty)
 import Control.Monad (when)
 import Control.Monad.Catch (MonadCatch (catch))
 import Control.Monad.Except (runExceptT)
-import Control.Monad.State (evalStateT, forever, lift, replicateM_)
+import Control.Monad.State (evalStateT, forever, lift, modify,get)
 import Data.Aeson (decode, encode)
 import qualified Data.ByteString.Lazy as LBS
 import Data.List (intercalate)
-import qualified Data.Map as Map (insert, lookup)
 import Data.String (fromString)
 import qualified Data.Text as T
 import Network.HTTP.Client
@@ -24,49 +23,61 @@ import Vk.Api.Request (keyBoard)
 import Vk.Api.Response
 import Vk.App.PrepareAttachment (getAttachmentString)
 import qualified Vk.App.PrepareAttachment (Handle, makeH)
-import Vk.AppT (AppT, MonadStateTwo (..), TryServer (..), changeServInfo, changeTs, firstTry, nextTry, resetTry)
-import Vk.Conf (Config (..))
+import Vk.AppT ( AppT,TryServer (..), changeServInfo, changeTs, firstTry, nextTry, resetTry)
+import Conf (Config (..))
+import Vk.Conf (VkConfig (..))
 import Logger (LogHandle (..), logDebug, logInfo, logWarning)
 import Vk.Oops
   ( VKBotException (..),
     handleExGetLongPollServ,
     handleExGetUpd,
-    handleExSendKeyb,
-    handleExSendMsg,
+--    handleExSendKeyb,
+--    handleExSendMsg,
     throwAndLogEx,
   )
 import Vk.Types
+import Types
+import qualified App
 
 data Handle m = Handle
-  { hConf :: Config,
+  { hConf :: VkConfig,
     hLog :: LogHandle m,
     getLongPollServer :: m Response,
     getUpdates :: ServerInfo -> m Response,
-    sendMsg :: UserId -> MSG -> m Response,
-    sendKeyb :: UserId -> N -> TextOfKeyb -> m Response,
+    hApp :: App.Handle m VkAttachMSG,
     hPrepAttach :: Vk.App.PrepareAttachment.Handle m
   }
 
-makeH :: Config -> LogHandle IO -> Handle IO
-makeH conf logH =
+makeH :: VkConfig -> LogHandle IO -> Handle IO
+makeH vkConf logH =
   Handle
+    vkConf
+    logH
+    (getLongPollServer' vkConf)
+    getUpdates'
+    (makeAppH (cConf vkConf) logH)
+    (Vk.App.PrepareAttachment.makeH (cConf vkConf) logH)
+
+makeAppH :: Config -> LogHandle IO -> App.Handle IO VkAttachMSG
+makeAppH conf logH =
+  App.Handle 
     conf
     logH
-    (getLongPollServer' conf)
-    getUpdates'
     (sendMsg' conf)
     (sendKeyb' conf)
-    (Vk.App.PrepareAttachment.makeH conf logH)
+    (sendAttachMsg' conf)
+    isValidResponse'
 
 -- logic functions:
 run :: (MonadCatch m) => Handle m -> MapUserN -> m ()
-run h initialDB =
-  startApp h initialDB >>= evalStateT (foreverRunServ h)
+run h initialDB = do
+  servInfo <- startApp h 
+  evalStateT (evalStateT (foreverRunServ h) servInfo) initialDB
 
-startApp :: (MonadCatch m) => Handle m -> MapUserN -> m (TryServer, MapUserN)
-startApp h initialDB = do
+startApp :: (MonadCatch m) => Handle m -> m TryServer
+startApp h = do
   servInfo <- getServInfoAndCheckResp h
-  return (firstTry servInfo, initialDB)
+  return (firstTry servInfo)
 
 foreverRunServ :: (MonadCatch m) => Handle m -> AppT m ()
 foreverRunServ h = forever (runServ h)
@@ -74,7 +85,9 @@ foreverRunServ h = forever (runServ h)
 runServ :: (MonadCatch m) => Handle m -> AppT m ()
 runServ h = do
   upds <- getUpdAndCheckResp h
-  mapM_ (chooseActionOfUpd h) upds
+  lift $ mapM_ (\upd -> (lift $ isValidUpdate h upd) >>= App.chooseActionOfUpd (hApp h)) upds
+
+
 
 getServInfoAndCheckResp ::
   (MonadCatch m) => Handle m -> m ServerInfo
@@ -83,7 +96,7 @@ getServInfoAndCheckResp h = do
     "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id="
       ++ show (cGroupId (hConf h))
       ++ "&access_token="
-      ++ cBotToken (hConf h)
+      ++ cBotToken (cConf (hConf h))
       ++ "&v=5.103"
   jsonServ <-
     getLongPollServer h `catch` handleExGetLongPollServ (hLog h)
@@ -99,8 +112,8 @@ getUpdAndCheckResp h = do
 getUpdAndLog ::
   (MonadCatch m) => Handle m -> AppT m Response
 getUpdAndLog h = do
-  sI@(ServerInfo key server ts) <- servInf <$> get1
-  lift $ logDebug (hLog h) $
+  sI@(ServerInfo key server ts) <- servInf <$> get
+  lift $ lift $ logDebug (hLog h) $
     "Send request to getUpdates: "
       ++ T.unpack server
       ++ "?act=a_check&key="
@@ -108,123 +121,75 @@ getUpdAndLog h = do
       ++ "&ts="
       ++ show ts
       ++ "&wait=20"
-  json <- lift $ getUpdates h sI `catch` handleExGetUpd (hLog h)
-  lift $ logDebug (hLog h) ("Get response: " ++ show json)
+  json <- lift $ lift $ getUpdates h sI `catch` handleExGetUpd (hLog h)
+  lift $ lift $ logDebug (hLog h) ("Get response: " ++ show json)
   return json
 
-chooseActionOfUpd ::
-  (MonadCatch m) =>
-  Handle m ->
-  Update ->
-  AppT m ()
-chooseActionOfUpd h upd = do
-  lift $ logInfo (hLog h) "Analysis update from the list"
-  case upd of
-    Update "message_new" obj -> do
-      lift $ logInfo (hLog h) (logStrForGetObj obj)
-      chooseActionOfNState h obj
-    UnknownUpdate _ ->
-      lift $
-        logWarning
-          (hLog h)
-          ("There is UNKNOWN UPDATE. BOT WILL IGNORE IT. " ++ show upd)
-    _ ->
-      lift $
-        logWarning
-          (hLog h)
-          ("There is UNKNOWN UPDATE. BOT WILL IGNORE IT. " ++ show upd)
 
-chooseActionOfNState ::
-  (MonadCatch m) =>
-  Handle m ->
-  AboutObj ->
-  AppT m ()
-chooseActionOfNState h obj@(AboutObj usId _ _ _ _ _ _) = do
-  nState <- Map.lookup usId <$> get2
-  case nState of
-    Just (Left (OpenRepeat oldN)) -> do
-      lift $ logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode")
-      chooseActionOfButton h obj oldN
-    Just (Right n) -> do
-      let currN = n
-      chooseActionOfObject h obj currN
-    Nothing -> do
-      let currN = cStartN (hConf h)
-      chooseActionOfObject h obj currN
+isValidUpdate :: (MonadCatch m) => Handle m -> Update -> m (IsValidUpdate VkAttachMSG)
+isValidUpdate _ (UnknownUpdate _) = return InvalidUpdate
+isValidUpdate h (Update "message_new" obj) = chooseUpdType h obj
+isValidUpdate _ _ = return InvalidUpdate
 
-chooseActionOfButton ::
-  (MonadCatch m) =>
-  Handle m ->
-  AboutObj ->
-  N ->
-  AppT m ()
-chooseActionOfButton h obj@(AboutObj usId _ _ _ _ _ _) oldN =
-  case checkButton obj of
-    Just newN -> do
-      lift $
-        logInfo
-          (hLog h)
-          ( "Change number of repeats to "
-              ++ show newN
-              ++ " for user "
-              ++ show usId
-          )
-      modify2 $ changeMapUserN usId $ Right newN
-      let infoMsg =
-            T.pack $
-              "Number of repeats successfully changed from "
-                ++ show oldN
-                ++ " to "
-                ++ show newN
-      let msg = TextMsg infoMsg
-      lift $ sendMsgAndCheckResp h usId msg
-    Nothing -> do
-      lift $
-        logWarning
-          (hLog h)
-          ( "User "
-              ++ show usId
-              ++ " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: "
-              ++ show oldN
-          )
-      modify2 $ changeMapUserN usId $ Right oldN
-      let infoMsg =
-            T.pack $
-              "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still "
-                ++ show oldN
-                ++ "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later"
-      let msg = TextMsg infoMsg
-      lift $ sendMsgAndCheckResp h usId msg
+chooseUpdType :: (MonadCatch m) => Handle m -> AboutObj -> m (IsValidUpdate VkAttachMSG)
+chooseUpdType _ (AboutObj usId _ _ txt [] [] Nothing) = 
+  return $ ValidUpdate usId $ TextMsg txt
+chooseUpdType _ (AboutObj usId _ _ ""  [] [StickerAttachment (StickerInfo idSt)] Nothing) = 
+  return $ ValidUpdate usId $ AttachMsg (StickerMsg idSt)
+chooseUpdType _ (AboutObj _    _ _ _   [] [StickerAttachment _] _) = 
+  return $ InvalidUpdatePlusInfo  "There is unknown sticker message. Sticker can`t have text or geo."
+chooseUpdType h (AboutObj usId _ _ txt [] attachs maybeGeo) =  
+  prepareAttach h usId txt attachs maybeGeo
+chooseUpdType _ _ =
+  return $ InvalidUpdatePlusInfo "There is forward message"
 
-chooseActionOfObject ::
-  (MonadCatch m) =>
-  Handle m ->
-  AboutObj ->
-  N ->
-  AppT m ()
-chooseActionOfObject h obj currN =
-  case obj of
-    AboutObj usId _ _ txt [] [] Nothing -> chooseActionOfTxt h currN usId txt
-    AboutObj usId _ _ "" [] [StickerAttachment (StickerInfo idSt)] Nothing ->
-      lift $ replicateM_ currN $ do
-        let msg = StickerMsg idSt
-        sendMsgAndCheckResp h usId msg
-    AboutObj _ _ _ _ [] [StickerAttachment _] _ ->
-      lift $
-        logWarning
-          (hLog h)
-          ("There is unknown sticker message. Sticker can`t have text or geo. BOT WILL IGNORE IT. " ++ show obj)
-    AboutObj _ _ _ _ [] _ _ -> lift $ chooseActionOfAttachs h currN obj
-    AboutObj usId _ _ _ _ _ _ -> do
-      lift $
-        logWarning
-          (hLog h)
-          ("There is forward message. BOT WILL IGNORE IT. " ++ show obj)
-      let infoMsg =
-            "I`m sorry, I can`t work with forward messages, so I will ignore this message"
-      let msg = TextMsg infoMsg
-      lift $ sendMsgAndCheckResp h usId msg
+prepareAttach ::  (MonadCatch m) => Handle m -> UserId -> TextOfMsg -> [Attachment] -> Maybe Geo -> m (IsValidUpdate VkAttachMSG)
+prepareAttach h usId txt attachs maybeGeo = do
+  eitherAttachStrings <- runExceptT $ mapM (getAttachmentString (hPrepAttach h) usId) attachs
+  case eitherAttachStrings of
+    Right attachStrings -> do
+      let eitherLatLong = checkAndPullLatLong maybeGeo
+      case eitherLatLong of
+        Right latLong -> return $ ValidUpdate usId $ AttachMsg $ VkAttachMsg txt attachStrings latLong
+        Left str -> 
+          return $ InvalidUpdatePlusInfo $ "UNKNOWN ATTACMENT in updateList." ++ str    
+    Left str ->
+      return $ InvalidUpdatePlusInfo $ "UNKNOWN ATTACMENT in updateList." ++ str
 
+checkAndPullLatLong :: Maybe Geo -> Either SomethingWrong LatLong
+checkAndPullLatLong maybeGeo =
+  case maybeGeo of
+    Nothing -> Right ("", "")
+    Just (Geo "point" (Coordinates lat long)) -> Right (show lat, show long)
+    _ -> Left $ "UNKNOWN GEO type" ++ show maybeGeo
+
+putNextTryWithNewServer :: (MonadCatch m) => Handle m -> AppT m [Update]
+putNextTryWithNewServer h = do
+  checkTry h
+  modify nextTry
+  putNewServerInfo h
+  return empty
+
+putNextTryWithNewTS :: (MonadCatch m) => Handle m -> Integer -> AppT m [Update]
+putNextTryWithNewTS h ts = do
+  checkTry h
+  modify (nextTry . changeTs ts)
+  return empty
+
+putNewServerInfo :: (MonadCatch m) => Handle m -> AppT m ()
+putNewServerInfo h = do
+  servInfo <- lift $ lift $ getServInfoAndCheckResp h
+  modify (changeServInfo servInfo)
+
+checkTry :: (MonadCatch m) => Handle m -> AppT m ()
+checkTry h = do
+  TryServer num servInfo <- get
+  when (num >= 3) $ do
+    let ex = CheckGetUpdatesResponseException $ "More then two times getUpdates fail. ServerInfo:" ++ show servInfo
+    lift $ lift $ throwAndLogEx (hLog h) ex
+
+
+{-
 chooseActionOfTxt ::
   (MonadCatch m) =>
   Handle m ->
@@ -272,7 +237,7 @@ chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
     Right attachStrings ->
       replicateM_ currN $ do
         latLong <- checkAndPullLatLong h maybeGeo
-        let msg = AttachmentMsg txt attachStrings latLong
+        let msg = VkAttachMsg txt attachStrings latLong
         sendMsgAndCheckResp h usId msg
     Left str ->
       logWarning
@@ -305,7 +270,7 @@ sendKeybAndCheckResp h usId currN txt = do
   response <- sendKeyb h usId currN txt `catch` handleExSendKeyb (hLog h) usId
   logDebug (hLog h) ("Get response: " ++ show response)
   checkSendKeybResponse h usId currN txt response
-
+-}
 checkGetServResponse :: (MonadCatch m) => Handle m -> Response -> m ServerInfo
 checkGetServResponse h json =
   case decode json of
@@ -333,32 +298,32 @@ checkAndPullUpdates h json =
       let ex =
             CheckGetUpdatesResponseException $
               "UNKNOWN RESPONSE:" ++ show json
-      lift $ throwAndLogEx (hLog h) ex
+      lift $ lift $ throwAndLogEx (hLog h) ex
     Just ErrorAnswer {} -> do
       let ex =
             CheckGetUpdatesResponseException $
               "NEGATIVE RESPONSE:" ++ show json
-      lift $ throwAndLogEx (hLog h) ex
+      lift $ lift $ throwAndLogEx (hLog h) ex
     Just (FailAnswer 2) -> do
-      lift $
+      lift $ lift $ 
         logWarning
           (hLog h)
           "FAIL. Long poll server key expired, need to request new key"
       putNextTryWithNewServer h
     Just (FailAnswer 3) -> do
-      lift $
+      lift $ lift $ 
         logWarning
           (hLog h)
           "FAIL. Long poll server information is lost, need to request new key and ts"
       putNextTryWithNewServer h
     Just (FailTSAnswer (Just failNum) ts) -> do
-      lift
-        $ logWarning
+      lift $ lift $ 
+        logWarning
           (hLog h)
         $ "FAIL number " ++ show failNum ++ ". Ts in request is wrong, need to use received ts"
       putNextTryWithNewTS h ts
     Just (FailTSAnswer _ ts) -> do
-      lift $
+      lift $ lift $ 
         logWarning
           (hLog h)
           "FAIL. Ts in request is wrong, need to use received ts"
@@ -367,51 +332,19 @@ checkAndPullUpdates h json =
       let ex =
             CheckGetUpdatesResponseException $
               "NEGATIVE RESPONSE:" ++ show json
-      lift $ throwAndLogEx (hLog h) ex
+      lift $ lift $ throwAndLogEx (hLog h) ex
     Just AnswerOk {updates = []} -> do
-      lift $ logInfo (hLog h) "No new updates"
-      modify1 resetTry
+      lift $ lift $ logInfo (hLog h) "No new updates"
+      modify resetTry
       return []
     Just (AnswerOk ts upds) -> do
-      lift $ logInfo (hLog h) "There is new updates list"
-      modify1 (resetTry . changeTs ts)
+      lift $ lift $ logInfo (hLog h) "There is new updates list"
+      modify (resetTry . changeTs ts)
       return upds
 
-putNextTryWithNewServer :: (MonadCatch m) => Handle m -> AppT m [Update]
-putNextTryWithNewServer h = do
-  checkTry h
-  modify1 nextTry
-  putNewServerInfo h
-  return empty
 
-putNextTryWithNewTS :: (MonadCatch m) => Handle m -> Integer -> AppT m [Update]
-putNextTryWithNewTS h ts = do
-  checkTry h
-  modify1 (nextTry . changeTs ts)
-  return empty
 
-putNewServerInfo :: (MonadCatch m) => Handle m -> AppT m ()
-putNewServerInfo h = do
-  servInfo <- lift $ getServInfoAndCheckResp h
-  modify1 (changeServInfo servInfo)
-
-checkTry :: (MonadCatch m) => Handle m -> AppT m ()
-checkTry h = do
-  TryServer num servInfo <- get1
-  when (num >= 3) $ do
-    let ex = CheckGetUpdatesResponseException $ "More then two times getUpdates fail. ServerInfo:" ++ show servInfo
-    lift $ throwAndLogEx (hLog h) ex
-
-checkAndPullLatLong ::
-  (MonadCatch m) => Handle m -> Maybe Geo -> m LatLong
-checkAndPullLatLong h maybeGeo =
-  case maybeGeo of
-    Nothing -> return ("", "")
-    Just (Geo "point" (Coordinates lat long)) -> return (show lat, show long)
-    _ -> do
-      let ex = GetUpdatesException $ "UNKNOWN GEO type" ++ show maybeGeo
-      throwAndLogEx (hLog h) ex
-
+{-
 checkSendMsgResponse ::
   (MonadCatch m) => Handle m -> UserId -> MSG -> Response -> m ()
 checkSendMsgResponse h usId msg json =
@@ -440,17 +373,17 @@ checkSendMsgResponse h usId msg json =
                 ++ " was sent to user "
                 ++ show usId
             )
-        AttachmentMsg txt attachStrings ("", "") ->
+        VkAttachMsg txt attachStrings ("", "") ->
           logInfo
             (hLog h)
-            ( "AttachmentMsg was sent to user "
+            ( "VkAttachMsg was sent to user "
                 ++ show usId
                 ++ ". Text: "
                 ++ show txt
                 ++ "; attachments: "
                 ++ show attachStrings
             )
-        AttachmentMsg txt [] latLong ->
+        VkAttachMsg txt [] latLong ->
           logInfo
             (hLog h)
             ( "GeoMsg was sent to user "
@@ -460,7 +393,7 @@ checkSendMsgResponse h usId msg json =
                 ++ "; geo: "
                 ++ show latLong
             )
-        AttachmentMsg txt attachStrings latLong ->
+        VkAttachMsg txt attachStrings latLong ->
           logInfo
             (hLog h)
             ( "AttachmentAndGeoMsg was sent to user "
@@ -502,9 +435,21 @@ checkSendKeybResponse h usId n txt json =
             ++ " was sent to user "
             ++ show usId
         )
+-}
+
+isValidResponse' ::
+  Response ->
+  Result
+isValidResponse' json =
+  case decode json of
+    Nothing -> NotSuccess $
+              "UNKNOWN RESPONSE:" ++ show json ++ "MESSAGE PROBABLY NOT SENT"
+    Just ErrorAnswerMsg {} -> NotSuccess $
+              "NEGATIVE RESPONSE:" ++ show json ++ "MESSAGE NOT SENT"
+    Just _ -> Success
 
 -- IO handle functions:
-getLongPollServer' :: Config -> IO Response
+getLongPollServer' :: VkConfig -> IO Response
 getLongPollServer' conf = do
   manager <- newTlsManager
   req <-
@@ -512,7 +457,7 @@ getLongPollServer' conf = do
       "https://api.vk.com/method/groups.getLongPollServer?group_id="
         ++ show (cGroupId conf)
         ++ "&access_token="
-        ++ cBotToken conf
+        ++ cBotToken (cConf conf)
         ++ "&v=5.103"
   responseBody <$> httpLbs req manager
 
@@ -529,17 +474,29 @@ getUpdates' (ServerInfo key server ts) = do
         ++ "&wait=20"
   responseBody <$> httpLbs req manager
 
-sendMsg' :: Config -> UserId -> MSG -> IO Response
-sendMsg' conf usId msg = do
+sendMsg' :: Config -> UserId -> TextOfMsg -> IO Response
+sendMsg' conf usId txt = do
   manager <- newTlsManager
-  let paramList = chooseParamsForMsg msg
-  let param1 = "user_id=" ++ show usId
-  let param2 = "random_id=0"
-  let param3 = "access_token=" ++ cBotToken conf
-  let param4 = "v=5.103"
-  let params = intercalate "&" (param1 : param2 : param3 : param4 : paramList)
+  let param = "message=" ++ T.unpack txt
+  let params = intercalate "&" $ param : (commonParamList conf usId)
   req <- parseRequest $ "https://api.vk.com/method/messages.send?" ++ params
   responseBody <$> httpLbs req manager
+
+sendAttachMsg' :: Config -> VkAttachMSG -> UserId -> IO Response
+sendAttachMsg' conf msg usId = do
+  manager <- newTlsManager
+  let paramList = chooseParamsForMsg msg
+  let params = intercalate "&" $ paramList ++ (commonParamList conf usId)
+  req <- parseRequest $ "https://api.vk.com/method/messages.send?" ++ params
+  responseBody <$> httpLbs req manager
+
+commonParamList :: Config -> UserId -> [String]
+commonParamList conf usId =
+  let param1 = "user_id=" ++ show usId
+      param2 = "random_id=0"
+      param3 = "access_token=" ++ cBotToken conf
+      param4 = "v=5.103"
+  in  [param1,param2,param3,param4]
 
 sendKeyb' :: Config -> UserId -> N -> TextOfKeyb -> IO Response
 sendKeyb' conf usId n txt = do
@@ -556,21 +513,18 @@ sendKeyb' conf usId n txt = do
   responseBody <$> httpLbs req manager
 
 -- clear functions:
-chooseParamsForMsg :: MSG -> [ParameterString]
-chooseParamsForMsg (TextMsg txt) =
-  let param = "message=" ++ T.unpack txt
-   in [param]
+chooseParamsForMsg :: VkAttachMSG -> [ParameterString]
 chooseParamsForMsg (StickerMsg idSt) =
   let param = "sticker_id=" ++ show idSt
    in [param]
-chooseParamsForMsg (AttachmentMsg txt attachStrings (latStr, longStr)) =
+chooseParamsForMsg (VkAttachMsg txt attachStrings (latStr, longStr)) =
   let param1 = "message=" ++ T.unpack txt
       param2 = "attachment=" ++ intercalate "," attachStrings
       param3 = "lat=" ++ latStr
       param4 = "long=" ++ longStr
    in [param1, param2, param3, param4]
 
-changeMapUserN :: UserId -> NState -> MapUserN -> MapUserN
+{-changeMapUserN :: UserId -> NState -> MapUserN -> MapUserN
 changeMapUserN = Map.insert
 
 checkButton :: AboutObj -> Maybe N
@@ -588,7 +542,7 @@ checkTextButton txt =
     "4" -> Just 4
     "5" -> Just 5
     _ -> Nothing
-
+-}
 logStrForGetObj :: AboutObj -> String
 logStrForGetObj (AboutObj usId _ _ txt [] [] Nothing) =
   "Get TextMsg: " ++ show txt ++ " from user " ++ show usId
@@ -605,13 +559,13 @@ logStrForGetObj (AboutObj usId _ _ txt [] [] (Just geo)) =
     ++ " from user "
     ++ show usId
 logStrForGetObj (AboutObj usId _ _ txt [] attachs Nothing) =
-  "Get AttachmentMsg: "
+  "Get VkAttachMsg: "
     ++ show attachs
     ++ addInfoAboutTxt txt
     ++ " from user "
     ++ show usId
 logStrForGetObj (AboutObj usId _ _ txt fwds attachs Nothing) =
-  "Get AttachmentMsg: "
+  "Get VkAttachMsg: "
     ++ show attachs
     ++ addInfoAboutTxt txt
     ++ ", with ForwardParts: "
@@ -619,7 +573,7 @@ logStrForGetObj (AboutObj usId _ _ txt fwds attachs Nothing) =
     ++ "  from user "
     ++ show usId
 logStrForGetObj (AboutObj usId _ _ txt [] attachs (Just geo)) =
-  "Get AttachmentMsg: "
+  "Get VkAttachMsg: "
     ++ show attachs
     ++ addInfoAboutTxt txt
     ++ ", with Geo: "
@@ -635,7 +589,7 @@ logStrForGetObj (AboutObj usId _ _ txt fwds [] (Just geo)) =
     ++ "  from user "
     ++ show usId
 logStrForGetObj (AboutObj usId _ _ txt fwds attachs (Just geo)) =
-  "Get AttachmentMsg: "
+  "Get VkAttachMsg: "
     ++ show attachs
     ++ addInfoAboutTxt txt
     ++ ", with Geo: "

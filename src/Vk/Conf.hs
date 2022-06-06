@@ -8,24 +8,22 @@ import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
 import Data.Time.LocalTime (getZonedTime)
 import Logger (Priority (..))
-import Vk.Oops
+import Oops
   ( handleExGetTime,
     handleExInput,
     handleExParseConf,
     handleExPullConf,
   )
 import Vk.Types
+import Types
+import Conf (Config(..))
 
-data Config = Config
-  { cStartN :: N,
-    cBotToken :: String,
-    cHelpMsg :: String,
-    cRepeatQ :: String,
-    cGroupId :: GroupId,
-    cPriority :: Priority
+data VkConfig = VkConfig
+  { cGroupId :: GroupId,
+    cConf    :: Config
   }
 
-parseConf :: IO Config
+parseConf :: IO VkConfig
 parseConf = do
   conf <- pullConfig `E.catch` handleExPullConf
   startN <- parseConfStartN conf `E.catch` handleExParseConf "VK.startN"
@@ -36,7 +34,7 @@ parseConf = do
   repeatQuestion <-
     parseConfRepeatQ conf `E.catch` handleExParseConf "VK.repeat_Info_Question"
   groupId <- parseConfGroupId conf `E.catch` handleExParseConf "VK.group_id"
-  let config = Config startN botToken helpMsg repeatQuestion groupId prio
+  let config = VkConfig groupId $ Config startN botToken helpMsg repeatQuestion prio
   return config
 
 pullConfig :: IO C.Config

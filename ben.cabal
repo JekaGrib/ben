@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ec9ecb08e43d9e9533c3842be5027a9fd15d466347c90b4f78f686bb76cef8cc
+-- hash: 7866586c256c072420c3e918eb0971a9dd7fb49db7c66ccbb745349e30272362
 
 name:           ben
 version:        0.1.0.0
@@ -28,7 +28,9 @@ source-repository head
 library
   exposed-modules:
       App
+      Conf
       Logger
+      Oops
       Tg.Api.Request
       Tg.Api.Response
       Tg.App
@@ -36,6 +38,7 @@ library
       Tg.MainTg
       Tg.Oops
       Tg.Types
+      Types
       Vk.Api.Request
       Vk.Api.Response
       Vk.App

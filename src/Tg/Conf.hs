@@ -8,21 +8,15 @@ import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
 import Data.Time.LocalTime (getZonedTime)
 import Logger (Priority (..))
-import Tg.Oops
+import Oops
   ( handleExGetTime,
     handleExInput,
     handleExParseConf,
     handleExPullConf,
   )
-import Tg.Types
+import Types
+import Conf (Config(..))
 
-data Config = Config
-  { cStartN :: N,
-    cBotToken :: String,
-    cHelpMsg :: String,
-    cRepeatQ :: String,
-    cPriority :: Priority
-  }
 
 parseConf :: IO Config
 parseConf = do

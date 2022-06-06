@@ -4,13 +4,14 @@
 
 module Vk.AppT where
 
-import Control.Monad.State (MonadState, StateT, gets, modify)
-import Data.Bifunctor (first,second)
+import Control.Monad.State (StateT)
+--import Data.Bifunctor (first,second)
 import Vk.Api.Response (ServerInfo (..))
-import Vk.Types (MapUserN)
+import Types (MapUserN)
 
-type AppT = StateT (TryServer, MapUserN)
+type AppT m = StateT TryServer (StateT MapUserN m)
 
+{-
 class (MonadState (s1, s2) m) => MonadStateTwo s1 s2 m | m -> s1 s2 where
   get1 :: m s1
   get2 :: m s2
@@ -26,7 +27,7 @@ instance (Monad m) => MonadStateTwo TryServer MapUserN (StateT (TryServer, MapUs
   put2 s2 = modify (\(s1, _) -> (s1, s2))
   modify1 f = modify (first f)
   modify2 f = modify (second f)
-
+-}
 data TryServer = TryServer {tryNum :: Int, servInf :: ServerInfo}
   deriving (Eq, Show)
 

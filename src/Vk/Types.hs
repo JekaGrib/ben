@@ -1,19 +1,8 @@
 module Vk.Types where
 
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as LBS
-import Data.Map (Map)
 import qualified Data.Text as T
-
-type N = Int
-
-type UserId = Integer
-
-type NState = Either OpenRepeat N
-
-type MapUserN = Map UserId NState
-
-type MessageId = Integer
+import Types
 
 type UpdateId = Integer
 
@@ -23,13 +12,10 @@ type StickerId = Integer
 
 type GroupId = Integer
 
-type Response = LBS.ByteString
 
 type ResponseS = BS.ByteString
 
-type TextOfMsg = T.Text
 
-type TextOfKeyb = T.Text
 
 type AttachmentString = String
 
@@ -55,15 +41,15 @@ type SomethingWrong = String
 
 type Counter = Int
 
-newtype OpenRepeat
-  = OpenRepeat N
-  deriving (Eq, Show)
 
-data MSG
-  = TextMsg TextOfMsg
-  | AttachmentMsg TextOfMsg [AttachmentString] LatLong
+
+data VkAttachMSG
+  = VkAttachMsg TextOfMsg [AttachmentString] LatLong
   | StickerMsg StickerId
   deriving (Eq, Show)
+
+instance  Attachy VkAttachMSG
+
 
 newtype ToUserId
   = ToUserId UserId

@@ -6,6 +6,7 @@ import Control.Applicative ((<|>), liftA2)
 import Data.Aeson ((.:), (.:?), FromJSON (parseJSON), withObject)
 import qualified Data.Text as T
 import Tg.Types
+import Types
 
 data GetUpdResp
   = GetUpdResp
