@@ -7,6 +7,12 @@ import Data.Map (Map)
 import qualified Data.Text as T
 import Data.Typeable (Typeable)
 
+data Messenger = VK | TG
+
+instance Show Messenger where
+  show VK = "VK"
+  show TG = "telegram"
+
 data (Attachy a) => IsValidUpdate a = 
   ValidUpdate UserId (MsgType a)
   | InvalidUpdatePlusInfo String

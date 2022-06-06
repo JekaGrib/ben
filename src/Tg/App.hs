@@ -99,70 +99,7 @@ isValidUpdate (Update _ msg) = case msg of
   Message _     (From usId) (Just txt) -> ValidUpdate usId (TextMsg txt)
   Message msgId (From usId) _          -> ValidUpdate usId (AttachMsg msgId)
 
-{-
-sendMsgAndCheckResp ::
-  (MonadCatch m) => Handle m -> UserId -> TextOfMsg -> m ()
-sendMsgAndCheckResp h usId msg = do
-  logDebug
-    (hLog h)
-    ( "Send request to send msg "
-        ++ show msg
-        ++ " to userId "
-        ++ show usId
-        ++ ": https://api.telegram.org/bot"
-        ++ cBotToken (hConf h)
-        ++ "/sendMessage   JSON body : {chat_id = "
-        ++ show usId
-        ++ ", text = "
-        ++ show msg
-        ++ "}"
-    )
-  response <- sendMsg h usId msg `catch` handleExSendMsg (hLog h) usId msg
-  logDebug (hLog h) ("Get response: " ++ show response )
-  checkSendMsgResponse h usId msg response
 
-copyMsgAndCheckResp ::
-  (MonadCatch m) => Handle m -> UserId -> MessageId -> m ()
-copyMsgAndCheckResp h usId msgId = do
-  let logMsg =
-        "Send request to send attachment msg_id: "
-          ++ show msgId
-          ++ " to userId "
-          ++ show usId
-          ++ ": https://api.telegram.org/bot"
-          ++ cBotToken (hConf h)
-          ++ "/copyMessage   JSON body : {chat_id = "
-          ++ show usId
-          ++ ",from_chat_id = "
-          ++ show usId
-          ++ ", message_id = "
-          ++ show msgId
-          ++ "}"
-  logDebug (hLog h) logMsg
-  response <- copyMsg h usId msgId `catch` handleExCopyMsg (hLog h) usId msgId
-  logDebug (hLog h) ("Get response: " ++ show response)
-  checkCopyMsgResponse h usId msgId response
-
-sendKeybAndCheckResp ::
-  (MonadCatch m) => Handle m -> UserId -> N -> m ()
-sendKeybAndCheckResp h usId currN = do
-  let infoMsg =
-        T.pack $
-          " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
-  logDebug (hLog h) $
-    "Send request to send keyboard with message: "
-      ++ show currN
-      ++ show infoMsg
-      ++ " to userId "
-      ++ show usId
-      ++ ": https://api.telegram.org/bot"
-      ++ cBotToken (hConf h)
-      ++ "/sendMessage"
-  keybResponse <-
-    sendKeyb h usId currN infoMsg `catch` handleExSendKeyb (hLog h) usId
-  logDebug (hLog h) ("Get response: " ++ show keybResponse )
-  checkSendKeybResponse h usId currN infoMsg keybResponse
--}
 
 getUpdatesAndCheckResp :: (MonadCatch m) => Handle m -> m [Update]
 getUpdatesAndCheckResp h = do
@@ -260,92 +197,7 @@ checkConfirmUpdatesResponse h offsetArg upds responseJson =
           ++ show offsetArg
     Just _ -> logInfo (hLog h) "Received updates confirmed"
 
-{-
-checkSendMsgResponse ::
-  (MonadCatch m) =>
-  Handle m ->
-  UserId ->
-  TextOfMsg ->
-  Response ->
-  m ()
-checkSendMsgResponse h usId msg json =
-  case decode json of
-    Nothing ->
-      throwAndLogEx (hLog h)
-        . CheckSendMsgResponseException (Msg msg) (ToUserId usId)
-        $ "UNKNOWN RESPONSE:" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
-    Just (Answer False) ->
-      throwAndLogEx (hLog h)
-        . CheckSendMsgResponseException (Msg msg) (ToUserId usId)
-        $ "NEGATIVE RESPONSE:" ++ show json ++ "\nMESSAGE NOT SENT"
-    Just _ ->
-      logInfo
-        (hLog h)
-        ("Msg " ++ show msg ++ " was sent to user " ++ show usId )
 
-checkCopyMsgResponse ::
-  (MonadCatch m) =>
-  Handle m ->
-  UserId ->
-  MessageId ->
-  Response ->
-  m ()
-checkCopyMsgResponse h usId msgId json =
-  case decode json of
-    Nothing ->
-      throwAndLogEx (hLog h)
-        . CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId)
-        $ "UNKNOWN RESPONSE:" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
-    Just (Answer False) ->
-      throwAndLogEx (hLog h)
-        . CheckCopyMsgResponseException (MsgId msgId) (ToUserId usId)
-        $ "NEGATIVE RESPONSE:" ++ show json ++ "\nMESSAGE NOT SENT"
-    Just _ ->
-      logInfo
-        (hLog h)
-        ( "Attachment msg_id: "
-            ++ show msgId
-            ++ " was sent to user "
-            ++ show usId
-        )
-
-checkSendKeybResponse ::
-  (MonadCatch m) =>
-  Handle m ->
-  UserId ->
-  N ->
-  TextOfKeyb ->
-  Response ->
-  m ()
-checkSendKeybResponse h usId n msg json =
-  case decode json of
-    Nothing ->
-      throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $
-        "UNKNOWN RESPONSE:" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"
-    Just (Answer False) ->
-      throwAndLogEx (hLog h) . CheckSendKeybResponseException (ToUserId usId) $
-        "NEGATIVE RESPONSE:" ++ show json ++ "\nKEYBOARD NOT SENT"
-    Just _ ->
-      logInfo
-        (hLog h)
-        ( "Keyboard with message: "
-            ++ show n
-            ++ show msg
-            ++ " was sent to user "
-            ++ show usId
-        )
--}
-
-isValidResponse' ::
-  Response ->
-  Result
-isValidResponse' json =
-  case decode json of
-    Nothing -> NotSuccess
-        $ "UNKNOWN RESPONSE:" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
-    Just (Answer False) -> NotSuccess
-        $ "NEGATIVE RESPONSE:" ++ show json ++ "\nMESSAGE NOT SENT"
-    Just _ -> Success
 
 -- IO methods functions:
 getShortUpdates' :: Config -> IO Response
@@ -417,6 +269,17 @@ sendReqAndGetRespBody :: Manager -> Request -> IO Response
 sendReqAndGetRespBody manager req = responseBody <$> httpLbs req manager
 
 -- clear functions:
+isValidResponse' ::
+  Response ->
+  Result
+isValidResponse' json =
+  case decode json of
+    Nothing -> NotSuccess
+        $ "UNKNOWN RESPONSE:" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
+    Just (Answer False) -> NotSuccess
+        $ "NEGATIVE RESPONSE:" ++ show json ++ "\nMESSAGE NOT SENT"
+    Just _ -> Success
+
 extractNextUpdate :: [Update] -> UpdateId
 extractNextUpdate = succ . update_id . last
 

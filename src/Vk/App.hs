@@ -189,88 +189,7 @@ checkTry h = do
     lift $ lift $ throwAndLogEx (hLog h) ex
 
 
-{-
-chooseActionOfTxt ::
-  (MonadCatch m) =>
-  Handle m ->
-  N ->
-  UserId ->
-  TextOfMsg ->
-  AppT m ()
-chooseActionOfTxt h currN usId txt =
-  case filter (' ' /=) . T.unpack $ txt of
-    "/help" -> do
-      let infoMsg = T.pack $ cHelpMsg (hConf h)
-      lift $
-        logDebug
-          (hLog h)
-          ( "Send request to send msg https://api.vk.com/method/messages.send?user_id="
-              ++ show usId
-              ++ "&random_id=0&message="
-              ++ T.unpack infoMsg
-              ++ "&access_token="
-              ++ cBotToken (hConf h)
-              ++ "&v=5.103"
-          )
-      let msg = TextMsg infoMsg
-      lift $ sendMsgAndCheckResp h usId msg
-    "/repeat" -> do
-      let infoMsg =
-            T.pack $
-              " : Current number of repeats your message.\n" ++ cRepeatQ (hConf h)
-      lift $ sendKeybAndCheckResp h usId currN infoMsg
-      modify2 $ changeMapUserN usId $ Left $ OpenRepeat currN
-    _ ->
-      replicateM_ currN $ do
-        let msg = TextMsg txt
-        lift $ sendMsgAndCheckResp h usId msg
 
-chooseActionOfAttachs ::
-  (MonadCatch m) =>
-  Handle m ->
-  N ->
-  AboutObj ->
-  m ()
-chooseActionOfAttachs h currN (AboutObj usId _ _ txt _ attachs maybeGeo) = do
-  eitherAttachStrings <- runExceptT $ mapM (getAttachmentString (hPrepAttach h) usId) attachs
-  case eitherAttachStrings of
-    Right attachStrings ->
-      replicateM_ currN $ do
-        latLong <- checkAndPullLatLong h maybeGeo
-        let msg = VkAttachMsg txt attachStrings latLong
-        sendMsgAndCheckResp h usId msg
-    Left str ->
-      logWarning
-        (hLog h)
-        ("There is UNKNOWN ATTACMENT in updateList. BOT WILL IGNORE IT. " ++ str ++ "\n")
-
-sendMsgAndCheckResp ::
-  (MonadCatch m) => Handle m -> UserId -> MSG -> m ()
-sendMsgAndCheckResp h usId msg = do
-  logDebug
-    (hLog h)
-    ( "Send request to send to user_id:"
-        ++ show usId
-        ++ " msg: "
-        ++ show msg
-    )
-  response <- sendMsg h usId msg `catch` handleExSendMsg (hLog h) usId msg
-  logDebug (hLog h) ("Get response: " ++ show response)
-  checkSendMsgResponse h usId msg response
-
-sendKeybAndCheckResp ::
-  (MonadCatch m) => Handle m -> UserId -> N -> TextOfKeyb -> m ()
-sendKeybAndCheckResp h usId currN txt = do
-  logDebug (hLog h) $
-    "Send request to send keyboard to user: "
-      ++ show usId
-      ++ " with message: "
-      ++ show currN
-      ++ show txt
-  response <- sendKeyb h usId currN txt `catch` handleExSendKeyb (hLog h) usId
-  logDebug (hLog h) ("Get response: " ++ show response)
-  checkSendKeybResponse h usId currN txt response
--}
 checkGetServResponse :: (MonadCatch m) => Handle m -> Response -> m ServerInfo
 checkGetServResponse h json =
   case decode json of
@@ -343,111 +262,6 @@ checkAndPullUpdates h json =
       return upds
 
 
-
-{-
-checkSendMsgResponse ::
-  (MonadCatch m) => Handle m -> UserId -> MSG -> Response -> m ()
-checkSendMsgResponse h usId msg json =
-  case decode json of
-    Nothing -> do
-      let ex =
-            CheckSendMsgResponseException msg (ToUserId usId) $
-              "UNKNOWN RESPONSE:" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
-      throwAndLogEx (hLog h) ex
-    Just ErrorAnswerMsg {} -> do
-      let ex =
-            CheckSendMsgResponseException msg (ToUserId usId) $
-              "NEGATIVE RESPONSE:" ++ show json ++ "\nMESSAGE NOT SENT"
-      throwAndLogEx (hLog h) ex
-    Just _ ->
-      case msg of
-        TextMsg txt ->
-          logInfo
-            (hLog h)
-            ("Msg " ++ show txt ++ " was sent to user " ++ show usId)
-        StickerMsg idSt ->
-          logInfo
-            (hLog h)
-            ( "Sticker_id "
-                ++ show idSt
-                ++ " was sent to user "
-                ++ show usId
-            )
-        VkAttachMsg txt attachStrings ("", "") ->
-          logInfo
-            (hLog h)
-            ( "VkAttachMsg was sent to user "
-                ++ show usId
-                ++ ". Text: "
-                ++ show txt
-                ++ "; attachments: "
-                ++ show attachStrings
-            )
-        VkAttachMsg txt [] latLong ->
-          logInfo
-            (hLog h)
-            ( "GeoMsg was sent to user "
-                ++ show usId
-                ++ ". Text: "
-                ++ show txt
-                ++ "; geo: "
-                ++ show latLong
-            )
-        VkAttachMsg txt attachStrings latLong ->
-          logInfo
-            (hLog h)
-            ( "AttachmentAndGeoMsg was sent to user "
-                ++ show usId
-                ++ ". Text: "
-                ++ show txt
-                ++ "; attachments: "
-                ++ show attachStrings
-                ++ "; geo: "
-                ++ show latLong
-            )
-
-checkSendKeybResponse ::
-  (MonadCatch m) =>
-  Handle m ->
-  UserId ->
-  N ->
-  TextOfKeyb ->
-  Response ->
-  m ()
-checkSendKeybResponse h usId n txt json =
-  case decode json of
-    Nothing -> do
-      let ex =
-            CheckSendKeybResponseException (ToUserId usId) $
-              "UNKNOWN RESPONSE:" ++ show json ++ "\nKEYBOARD PROBABLY NOT SENT"
-      throwAndLogEx (hLog h) ex
-    Just ErrorAnswerMsg {} -> do
-      let ex =
-            CheckSendKeybResponseException (ToUserId usId) $
-              "NEGATIVE RESPONSE:" ++ show json ++ "\nKEYBOARD NOT SENT"
-      throwAndLogEx (hLog h) ex
-    Just _ ->
-      logInfo
-        (hLog h)
-        ( "Keyboard with message: "
-            ++ show n
-            ++ show txt
-            ++ " was sent to user "
-            ++ show usId
-        )
--}
-
-isValidResponse' ::
-  Response ->
-  Result
-isValidResponse' json =
-  case decode json of
-    Nothing -> NotSuccess $
-              "UNKNOWN RESPONSE:" ++ show json ++ "MESSAGE PROBABLY NOT SENT"
-    Just ErrorAnswerMsg {} -> NotSuccess $
-              "NEGATIVE RESPONSE:" ++ show json ++ "MESSAGE NOT SENT"
-    Just _ -> Success
-
 -- IO handle functions:
 getLongPollServer' :: VkConfig -> IO Response
 getLongPollServer' conf = do
@@ -513,6 +327,18 @@ sendKeyb' conf usId n txt = do
   responseBody <$> httpLbs req manager
 
 -- clear functions:
+
+isValidResponse' ::
+  Response ->
+  Result
+isValidResponse' json =
+  case decode json of
+    Nothing -> NotSuccess $
+              "UNKNOWN RESPONSE:" ++ show json ++ "MESSAGE PROBABLY NOT SENT"
+    Just ErrorAnswerMsg {} -> NotSuccess $
+              "NEGATIVE RESPONSE:" ++ show json ++ "MESSAGE NOT SENT"
+    Just _ -> Success
+
 chooseParamsForMsg :: VkAttachMSG -> [ParameterString]
 chooseParamsForMsg (StickerMsg idSt) =
   let param = "sticker_id=" ++ show idSt
@@ -524,81 +350,5 @@ chooseParamsForMsg (VkAttachMsg txt attachStrings (latStr, longStr)) =
       param4 = "long=" ++ longStr
    in [param1, param2, param3, param4]
 
-{-changeMapUserN :: UserId -> NState -> MapUserN -> MapUserN
-changeMapUserN = Map.insert
 
-checkButton :: AboutObj -> Maybe N
-checkButton obj =
-  case obj of
-    AboutObj _ _ _ txt [] [] Nothing -> checkTextButton txt
-    _ -> Nothing
 
-checkTextButton :: T.Text -> Maybe N
-checkTextButton txt =
-  case txt of
-    "1" -> Just 1
-    "2" -> Just 2
-    "3" -> Just 3
-    "4" -> Just 4
-    "5" -> Just 5
-    _ -> Nothing
--}
-logStrForGetObj :: AboutObj -> String
-logStrForGetObj (AboutObj usId _ _ txt [] [] Nothing) =
-  "Get TextMsg: " ++ show txt ++ " from user " ++ show usId
-logStrForGetObj (AboutObj usId _ _ txt fwds [] Nothing) =
-  "Get ForwardMsg: "
-    ++ show fwds
-    ++ addInfoAboutTxt txt
-    ++ " from user "
-    ++ show usId
-logStrForGetObj (AboutObj usId _ _ txt [] [] (Just geo)) =
-  "Get GeoMsg: "
-    ++ show geo
-    ++ addInfoAboutTxt txt
-    ++ " from user "
-    ++ show usId
-logStrForGetObj (AboutObj usId _ _ txt [] attachs Nothing) =
-  "Get VkAttachMsg: "
-    ++ show attachs
-    ++ addInfoAboutTxt txt
-    ++ " from user "
-    ++ show usId
-logStrForGetObj (AboutObj usId _ _ txt fwds attachs Nothing) =
-  "Get VkAttachMsg: "
-    ++ show attachs
-    ++ addInfoAboutTxt txt
-    ++ ", with ForwardParts: "
-    ++ show fwds
-    ++ "  from user "
-    ++ show usId
-logStrForGetObj (AboutObj usId _ _ txt [] attachs (Just geo)) =
-  "Get VkAttachMsg: "
-    ++ show attachs
-    ++ addInfoAboutTxt txt
-    ++ ", with Geo: "
-    ++ show geo
-    ++ "  from user "
-    ++ show usId
-logStrForGetObj (AboutObj usId _ _ txt fwds [] (Just geo)) =
-  "Get ForwardMsg: "
-    ++ show fwds
-    ++ addInfoAboutTxt txt
-    ++ ", with Geo: "
-    ++ show geo
-    ++ "  from user "
-    ++ show usId
-logStrForGetObj (AboutObj usId _ _ txt fwds attachs (Just geo)) =
-  "Get VkAttachMsg: "
-    ++ show attachs
-    ++ addInfoAboutTxt txt
-    ++ ", with Geo: "
-    ++ show geo
-    ++ ", with ForwardParts: "
-    ++ show fwds
-    ++ "  from user "
-    ++ show usId
-
-addInfoAboutTxt :: TextOfMsg -> String
-addInfoAboutTxt "" = ""
-addInfoAboutTxt txt = " with text: " ++ show txt
