@@ -2,7 +2,7 @@
 
 module Spec.Tg.App.ResponseExample where
 
-import Tg.Types (Response)
+import Types (Response)
 
 json1, json2, json3, json4, json5, json6, json7, json8, json9, json10 :: Response
 json1 = "{\"ok\":true,\"result\":[]}"

@@ -2,6 +2,7 @@
 
 module Vk.Conf where
 
+import Conf (Config (..), parseConf, pullConfig)
 import Control.Exception as E
 import Data.Char (isNumber)
 import qualified Data.Configurator as C
@@ -11,13 +12,12 @@ import Oops
     handleExParseConf,
     handleExPullConf,
   )
-import Vk.Types
 import Types
-import Conf (Config(..),parseConf,pullConfig)
+import Vk.Types
 
 data VkConfig = VkConfig
   { cGroupId :: GroupId,
-    cConf    :: Config
+    cConf :: Config
   }
 
 parseVkConf :: IO VkConfig
@@ -26,7 +26,6 @@ parseVkConf = do
   conf <- pullConfig `E.catch` handleExPullConf
   groupId <- parseConfGroupId conf `E.catch` handleExParseConf "VK.group_id"
   return $ VkConfig groupId config
-
 
 -- parse config values functions:
 
@@ -50,4 +49,3 @@ inputGroupId = do
   if all isNumber str
     then return (read str)
     else inputGroupId `E.catch` handleExInput "group_id"
-

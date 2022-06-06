@@ -33,7 +33,7 @@ testTGApp =
                            DEBUG
                            "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates",
                          GOTUPDATES,
-                         LOGMSG DEBUG $ "Get response: " ++ show json1 ,
+                         LOGMSG DEBUG $ "Get response: " ++ show json1,
                          LOGMSG INFO "No new updates"
                        ]
       it
@@ -46,7 +46,7 @@ testTGApp =
                            DEBUG
                            "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates",
                          GOTUPDATES,
-                         LOGMSG DEBUG $ "Get response: " ++ show json5 ,
+                         LOGMSG DEBUG $ "Get response: " ++ show json5,
                          LOGMSG INFO "There is new updates list",
                          LOGMSG
                            DEBUG
@@ -89,7 +89,7 @@ testTGApp =
                          DEBUG
                          "Send request to confirmOldUpdates with offset:235802 https://api.telegram.org/botABC123/getUpdates",
                        CONFIRMUPDATES 235802,
-                       LOGMSG DEBUG $ "Get response: " ++ show json1 ,
+                       LOGMSG DEBUG $ "Get response: " ++ show json1,
                        LOGMSG INFO "Received updates confirmed",
                        LOGMSG INFO "Analysis update from the list",
                        LOGMSG INFO "Get msg_id: 2112 from user 1118",

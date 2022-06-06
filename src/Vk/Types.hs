@@ -12,10 +12,7 @@ type StickerId = Integer
 
 type GroupId = Integer
 
-
 type ResponseS = BS.ByteString
-
-
 
 type AttachmentString = String
 
@@ -41,15 +38,12 @@ type SomethingWrong = String
 
 type Counter = Int
 
-
-
 data VkAttachMSG
   = VkAttachMsg TextOfMsg [AttachmentString] LatLong
   | StickerMsg StickerId
   deriving (Eq, Show)
 
-instance  Attachy VkAttachMSG
-
+instance Attachy VkAttachMSG
 
 newtype ToUserId
   = ToUserId UserId

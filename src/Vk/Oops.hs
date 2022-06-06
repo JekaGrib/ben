@@ -2,8 +2,8 @@ module Vk.Oops where
 
 import Control.Monad.Catch (Exception, MonadCatch, SomeException, throwM)
 import Logger (LogHandle (..), logError)
-import Vk.Types
 import Types
+import Vk.Types
 
 data VKBotException
   = GetLongPollServerException String
@@ -51,7 +51,6 @@ handleExGetUpd logH e = do
   let ex = GetUpdatesException $ show e
   throwAndLogEx logH ex
 
-
 handleExGetUploadServ ::
   (MonadCatch m) => LogHandle m -> SomeException -> m Response
 handleExGetUploadServ logH e = do
@@ -75,4 +74,3 @@ handleExGoToUrl ::
 handleExGoToUrl logH e = do
   let ex = GoToUrlException $ show e
   throwAndLogPrepAttEx logH ex
-

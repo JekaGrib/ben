@@ -2,17 +2,16 @@
 
 module App where
 
-import Control.Monad.Catch (MonadCatch, catch )
+import Conf (Config (..))
+import Control.Monad.Catch (MonadCatch, catch)
 import Control.Monad.State (StateT, get, lift, modify, replicateM_)
 import qualified Data.Map as Map (insert, lookup)
 import qualified Data.Text as T
-import Conf (Config (..))
-import Logger (LogHandle (..), logInfo, logWarning,logDebug)
-import Types
+import Logger (LogHandle (..), logDebug, logInfo, logWarning)
 import Oops
+import Types
 
-
-data (Attachy a) => Handle m a = Handle
+data Handle m a = Handle
   { hConf :: Config,
     hLog :: LogHandle m,
     sendTxtMsg :: UserId -> TextOfMsg -> m Response,
@@ -21,28 +20,27 @@ data (Attachy a) => Handle m a = Handle
     isValidResponse :: Response -> Result
   }
 
-
 chooseActionOfUpd ::
-  (MonadCatch m,Attachy a) =>
+  (MonadCatch m, Attachy a) =>
   Handle m a ->
   IsValidUpdate a ->
   StateT MapUserN m ()
 chooseActionOfUpd h upd = do
   lift $ logInfo (hLog h) "Analysis update from the list"
   case upd of
-    InvalidUpdate -> do
+    InvalidUpdate ->
       lift $ logWarning (hLog h) "There is UNKNOWN UPDATE. Bot will ignore it"
-    InvalidUpdatePlusInfo str -> do
+    InvalidUpdatePlusInfo str ->
       lift $ logWarning (hLog h) $ "There is UNKNOWN UPDATE. Bot will ignore it" ++ str
     ValidUpdate usId msgType -> do
       lift $
         logInfo
           (hLog h)
-          ("Get msg from user " ++ show usId )
+          ("Get msg from user " ++ show usId)
       chooseActionOfMapUserN h usId msgType
 
 chooseActionOfMapUserN ::
-  (MonadCatch m,Attachy a) =>
+  (MonadCatch m, Attachy a) =>
   Handle m a ->
   UserId ->
   MsgType a ->
@@ -63,7 +61,7 @@ chooseActionOfMapUserN h usId msgType = do
       chooseActionOfMsgType h usId msgType currN
 
 chooseActionOfMsgType ::
-  (MonadCatch m,Attachy a) =>
+  (MonadCatch m, Attachy a) =>
   Handle m a ->
   UserId ->
   MsgType a ->
@@ -78,14 +76,11 @@ chooseActionOfMsgType h usId msgType currN =
           ("Msg has text: " ++ show txt)
       chooseActionOfTxt h currN usId txt
     AttachMsg _ -> do
-      lift $ logInfo (hLog h) ("Msg is attachment")
+      lift $ logInfo (hLog h) "Msg is attachment"
       lift $ replicateM_ currN $ sendMsgAndCheckResp h usId msgType
-        
-
-
 
 chooseActionOfButton ::
-  (MonadCatch m,Attachy a) =>
+  (MonadCatch m, Attachy a) =>
   Handle m a ->
   UserId ->
   MsgType a ->
@@ -128,7 +123,7 @@ chooseActionOfButton h usId msgType oldN =
       lift $ sendMsgAndCheckResp h usId (TextMsg infoMsg)
 
 chooseActionOfTxt ::
-  (MonadCatch m,Attachy a) =>
+  (MonadCatch m, Attachy a) =>
   Handle m a ->
   N ->
   UserId ->
@@ -146,10 +141,6 @@ chooseActionOfTxt h currN usId txt =
       modify (changeMapUserN usId (Left $ OpenRepeat currN))
     _ -> lift $ replicateM_ currN $ sendMsgAndCheckResp h usId (TextMsg txt)
 
-
-
-
-
 sendMsgAndCheckResp ::
   (MonadCatch m, Attachy a) => Handle m a -> UserId -> MsgType a -> m ()
 sendMsgAndCheckResp h usId msgType = do
@@ -161,8 +152,8 @@ sendMsgAndCheckResp h usId msgType = do
         ++ show usId
     )
   response <- sendMsg h usId msgType `catch` handleExSendMsg (hLog h) usId msgType
-  logDebug (hLog h) ("Get response: " ++ show response )
-  let result = isValidResponse h response 
+  logDebug (hLog h) ("Get response: " ++ show response)
+  let result = isValidResponse h response
   checkSendMsgResponse h usId msgType result
 
 sendMsg :: (MonadCatch m, Attachy a) => Handle m a -> UserId -> MsgType a -> m Response
@@ -183,13 +174,13 @@ sendKeybAndCheckResp h usId currN = do
       ++ show usId
   keybResponse <-
     sendKeyb h usId currN infoMsg `catch` handleExSendKeyb (hLog h) usId
-  logDebug (hLog h) ("Get response: " ++ show keybResponse )
+  logDebug (hLog h) ("Get response: " ++ show keybResponse)
   let result = isValidResponse h keybResponse
-  checkSendKeybResponse h usId currN infoMsg result 
-
+  checkSendKeybResponse h usId currN infoMsg result
 
 checkSendMsgResponse ::
-  (MonadCatch m, Attachy a) => Handle m a -> 
+  (MonadCatch m, Attachy a) =>
+  Handle m a ->
   UserId ->
   MsgType a ->
   Result ->
@@ -202,11 +193,11 @@ checkSendMsgResponse h usId msgType res =
     Success ->
       logInfo
         (hLog h)
-        ("Msg " ++ show msgType ++ " was sent to user " ++ show usId )
-
+        ("Msg " ++ show msgType ++ " was sent to user " ++ show usId)
 
 checkSendKeybResponse ::
-  (MonadCatch m, Attachy a) => Handle m a -> 
+  (MonadCatch m, Attachy a) =>
+  Handle m a ->
   UserId ->
   N ->
   TextOfKeyb ->
@@ -215,7 +206,7 @@ checkSendKeybResponse ::
 checkSendKeybResponse h usId n txt res =
   case res of
     NotSuccess str ->
-      throwAndLogEx (hLog h) $ (CheckSendKeybResponseException (ToUserId usId) str :: BotException AttachNotMatter)
+      throwAndLogEx (hLog h) (CheckSendKeybResponseException (ToUserId usId) str :: BotException AttachNotMatter)
     Success ->
       logInfo
         (hLog h)
@@ -225,7 +216,6 @@ checkSendKeybResponse h usId n txt res =
             ++ " was sent to user "
             ++ show usId
         )
-
 
 changeMapUserN ::
   UserId ->
@@ -247,5 +237,3 @@ checkTextButton txt =
     "4" -> Just 4
     "5" -> Just 5
     _ -> Nothing
-
-

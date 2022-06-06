@@ -1,12 +1,12 @@
 module Tg.MainTg where
 
+import Conf (Config (..), getTime, parseConf)
 import Control.Monad.State (evalStateT, forever)
 import qualified Data.Map as Map (empty)
+import Logger (LogConfig (..), LogHandle (..), logger)
 import Tg.App (run, startApp)
 import qualified Tg.App (makeH)
-import Conf (Config (..),getTime, parseConf)
-import Logger (LogConfig (..), LogHandle (..), logger)
-import Types (Messenger(TG))
+import Types (Messenger (TG))
 
 mainTg :: IO ()
 mainTg = do

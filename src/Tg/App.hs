@@ -3,12 +3,14 @@
 
 module Tg.App where
 
-import qualified App 
+import qualified App
+import Conf (Config (..))
 import Control.Monad (when)
 import Control.Monad.Catch (MonadCatch (catch))
 import Control.Monad.State (StateT, lift)
 import Data.Aeson (decode, encode)
 import qualified Data.Text as T
+import Logger (LogHandle (..), logDebug, logInfo)
 import Network.HTTP.Client
   ( Manager,
     Request,
@@ -31,16 +33,14 @@ import Tg.Api.Request
     SendMsgJSONBody (..),
   )
 import Tg.Api.Response (Answer (..), From (..), GetUpdResp (..), Message (..), Update (..))
-import Conf (Config (..))
-import Logger (LogHandle (..), logDebug, logInfo)
 import Tg.Oops
   ( TGBotException (..),
     handleExConfUpd,
---    handleExCopyMsg,
+    --    handleExCopyMsg,
     handleExGetUpd,
---    handleExSendKeyb,
---    handleExSendMsg,
-    throwAndLogEx
+    --    handleExSendKeyb,
+    --    handleExSendMsg,
+    throwAndLogEx,
   )
 import Tg.Types
 import Types
@@ -66,14 +66,13 @@ makeH conf logH =
 
 makeAppH :: Config -> LogHandle IO -> App.Handle IO MessageId
 makeAppH conf logH =
-  App.Handle 
+  App.Handle
     conf
     logH
     (sendMsg' conf)
     (sendKeyb' conf)
     (copyMsg' conf)
     isValidResponse'
-
 
 -- logic functions:
 startApp :: (MonadCatch m) => Handle m -> m ()
@@ -91,15 +90,11 @@ run h = do
   lift $ confirmUpdatesAndCheckResp h upds
   mapM_ (App.chooseActionOfUpd (hApp h) . isValidUpdate) upds
 
-
-
 isValidUpdate :: Update -> IsValidUpdate MessageId
 isValidUpdate (UnknownUpdate _) = InvalidUpdate
 isValidUpdate (Update _ msg) = case msg of
-  Message _     (From usId) (Just txt) -> ValidUpdate usId (TextMsg txt)
-  Message msgId (From usId) _          -> ValidUpdate usId (AttachMsg msgId)
-
-
+  Message _ (From usId) (Just txt) -> ValidUpdate usId (TextMsg txt)
+  Message msgId (From usId) _ -> ValidUpdate usId (AttachMsg msgId)
 
 getUpdatesAndCheckResp :: (MonadCatch m) => Handle m -> m [Update]
 getUpdatesAndCheckResp h = do
@@ -110,7 +105,7 @@ getUpdatesAndCheckResp h = do
         ++ "/getUpdates"
     )
   json <- getUpdates h `catch` handleExGetUpd (hLog h)
-  logDebug (hLog h) ("Get response: " ++ show json )
+  logDebug (hLog h) ("Get response: " ++ show json)
   checkGetUpdatesResp h json
 
 getShortUpdatesAndCheckResp :: (MonadCatch m) => Handle m -> m [Update]
@@ -122,7 +117,7 @@ getShortUpdatesAndCheckResp h = do
         ++ "/getUpdates"
     )
   json <- getShortUpdates h `catch` handleExGetUpd (hLog h)
-  logDebug (hLog h) ("Get response: " ++ show json )
+  logDebug (hLog h) ("Get response: " ++ show json)
   checkGetUpdatesResp h json
 
 checkGetUpdatesResp ::
@@ -163,7 +158,7 @@ confirmUpdatesAndCheckResp h upds = do
     )
   newJson <-
     confirmUpdates h nextUpdate `catch` handleExConfUpd (hLog h) upds
-  logDebug (hLog h) ("Get response: " ++ show newJson )
+  logDebug (hLog h) ("Get response: " ++ show newJson)
   checkConfirmUpdatesResponse h nextUpdate upds newJson
 
 checkUpdateId :: (MonadCatch m) => Handle m -> UpdateId -> m ()
@@ -196,8 +191,6 @@ checkConfirmUpdatesResponse h offsetArg upds responseJson =
           ++ "\nNOT CONFIRM with offset: "
           ++ show offsetArg
     Just _ -> logInfo (hLog h) "Received updates confirmed"
-
-
 
 -- IO methods functions:
 getShortUpdates' :: Config -> IO Response
@@ -274,10 +267,12 @@ isValidResponse' ::
   Result
 isValidResponse' json =
   case decode json of
-    Nothing -> NotSuccess
-        $ "UNKNOWN RESPONSE:" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
-    Just (Answer False) -> NotSuccess
-        $ "NEGATIVE RESPONSE:" ++ show json ++ "\nMESSAGE NOT SENT"
+    Nothing ->
+      NotSuccess $
+        "UNKNOWN RESPONSE:" ++ show json ++ "\nMESSAGE PROBABLY NOT SENT"
+    Just (Answer False) ->
+      NotSuccess $
+        "NEGATIVE RESPONSE:" ++ show json ++ "\nMESSAGE NOT SENT"
     Just _ -> Success
 
 extractNextUpdate :: [Update] -> UpdateId

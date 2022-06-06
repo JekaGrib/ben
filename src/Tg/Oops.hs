@@ -2,8 +2,8 @@ module Tg.Oops where
 
 import Control.Monad.Catch (Exception, MonadCatch (..), SomeException, throwM)
 import qualified Data.ByteString.Lazy as LBS
-import Tg.Api.Response (Update (..))
 import Logger (LogHandle (..), logError)
+import Tg.Api.Response (Update (..))
 
 data TGBotException
   = GetUpdatesException String
@@ -19,7 +19,6 @@ throwAndLogEx logH ex = do
   let info = show ex
   logError logH info
   throwM ex
-
 
 -- handles to catch exceptions in logic functions:
 handleExGetUpd ::
@@ -39,4 +38,3 @@ handleExConfUpd logH upds e = do
         ConfirmUpdatesException $
           show e ++ "\nWhen try to confirm old updates: " ++ show upds
   throwAndLogEx logH ex
-

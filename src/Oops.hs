@@ -9,7 +9,7 @@ import qualified Data.Configurator.Types as C
 import Logger (LogHandle (..), logError)
 import Types
 
-data (Attachy a) => BotException a
+data BotException a
   = SendMsgException (MsgType a) ToUserId String
   | CheckSendMsgResponseException (MsgType a) ToUserId String
   | SendKeybException ToUserId String
@@ -28,7 +28,7 @@ data ConfigException
 
 instance Exception ConfigException
 
-throwAndLogEx :: (Monad m, MonadCatch m,Attachy a) => LogHandle m -> (BotException a) -> m b
+throwAndLogEx :: (Monad m, MonadCatch m, Attachy a) => LogHandle m -> BotException a -> m b
 throwAndLogEx logH ex = do
   let info = show ex
   logError logH info
@@ -37,7 +37,7 @@ throwAndLogEx logH ex = do
 -- handles to catch exceptions in logic functions:
 
 handleExSendMsg ::
-  (Monad m, MonadCatch m,Attachy a) =>
+  (Monad m, MonadCatch m, Attachy a) =>
   LogHandle m ->
   UserId ->
   MsgType a ->
@@ -46,7 +46,6 @@ handleExSendMsg ::
 handleExSendMsg logH usId msgType e = do
   let ex = SendMsgException msgType (ToUserId usId) $ show e
   throwAndLogEx logH ex
-
 
 handleExSendKeyb ::
   (Monad m, MonadCatch m) =>
@@ -57,7 +56,6 @@ handleExSendKeyb ::
 handleExSendKeyb logH usId e = do
   let ex = SendKeybException (ToUserId usId) $ show e :: BotException AttachNotMatter
   throwAndLogEx logH ex
-
 
 -- handles to catch exceptions in IO configuration functions:
 handleExPullConf :: E.SomeException -> IO C.Config

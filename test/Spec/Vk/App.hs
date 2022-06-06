@@ -28,7 +28,7 @@ emptyTryServInf :: TryServer
 emptyTryServInf = firstTry emptyServInf
 
 testVkApp :: IO ()
-testVkApp = 
+testVkApp =
   hspec $ do
     describe "getServInfoAndCheckResp" $ do
       it "throw Exception with error answer" $

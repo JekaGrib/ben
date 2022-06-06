@@ -2,6 +2,7 @@
 
 module Vk.App.PrepareAttachment where
 
+import Conf (Config (..))
 import Control.Monad.Catch (MonadCatch (catch))
 import Control.Monad.Except (ExceptT, lift, throwError)
 import Data.Aeson (decode)
@@ -11,6 +12,7 @@ import Data.List (sortOn)
 import Data.Ord (Down (Down))
 import Data.String (fromString)
 import qualified Data.Text as T
+import Logger (LogHandle (..), logDebug)
 import Network.HTTP.Client
   ( RequestBody (..),
     httpLbs,
@@ -20,9 +22,8 @@ import Network.HTTP.Client
   )
 import Network.HTTP.Client.MultipartFormData (formDataBody, partFileRequestBody)
 import Network.HTTP.Client.TLS (newTlsManager)
+import Types
 import Vk.Api.Response
-import Conf (Config (..))
-import Logger (LogHandle (..), logDebug)
 import Vk.Oops
   ( PrependAttachmetException (..),
     handleExGetUploadServ,
@@ -32,7 +33,6 @@ import Vk.Oops
     throwAndLogPrepAttEx,
   )
 import Vk.Types
-import Types
 
 data Handle m = Handle
   { hConf :: Config,

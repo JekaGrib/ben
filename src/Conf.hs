@@ -6,6 +6,7 @@ import qualified Control.Exception as E
 import Data.Char (toUpper)
 import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
+import qualified Data.Text as T
 import Data.Time.LocalTime (getZonedTime)
 import Logger (Priority (..))
 import Oops
@@ -15,7 +16,6 @@ import Oops
     handleExPullConf,
   )
 import Types
-import qualified Data.Text as T
 
 data Config = Config
   { cStartN :: N,
@@ -37,12 +37,12 @@ parseConf msngr = do
   startN <- parseConfStartN msngr conf `E.catch` handleExParseConf (addPrefixStr msngr ".startN")
   botToken <-
     parseConfBotToken msngr conf `E.catch` handleExParseConf (addPrefixStr msngr ".botToken")
-  prio <- parseConfPrio msngr conf `E.catch` handleExParseConf  (addPrefixStr msngr ".logLevel")
+  prio <- parseConfPrio msngr conf `E.catch` handleExParseConf (addPrefixStr msngr ".logLevel")
   helpMsg <-
-    parseConfHelpMsg msngr conf `E.catch` handleExParseConf  (addPrefixStr msngr  ".help_Info_Msg")
+    parseConfHelpMsg msngr conf `E.catch` handleExParseConf (addPrefixStr msngr ".help_Info_Msg")
   repeatQuestion <-
     parseConfRepeatQ msngr conf
-      `E.catch` handleExParseConf  (addPrefixStr msngr ".repeat_Info_Question")
+      `E.catch` handleExParseConf (addPrefixStr msngr ".repeat_Info_Question")
   return $ Config startN botToken helpMsg repeatQuestion prio
 
 pullConfig :: IO C.Config

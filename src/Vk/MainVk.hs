@@ -2,13 +2,12 @@
 
 module Vk.MainVk where
 
+import Conf (Config (..), getTime)
 import qualified Data.Map as Map (empty)
+import Logger (LogConfig (..), LogHandle (..), logger)
 import Vk.App (run)
 import qualified Vk.App (makeH)
-import Conf (getTime)
-import Vk.Conf (VkConfig(..), parseVkConf)
-import Conf (Config(..))
-import Logger (LogConfig (..), LogHandle (..), logger)
+import Vk.Conf (VkConfig (..), parseVkConf)
 
 mainVk :: IO ()
 mainVk = do
