@@ -293,13 +293,10 @@ makeKeybBody usId msg n =
       textKeyb = T.concat [T.pack . show $ n, msg],
       reply_markup =
         KeyBoard
-          { keyboard =
-              [ [KeyButton {textBtn = "1"}],
-                [KeyButton {textBtn = "2"}],
-                [KeyButton {textBtn = "3"}],
-                [KeyButton {textBtn = "4"}],
-                [KeyButton {textBtn = "5"}]
-              ],
+          { keyboard = [button "1",button "2",button "3",button "4",button "5"],
             one_time_keyboard = True
           }
     }
+
+button :: T.Text -> [KeyButton]
+button txt = [KeyButton txt]
