@@ -246,7 +246,7 @@ checkAndPullUpdates h json =
             CheckGetUpdatesResponseException $
               "NEGATIVE RESPONSE:" ++ show json
       lift $ lift $ throwAndLogEx (hLog h) ex
-    Just AnswerOk {updates = []} -> do
+    Just (AnswerOk _ []) -> do
       lift $ lift $ logInfo (hLog h) "No new updates"
       modify resetTry
       return []

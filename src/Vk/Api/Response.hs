@@ -4,15 +4,11 @@
 module Vk.Api.Response
   ( Answer
       ( AnswerOk,
-        updates,
         FailAnswer,
         FailTSAnswer,
-        tsFTSA,
-        failFTSA,
-        ErrorAnswer,
-        errorEA
+        ErrorAnswer
       ),
-    Update (Update, objectUpd, UnknownUpdate),
+    Update (Update, UnknownUpdate),
     AboutObj (AboutObj, from_id, text),
     Attachment (..),
     Doc (Doc),
@@ -31,11 +27,9 @@ module Vk.Api.Response
     ResponseSDAMR (ResponseSDAMR),
     GetPollServerJSONBody
       ( GetPollServerJSONBody,
-        responseGPSJB,
-        ErrorAnswerServ,
-        errorEAS
+        ErrorAnswerServ
       ),
-    ResponseOk (ResponseOk, ErrorAnswerMsg, errorEAM),
+    ResponseOk (ResponseOk, ErrorAnswerMsg),
     ServerInfo (ServerInfo, tsSI, keySI, serverSI),
     UploadServerResponse (UploadServerResponse),
     UploadUrl (UploadUrl),
@@ -53,20 +47,10 @@ import Types
 import Vk.Types
 
 data Answer
-  = AnswerOk
-      { tsAOk :: Integer,
-        updates :: [Update]
-      }
-  | FailAnswer
-      { failFA :: Integer
-      }
-  | FailTSAnswer
-      { failFTSA :: Maybe Integer,
-        tsFTSA :: Integer
-      }
-  | ErrorAnswer
-      { errorEA :: Value
-      }
+  = AnswerOk Integer [Update]
+  | FailAnswer Integer
+  | FailTSAnswer (Maybe Integer) Integer
+  | ErrorAnswer Value
   deriving (Generic, Show)
 
 tryReadTs :: Object -> Parser Integer
@@ -88,10 +72,7 @@ instance FromJSON Answer where
       <|> withObject "ErrorAnswer" (\v -> ErrorAnswer <$> v .: "error") val
 
 data Update
-  = Update
-      { typeUpd :: T.Text,
-        objectUpd :: AboutObj
-      }
+  = Update T.Text AboutObj
   | UnknownUpdate Value
   deriving (Show)
 
@@ -116,24 +97,15 @@ data AboutObj = AboutObj
 instance FromJSON AboutObj
 
 data Attachment
-  = PhotoAttachment
-      {photoPA :: Photo}
-  | DocAttachment
-      {docDA :: Doc}
-  | AudioMesAttachment
-      {audio_message :: Audio}
-  | VideoAttachment
-      {docVA :: DocInfo}
-  | StickerAttachment
-      {sticker :: StickerInfo}
-  | AudioAttachment
-      {audio :: DocInfo}
-  | MarketAttachment
-      {market :: DocInfo}
-  | WallAttachment
-      {wall :: WallInfo}
-  | PollAttachment
-      {poll :: DocInfo}
+  = PhotoAttachment Photo
+  | DocAttachment Doc
+  | AudioMesAttachment Audio
+  | VideoAttachment DocInfo
+  | StickerAttachment StickerInfo
+  | AudioAttachment DocInfo
+  | MarketAttachment DocInfo
+  | WallAttachment WallInfo
+  | PollAttachment DocInfo
   | UnknownAttachment Value
   deriving (Generic, Show)
 
@@ -302,12 +274,8 @@ instance FromJSON ResponseSDAMR where
       ResponseSDAMR <$> v .: "type" <*> v .: "audio_message"
 
 data GetPollServerJSONBody
-  = GetPollServerJSONBody
-      { responseGPSJB :: ServerInfo
-      }
-  | ErrorAnswerServ
-      { errorEAS :: Value
-      }
+  = GetPollServerJSONBody ServerInfo
+  | ErrorAnswerServ Value
   deriving (Generic, Show)
 
 instance FromJSON GetPollServerJSONBody where
@@ -332,12 +300,8 @@ instance FromJSON ServerInfo where
       ServerInfo <$> v .: "key" <*> v .: "server" <*> tryReadTs v
 
 data ResponseOk
-  = ResponseOk
-      { responseR :: Integer
-      }
-  | ErrorAnswerMsg
-      { errorEAM :: Value
-      }
+  = ResponseOk Integer
+  | ErrorAnswerMsg Value
   deriving (Generic, Show)
 
 instance FromJSON ResponseOk where

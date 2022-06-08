@@ -9,11 +9,8 @@ import Tg.Types
 import Types
 
 data GetUpdResp
-  = GetUpdResp
-      { ok :: Bool,
-        result :: [Update]
-      }
-  | OkAnswer {okOA :: Bool}
+  = GetUpdResp Bool [Update]
+  | OkAnswer Bool
 
 instance FromJSON GetUpdResp where
   parseJSON =
@@ -30,13 +27,8 @@ instance FromJSON Answer where
   parseJSON = withObject "Answer" (\v -> Answer <$> v .: "ok")
 
 data Update
-  = Update
-      { update_id :: UpdateId,
-        message :: Message
-      }
-  | UnknownUpdate
-      { update_id :: UpdateId
-      }
+  = Update UpdateId Message
+  | UnknownUpdate UpdateId
   deriving (Eq, Show)
 
 instance FromJSON Update where

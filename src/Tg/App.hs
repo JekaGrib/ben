@@ -142,21 +142,22 @@ checkGetUpdatesResp h json =
 
 confirmUpdatesAndCheckResp :: (MonadCatch m) => Handle m -> [Update] -> m ()
 confirmUpdatesAndCheckResp _ [] = return ()
-confirmUpdatesAndCheckResp h upds = do
-  let nextUpdate = extractNextUpdate upds
-  checkUpdateId h nextUpdate
-  logDebug
-    (hLog h)
-    ( "Send request to confirmOldUpdates with offset:"
-        ++ show nextUpdate
-        ++ " https://api.telegram.org/bot"
-        ++ cBotToken (hConf h)
-        ++ "/getUpdates"
-    )
-  newJson <-
-    confirmUpdates h nextUpdate `catch` handleExConfUpd (hLog h) upds
-  logDebug (hLog h) ("Get response: " ++ show newJson)
-  checkConfirmUpdatesResponse h nextUpdate upds newJson
+confirmUpdatesAndCheckResp h upds = case reverse upds of
+  [] -> return ()
+  upd : _ -> do
+    let nextUpdate = extractNextUpdate upd
+    logDebug
+      (hLog h)
+      ( "Send request to confirmOldUpdates with offset:"
+          ++ show nextUpdate
+          ++ " https://api.telegram.org/bot"
+          ++ cBotToken (hConf h)
+          ++ "/getUpdates"
+      )
+    newJson <-
+      confirmUpdates h nextUpdate `catch` handleExConfUpd (hLog h) upds
+    logDebug (hLog h) ("Get response: " ++ show newJson)
+    checkConfirmUpdatesResponse h nextUpdate upds newJson
 
 checkUpdateId :: (MonadCatch m) => Handle m -> UpdateId -> m ()
 checkUpdateId h updId =
@@ -272,11 +273,9 @@ isValidResponse' json =
         "NEGATIVE RESPONSE:" ++ show json ++ "\nMESSAGE NOT SENT"
     Just _ -> Success
 
-extractNextUpdate :: [Update] -> UpdateId
-extractNextUpdate = succ . update_id . last
-
-extractUserId :: Update -> UserId
-extractUserId = idUser . fromUser . message
+extractNextUpdate :: Update -> UpdateId
+extractNextUpdate (Update updId _) = succ updId
+extractNextUpdate (UnknownUpdate updId) = succ updId
 
 addBodyToReq :: Request -> RequestBody -> Request
 addBodyToReq initReq reqBody =
