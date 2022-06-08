@@ -18,14 +18,14 @@ initialDB1 = Map.empty
 initialDB2 = Map.fromList [(1118, Left (OpenRepeat 2)), (1234, Right 3), (2581, Left (OpenRepeat 4))]
 initialDB3 = Map.fromList [(1118, Right 2), (1234, Right 3), (2581, Left (OpenRepeat 4))]
 
-
 testApp :: IO ()
 testApp =
   hspec $ do
     describe "chooseActionOfUpd" $ do
       it "work with update with text msg" $ do
-        state <- execStateT (evalStateT (chooseActionOfUpd handle0 (ValidUpdate 1118 (TextMsg "love"))) initialDB1) []
-        reverse (state :: [MockAction AttachNotMatter])
+        let upd = ValidUpdate 1118 (TextMsg "love") :: ValidUpdate AttachNotMatter
+        state <- execStateT (evalStateT (chooseActionOfUpd handle0 upd) initialDB1) []
+        reverse state 
           `shouldBe` 
           [LOGMSG INFO "Analysis update from the list"
           ,LOGMSG INFO "Get msg from user 1118"
@@ -37,70 +37,36 @@ testApp =
               ,LOGMSG DEBUG "Get response: \"ok\""
               ,LOGMSG INFO "Msg TextMsg \"love\" was sent to user 1118"
               ])
-{-}
       it "work with text msg if user is in OpenRepeatMode " $ do
-        state <- execStateT (evalStateT (run handle13) initialDB2) []
+        let upd = ValidUpdate 1118 (TextMsg "love") :: ValidUpdate AttachNotMatter
+        state <- execStateT (evalStateT (chooseActionOfUpd handle1 upd) initialDB2) []
         reverse state
-          `shouldBe` [ GOTUPDATES,
-                       CONFIRMUPDATES 235802,
-                       LOG WARNING,
+          `shouldBe` [ LOG WARNING,
                        SENDMSG 1118 "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still 2\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later"
                      ]
-      it "work with singleton update list with /help msg" $ do
-        dbState <- evalStateT (execStateT (run handle9) initialDB1) []
+      it "work with /help msg" $ do
+        let upd = ValidUpdate 1118 (TextMsg "/help") :: ValidUpdate AttachNotMatter
+        dbState <- evalStateT (execStateT (chooseActionOfUpd handle0 upd) initialDB1) []
         dbState `shouldBe` initialDB1
-        state <- execStateT (evalStateT (run handle9) initialDB1) []
-        reverse state
-          `shouldBe` [ LOGMSG
-                         DEBUG
-                         "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates",
-                       GOTUPDATES,
-                       LOGMSG DEBUG $ "Get response: " ++ show json7,
-                       LOGMSG INFO "There is new updates list",
-                       LOGMSG
-                         DEBUG
-                         "Send request to confirmOldUpdates with offset:235802 https://api.telegram.org/botABC123/getUpdates",
-                       CONFIRMUPDATES 235802,
-                       LOGMSG
-                         DEBUG
-                         "Get response: \"{\\\"ok\\\":true,\\\"result\\\":[]}\"",
-                       LOGMSG INFO "Received updates confirmed",
-                       LOGMSG INFO "Analysis update from the list",
-                       LOGMSG INFO "Get msg_id: 2113 from user 1118",
-                       LOGMSG INFO "Msg_id:2113 is text: \"/help\"",
-                       LOGMSG
-                         DEBUG
-                         "Send request to send msg \"Hello\" to userId 1118: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118, text = \"Hello\"}",
-                       SENDMSG 1118 "Hello",
-                       LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"",
-                       LOGMSG INFO "Msg \"Hello\" was sent to user 1118"
-                     ]
-      it "work with singleton update list with /repeat msg" $ do
-        dbState <- evalStateT (execStateT (run handle10) initialDB1) []
+        state <- execStateT (evalStateT (chooseActionOfUpd handle0 upd) initialDB1) []
+        reverse state 
+          `shouldBe` 
+          [LOGMSG INFO "Analysis update from the list"
+          ,LOGMSG INFO "Get msg from user 1118"
+          ,LOGMSG INFO "Msg has text: \"/help\""
+          ,LOGMSG DEBUG "Send request to send msg TextMsg \"Hello\" to userId 1118"
+          ,SENDMSG 1118 "Hello"
+          ,LOGMSG DEBUG "Get response: \"ok\""
+          ,LOGMSG INFO "Msg TextMsg \"Hello\" was sent to user 1118"
+          ]
+      it "work with /repeat msg" $ do
+        let upd = ValidUpdate 1118 (TextMsg "/repeat") :: ValidUpdate AttachNotMatter
+        dbState <- evalStateT (execStateT (chooseActionOfUpd handle1 upd) initialDB1) []
         dbState `shouldBe` Map.fromList [(1118, Left (OpenRepeat 2))]
-        state <- execStateT (evalStateT (run handle10) initialDB1) []
+        state <- execStateT (evalStateT (chooseActionOfUpd handle1 upd) initialDB1) []
         reverse state
-          `shouldBe` [ LOG DEBUG,
-                       GOTUPDATES,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG DEBUG,
-                       CONFIRMUPDATES 235801,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG DEBUG,
-                       SENDKEYB
-                         1118
-                         2
-                         " : Current number of repeats your message.\nWhy?",
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG INFO
-                     ]
-      it "work with sticker update" $ do
+          `shouldBe` [SENDKEYB 1118 2 " : Current number of repeats your message.\nWhy?"]
+{-}      it "work with sticker update" $ do
         state <- execStateT (evalStateT (run handle11) initialDB1) []
         reverse state
           `shouldBe` [ LOG DEBUG,
