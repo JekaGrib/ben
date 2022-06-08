@@ -1,8 +1,8 @@
 module Spec.Log where
 
-import Control.Monad.State (StateT (..),modify)
-import Spec.Types
+import Control.Monad.State (StateT (..), modify)
 import Logger
+import Spec.Types
 
 handLogDebug :: LogHandle (StateT [MockAction a] IO)
 handLogDebug = LogHandle (LogConfig DEBUG) logTest
@@ -14,9 +14,9 @@ handLogWarn :: LogHandle (StateT [MockAction a] IO)
 handLogWarn = LogHandle (LogConfig WARNING) logTest
 
 logTest :: Priority -> String -> StateT [MockAction a] IO ()
-logTest prio _ = 
-  modify ((LOG prio) :) 
+logTest prio _ =
+  modify (LOG prio :)
 
 logMsgTest :: Priority -> String -> StateT [MockAction a] IO ()
-logMsgTest prio msg = 
-  modify ((LOGMSG prio msg) :)
+logMsgTest prio msg =
+  modify (LOGMSG prio msg :)

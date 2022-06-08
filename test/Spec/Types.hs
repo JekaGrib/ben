@@ -1,9 +1,10 @@
 module Spec.Types where
 
 import Logger (Priority (..))
-import Types
-import Tg.Types
 import Spec.Tg.Types
+import Spec.Vk.Types
+import Tg.Types
+import Types
 
 data MockAction a
   = SENDMSG UserId TextOfMsg
@@ -12,4 +13,5 @@ data MockAction a
   | LOG Priority
   | LOGMSG Priority String
   | TgMock TgMockAction
+  | VkMock VkMockAction
   deriving (Eq, Show)

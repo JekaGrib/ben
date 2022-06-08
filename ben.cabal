@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 71e4336a205067045f27e296757cf6670a15d58d0a53f970435a767c73d5b944
+-- hash: 344a53b9d68343c2d9be486d0af5feccf2c5f275b47f5e665c7aba5a6c420693
 
 name:           ben
 version:        0.1.0.0
@@ -109,6 +109,17 @@ test-suite ben-test
       Spec.Tg.Error
       Spec.Tg.Types
       Spec.Types
+      Spec.Vk.App
+      Spec.Vk.App.Error
+      Spec.Vk.App.Handlers
+      Spec.Vk.App.ResponseExample
+      Spec.Vk.Conf
+      Spec.Vk.Log
+      Spec.Vk.PrepareAttachment
+      Spec.Vk.PrepareAttachment.Error
+      Spec.Vk.PrepareAttachment.Handlers
+      Spec.Vk.PrepareAttachment.ResponseExample
+      Spec.Vk.Types
       Paths_ben
   hs-source-dirs:
       test

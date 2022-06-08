@@ -2,7 +2,6 @@ module Spec.Error where
 
 import Error
 
-
 isSendMsgException :: BotException a -> Bool
 isSendMsgException SendMsgException {} = True
 isSendMsgException _ = False

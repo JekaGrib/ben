@@ -4,19 +4,19 @@ module Spec.Tg.App where
 
 import Control.Monad.State (evalStateT, execStateT)
 import qualified Data.Map as Map
+import Error (BotException (..))
+import Logger (Priority (..))
+import Spec.Error
 import Spec.Tg.App.Handlers
 import Spec.Tg.App.ResponseExample
 import Spec.Tg.Error
-import Spec.Error
 import Spec.Tg.Types
-import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow,Selector)
+import Spec.Types
+import Test.Hspec (Selector, describe, hspec, it, shouldBe, shouldThrow)
 import Tg.App (run, startApp)
 import Tg.Error (TGBotException (..))
-import Error (BotException (..))
-import Logger (Priority (..))
 import Tg.Types
 import Types
-import Spec.Types
 
 initialDB1, initialDB2, initialDB3 :: MapUserN
 initialDB1 = Map.empty

@@ -300,22 +300,22 @@ sendAttachMsg' conf msg usId = do
 
 commonParamList :: Config -> UserId -> [String]
 commonParamList conf usId =
-  let paramUsId   = "user_id=" ++ show usId
+  let paramUsId = "user_id=" ++ show usId
       paramRandom = "random_id=0"
-      paramToken  = "access_token=" ++ cBotToken conf
-      paramVers   = "v=" ++ vkApiVersion
+      paramToken = "access_token=" ++ cBotToken conf
+      paramVers = "v=" ++ vkApiVersion
    in [paramUsId, paramRandom, paramToken, paramVers]
 
 sendKeyb' :: Config -> UserId -> N -> TextOfKeyb -> IO Response
 sendKeyb' conf usId n txt = do
   manager <- newTlsManager
   initReq <- parseRequest "https://api.vk.com/method/messages.send"
-  let paramUsId   = ("user_id", fromString . show $ usId)
+  let paramUsId = ("user_id", fromString . show $ usId)
   let paramRandom = ("random_id", "0")
-  let paramMsg    = ("message", fromString (show n ++ T.unpack txt))
-  let paramKeyb   = ("keyboard", LBS.toStrict . encode $ keyBoard)
-  let paramToken  = ("access_token", fromString $ cBotToken conf)
-  let paramVers   = ("v", fromString vkApiVersion)
+  let paramMsg = ("message", fromString (show n ++ T.unpack txt))
+  let paramKeyb = ("keyboard", LBS.toStrict . encode $ keyBoard)
+  let paramToken = ("access_token", fromString $ cBotToken conf)
+  let paramVers = ("v", fromString vkApiVersion)
   let params = [paramUsId, paramRandom, paramMsg, paramKeyb, paramToken, paramVers]
   let req = urlEncodedBody params initReq
   responseBody <$> httpLbs req manager
@@ -340,10 +340,10 @@ chooseParamsForMsg (StickerMsg idSt) =
   let paramStick = "sticker_id=" ++ show idSt
    in [paramStick]
 chooseParamsForMsg (VkAttachMsg txt attachStrings (latStr, longStr)) =
-  let paramMsg    = "message=" ++ T.unpack txt
+  let paramMsg = "message=" ++ T.unpack txt
       paramAttach = "attachment=" ++ intercalate "," attachStrings
-      paramLat    = "lat=" ++ latStr
-      paramLong   = "long=" ++ longStr
+      paramLat = "lat=" ++ latStr
+      paramLong = "long=" ++ longStr
    in [paramMsg, paramAttach, paramLat, paramLong]
 
 vkApiVersion :: String

@@ -1,20 +1,18 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.Tg.App.Handlers where
 
+import qualified App
 import Control.Monad.Catch (throwM)
-import Control.Monad.State (StateT (..),modify)
+import Control.Monad.State (StateT (..), modify)
 import Network.HTTP.Client (HttpException (InvalidUrlException))
-import Spec.Tg.App.ResponseExample
+import qualified Spec.App.Handlers as App
 import Spec.Conf (config1)
 import Spec.Log
+import Spec.Tg.App.ResponseExample
 import Spec.Tg.Types
-import Tg.App (Handle (..),isValidResponse')
-import Tg.Types
 import Spec.Types
+import Tg.App (Handle (..), isValidResponse')
+import Tg.Types
 import Types
-import qualified Spec.App.Handlers as App
-import qualified App 
 
 getUpdatesTest :: Response -> StateT [MockAction MessageId] IO Response
 getUpdatesTest json = StateT $ \s -> return (json, TgMock GOTUPDATES : s)
@@ -29,22 +27,22 @@ getUpdatesTestEx = App.throwHttpEx
 confirmUpdatesTestEx :: UpdateId -> StateT [MockAction MessageId] IO Response
 confirmUpdatesTestEx _ = App.throwHttpEx
 
-
 appHandle1 :: App.Handle (StateT [MockAction MessageId] IO) MessageId
-appHandle1 = App.Handle
-  { App.hConf = config1,
-    App.hLog = handLogDebug,
-    App.sendTxtMsg = App.sendMsgTest json4,
-    App.sendKeyb = App.sendKeybTest json4,
-    App.sendAttachMsg = App.sendAttachMsgTest json11,
-    App.isValidResponse = isValidResponse'
-  }
+appHandle1 =
+  App.Handle
+    { App.hConf = config1,
+      App.hLog = handLogDebug,
+      App.sendTxtMsg = App.sendMsgTest json4,
+      App.sendKeyb = App.sendKeybTest json4,
+      App.sendAttachMsg = App.sendAttachMsgTest json11,
+      App.isValidResponse = isValidResponse'
+    }
 
-appHandle0,appHandle2 :: App.Handle (StateT [MockAction MessageId] IO) MessageId
+appHandle0, appHandle2 :: App.Handle (StateT [MockAction MessageId] IO) MessageId
 appHandle0 = appHandle1 {App.hLog = handLogMsgDebug}
 appHandle2 = appHandle1 {App.hLog = handLogWarn}
 
-handle1 :: Handle (StateT [MockAction MessageId] IO) 
+handle1 :: Handle (StateT [MockAction MessageId] IO)
 handle1 =
   Handle
     { hConf = config1,
@@ -54,7 +52,6 @@ handle1 =
       confirmUpdates = confirmUpdatesTest json1,
       hApp = appHandle1
     }
-
 
 handle0,
   handle2,
@@ -66,15 +63,15 @@ handle0,
   handle8,
   handle9 ::
     Handle (StateT [MockAction MessageId] IO)
-handle0 = handle1 {hLog = handLogMsgDebug,hApp = appHandle0}
+handle0 = handle1 {hLog = handLogMsgDebug, hApp = appHandle0}
 handle2 = handle1 {getShortUpdates = getUpdatesTest json2}
 handle3 = handle1 {getShortUpdates = getUpdatesTest json3}
 handle4 = handle1 {getShortUpdates = getUpdatesTest json4}
-handle5 = handle1 {getShortUpdates = getUpdatesTest json5, hLog = handLogMsgDebug,hApp = appHandle0}
+handle5 = handle1 {getShortUpdates = getUpdatesTest json5, hLog = handLogMsgDebug, hApp = appHandle0}
 handle6 = handle1 {getUpdates = getUpdatesTest json2}
 handle7 = handle1 {getUpdates = getUpdatesTest json3}
 handle8 = handle1 {getUpdates = getUpdatesTest json4}
-handle9 = handle1 {getUpdates = getUpdatesTest json7, hLog = handLogMsgDebug,hApp = appHandle0}
+handle9 = handle1 {getUpdates = getUpdatesTest json7, hLog = handLogMsgDebug, hApp = appHandle0}
 
 handle10,
   handle11,
@@ -90,7 +87,7 @@ handle10,
 handle10 = handle1 {getUpdates = getUpdatesTest json8}
 handle11 = handle1 {getUpdates = getUpdatesTest json9}
 handle12 = handle1 {getUpdates = getUpdatesTest json10}
-handle13 = handle1 {hLog = handLogWarn,hApp = appHandle2}
+handle13 = handle1 {hLog = handLogWarn, hApp = appHandle2}
 handle14 = handle13 {getUpdates = getUpdatesTest json12}
 handle15 = handle13 {getShortUpdates = getUpdatesTest json12}
 handle16 = handle13 {confirmUpdates = confirmUpdatesTest json2}

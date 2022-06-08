@@ -17,4 +17,3 @@ isConfirmUpdatesException _ = False
 isCheckConfirmUpdatesResponseException :: TGBotException -> Bool
 isCheckConfirmUpdatesResponseException CheckConfirmUpdatesResponseException {} = True
 isCheckConfirmUpdatesResponseException _ = False
-
