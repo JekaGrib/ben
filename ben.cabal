@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: b8e57e21597ee0a673588240b8b028eda92c6d27fb3377fe5a07c7e0032ab496
+-- hash: f33b4c389052cf526c8e9878c36f115595985e68a8439648b31dbae326e2d763
 
 name:           ben
 version:        0.1.0.0
@@ -29,13 +29,13 @@ library
   exposed-modules:
       App
       Conf
+      Error
       Logger
-      Oops
       Tg.Api.Request
       Tg.Api.Response
       Tg.App
-      Tg.MainTg
-      Tg.Oops
+      Tg.Error
+      Tg.Main
       Tg.Types
       Types
       Vk.Api.Request
@@ -44,8 +44,8 @@ library
       Vk.App.PrepareAttachment
       Vk.AppT
       Vk.Conf
-      Vk.MainVk
-      Vk.Oops
+      Vk.Error
+      Vk.Main
       Vk.Types
   other-modules:
       Paths_ben
@@ -102,18 +102,18 @@ test-suite ben-test
       Spec.Tg.App.Handlers
       Spec.Tg.App.ResponseExample
       Spec.Tg.Conf
+      Spec.Tg.Error
       Spec.Tg.Log
-      Spec.Tg.Oops
       Spec.Tg.Types
       Spec.Vk.App
+      Spec.Vk.App.Error
       Spec.Vk.App.Handlers
-      Spec.Vk.App.Oops
       Spec.Vk.App.ResponseExample
       Spec.Vk.Conf
       Spec.Vk.Log
       Spec.Vk.PrepareAttachment
+      Spec.Vk.PrepareAttachment.Error
       Spec.Vk.PrepareAttachment.Handlers
-      Spec.Vk.PrepareAttachment.Oops
       Spec.Vk.PrepareAttachment.ResponseExample
       Spec.Vk.Types
       Paths_ben

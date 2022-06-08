@@ -9,7 +9,7 @@ import qualified Data.Configurator.Types as C
 import qualified Data.Text as T
 import Data.Time.LocalTime (getZonedTime)
 import Logger (Priority (..))
-import Oops
+import Error
   ( handleExGetTime,
     handleExInput,
     handleExParseConf,

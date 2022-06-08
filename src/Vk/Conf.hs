@@ -7,7 +7,7 @@ import Control.Exception as E
 import Data.Char (isNumber)
 import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
-import Oops
+import Error
   ( handleExInput,
     handleExParseConf,
     handleExPullConf,

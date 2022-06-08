@@ -1,6 +1,6 @@
-module Spec.Tg.Oops where
+module Spec.Tg.Error where
 
-import Tg.Oops
+import Tg.Error
 
 isGetUpdatesException :: TGBotException -> Bool
 isGetUpdatesException GetUpdatesException {} = True

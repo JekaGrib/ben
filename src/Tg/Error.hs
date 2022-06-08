@@ -1,4 +1,4 @@
-module Tg.Oops where
+module Tg.Error where
 
 import Control.Monad.Catch (Exception, MonadCatch (..), SomeException, throwM)
 import qualified Data.ByteString.Lazy as LBS

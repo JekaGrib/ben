@@ -5,7 +5,7 @@ module Spec.Vk.App where
 import Control.Monad.State (evalStateT, execStateT, runStateT)
 import qualified Data.Map as Map
 import Spec.Vk.App.Handlers
-import Spec.Vk.App.Oops
+import Spec.Vk.App.Error
 import Spec.Vk.App.ResponseExample
 import Spec.Vk.Types
 import Test.Hspec (describe, hspec, it, shouldBe, shouldNotBe, shouldThrow)
@@ -13,7 +13,7 @@ import Vk.Api.Response (LoadDocResp (..), LoadPhotoResp (..), ServerInfo (..))
 import Vk.App (getServInfoAndCheckResp, run, runServ, startApp)
 import Vk.AppT (TryServer (..), firstTry, nextTry, secondTry, thirdTry)
 import Vk.Logger (Priority (..))
-import Vk.Oops (VKBotException (..))
+import Vk.Error (VKBotException (..))
 import Vk.Types
 
 initialDB1, initialDB2, initialDB3 :: MapUserN

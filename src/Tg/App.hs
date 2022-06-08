@@ -33,13 +33,10 @@ import Tg.Api.Request
     SendMsgJSONBody (..),
   )
 import Tg.Api.Response (Answer (..), From (..), GetUpdResp (..), Message (..), Update (..))
-import Tg.Oops
+import Tg.Error
   ( TGBotException (..),
     handleExConfUpd,
-    --    handleExCopyMsg,
     handleExGetUpd,
-    --    handleExSendKeyb,
-    --    handleExSendMsg,
     throwAndLogEx,
   )
 import Tg.Types

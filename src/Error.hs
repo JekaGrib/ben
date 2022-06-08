@@ -1,6 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 
-module Oops where
+module Error where
 
 import qualified Control.Exception as E
 import Control.Monad.Catch (Exception, MonadCatch (..), SomeException, throwM)

@@ -8,7 +8,7 @@ import Control.Monad.State (StateT, get, lift, modify, replicateM_)
 import qualified Data.Map as Map (insert, lookup)
 import qualified Data.Text as T
 import Logger (LogHandle (..), logDebug, logInfo, logWarning)
-import Oops
+import Error
 import Types
 
 data Handle m a = Handle

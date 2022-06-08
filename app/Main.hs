@@ -4,8 +4,8 @@ module Main where
 
 import Data.Char (toLower)
 import System.Environment (getArgs)
-import Tg.MainTg
-import Vk.MainVk
+import Tg.Main
+import Vk.Main
 
 main :: IO ()
 main = do

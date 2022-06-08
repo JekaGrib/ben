@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Vk.MainVk where
+module Vk.Main where
 
 import Conf (Config (..), getTime)
 import qualified Data.Map as Map (empty)

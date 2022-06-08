@@ -2,8 +2,6 @@
 
 module Vk.App where
 
---    handleExSendKeyb,
---    handleExSendMsg,
 
 import qualified App
 import Conf (Config (..))
@@ -32,7 +30,7 @@ import Vk.App.PrepareAttachment (getAttachmentString)
 import qualified Vk.App.PrepareAttachment (Handle, makeH)
 import Vk.AppT (AppT, TryServer (..), changeServInfo, changeTs, firstTry, nextTry, resetTry)
 import Vk.Conf (VkConfig (..))
-import Vk.Oops
+import Vk.Error
   ( VKBotException (..),
     handleExGetLongPollServ,
     handleExGetUpd,
@@ -316,7 +314,7 @@ sendKeyb' conf usId n txt = do
   let param3 = ("message", fromString (show n ++ T.unpack txt))
   let param4 = ("keyboard", LBS.toStrict . encode $ keyBoard)
   let param5 = ("access_token", fromString $ cBotToken conf)
-  let param6 = ("v", vkApiVersion)
+  let param6 = ("v", fromString vkApiVersion)
   let params = [param1, param2, param3, param4, param5, param6]
   let req = urlEncodedBody params initReq
   responseBody <$> httpLbs req manager
@@ -347,4 +345,6 @@ chooseParamsForMsg (VkAttachMsg txt attachStrings (latStr, longStr)) =
       param4 = "long=" ++ longStr
    in [param1, param2, param3, param4]
 
+
+vkApiVersion :: String
 vkApiVersion = "5.85"

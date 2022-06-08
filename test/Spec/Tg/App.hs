@@ -6,12 +6,12 @@ import Control.Monad.State (evalStateT, execStateT)
 import qualified Data.Map as Map
 import Spec.Tg.App.Handlers
 import Spec.Tg.App.ResponseExample
-import Spec.Tg.Oops
+import Spec.Tg.Error
 import Spec.Tg.Types
 import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow)
 import Tg.App (run, startApp)
 import Tg.Logger (Priority (..))
-import Tg.Oops (TGBotException (..))
+import Tg.Error (TGBotException (..))
 import Tg.Types
 
 initialDB1, initialDB2, initialDB3 :: MapUserN

@@ -1,4 +1,4 @@
-module Vk.Oops where
+module Vk.Error where
 
 import Control.Monad.Catch (Exception, MonadCatch, SomeException, throwM)
 import Logger (LogHandle (..), logError)

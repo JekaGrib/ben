@@ -24,7 +24,7 @@ import Network.HTTP.Client.MultipartFormData (formDataBody, partFileRequestBody)
 import Network.HTTP.Client.TLS (newTlsManager)
 import Types
 import Vk.Api.Response
-import Vk.Oops
+import Vk.Error
   ( PrependAttachmetException (..),
     handleExGetUploadServ,
     handleExGoToUrl,

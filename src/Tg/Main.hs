@@ -1,4 +1,4 @@
-module Tg.MainTg where
+module Tg.Main where
 
 import Conf (Config (..), getTime, parseConf)
 import Control.Monad.State (evalStateT, forever)

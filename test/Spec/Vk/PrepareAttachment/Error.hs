@@ -1,9 +1,9 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Werror #-}
 
-module Spec.Vk.PrepareAttachment.Oops where
+module Spec.Vk.PrepareAttachment.Error where
 
-import Vk.Oops (PrependAttachmetException (..), VKBotException (PrependAttachmetToSendException))
+import Vk.Error (PrependAttachmetException (..), VKBotException (PrependAttachmetToSendException))
 
 isGetUploadServerException :: VKBotException -> Bool
 isGetUploadServerException (PrependAttachmetToSendException GetUploadServerException {}) = True

@@ -5,7 +5,7 @@ module Spec.Vk.PrepareAttachment where
 import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, runStateT)
 import Spec.Vk.PrepareAttachment.Handlers
-import Spec.Vk.PrepareAttachment.Oops
+import Spec.Vk.PrepareAttachment.Error
 import Spec.Vk.Types
 import Test.Hspec (describe, hspec, it, shouldBe, shouldSatisfy, shouldThrow)
 import Vk.Api.Response

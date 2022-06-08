@@ -1,6 +1,6 @@
-module Spec.Vk.App.Oops where
+module Spec.Vk.App.Error where
 
-import Vk.Oops (VKBotException (..))
+import Vk.Error (VKBotException (..))
 
 isGetLongPollServerException :: VKBotException -> Bool
 isGetLongPollServerException GetLongPollServerException {} = True
