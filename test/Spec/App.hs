@@ -6,7 +6,7 @@ import Control.Monad.State (evalStateT, execStateT)
 import qualified Data.Map as Map
 import Spec.Error
 import Spec.Types
-import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow)
+import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow,Selector)
 import App (chooseActionOfUpd)
 import Error (BotException (..))
 import Logger (Priority (..))
@@ -90,39 +90,25 @@ testApp =
           `shouldBe` [LOG WARNING]      
       it "throw CheckSendMsgResponseException on unknown sendMsg response" $ do
         let upd = ValidUpdate 1118 (TextMsg "4") :: ValidUpdate AttachNotMatter
-        evalStateT (evalStateT (chooseActionOfUpd handle2 upd) initialDB2) []
-          `shouldThrow` (isCheckSendMsgResponseException :: BotException AttachNotMatter -> Bool)
+        evalStateT (evalStateT (chooseActionOfUpd handle2 upd) initialDB1) []
+          `shouldThrow` (isCheckSendMsgResponseException :: Selector (BotException AttachNotMatter)) 
       it "throw CheckSendMsgResponseException on unknown sendAttachMsg response" $ do
         let upd = ValidUpdate 1118 (AttachMsg AttachNotMatter) :: ValidUpdate AttachNotMatter
-        evalStateT (evalStateT (chooseActionOfUpd handle2 upd) initialDB2) []
-          `shouldThrow` (isCheckSendMsgResponseException :: BotException AttachNotMatter -> Bool)
+        evalStateT (evalStateT (chooseActionOfUpd handle4 upd) initialDB1) []
+          `shouldThrow` (isCheckSendMsgResponseException :: Selector (BotException AttachNotMatter)) 
       it "throw CheckSendKeybResponseException on unknown sendKeyboard response" $ do
         let upd = ValidUpdate 1118 (TextMsg "/repeat") :: ValidUpdate AttachNotMatter
         evalStateT (evalStateT (chooseActionOfUpd handle3 upd) initialDB1) []
-          `shouldThrow` (isCheckSendKeybResponseException :: BotException AttachNotMatter -> Bool)
-      
-{-}      it "throw CheckConfirmUpdatesResponseException on unknown confirmUpdates response" $
-        evalStateT (evalStateT (run handle47) initialDB3) []
-          `shouldThrow` isCheckConfirmUpdatesResponseException
-      it "throw CheckConfirmUpdatesResponseException on negative confirmUpdates response" $
-        evalStateT (evalStateT (run handle48) initialDB3) []
-          `shouldThrow` isCheckConfirmUpdatesResponseException
-      it "throw CheckConfirmUpdatesResponseException on other negative confirmUpdates response" $
-        evalStateT (evalStateT (run handle49) initialDB3) []
-          `shouldThrow` isCheckConfirmUpdatesResponseException
-      it "throw SendMsgException on sendMsg ConnectionTimeout" $
-        evalStateT (evalStateT (run handle50) initialDB3) []
-          `shouldThrow` isSendMsgException
-      it "throw GetUpdatesException on sendMsg ConnectionTimeout" $
-        evalStateT (evalStateT (run handle51) initialDB3) []
-          `shouldThrow` isGetUpdatesException
-      it "throw ConfirmUpdatesException on sendMsg ConnectionTimeout" $
-        evalStateT (evalStateT (run handle52) initialDB3) []
-          `shouldThrow` isConfirmUpdatesException
-      it "throw SendKeybException on sendMsg ConnectionTimeout" $
-        evalStateT (evalStateT (run handle53) initialDB3) []
-          `shouldThrow` isSendKeybException
-      it "throw CopyMsgException on sendMsg ConnectionTimeout" $
-        evalStateT (evalStateT (run handle54) initialDB3) []
-          `shouldThrow` isCopyMsgException
--}
+          `shouldThrow` (isCheckSendKeybResponseException :: Selector (BotException AttachNotMatter)) 
+      it "throw SendMsgException on sendMsg ConnectionTimeout" $ do
+        let upd = ValidUpdate 1118 (TextMsg "4") :: ValidUpdate AttachNotMatter
+        evalStateT (evalStateT (chooseActionOfUpd handle5 upd) initialDB1) []
+          `shouldThrow` (isSendMsgException :: Selector (BotException AttachNotMatter))
+      it "throw SendKeybException on sendKeyb ConnectionTimeout" $ do
+        let upd = ValidUpdate 1118 (TextMsg "/repeat") :: ValidUpdate AttachNotMatter
+        evalStateT (evalStateT (chooseActionOfUpd handle6 upd) initialDB1) []
+          `shouldThrow` (isSendKeybException :: Selector (BotException AttachNotMatter))
+      it "throw SendMsgException on sendAttachMsg ConnectionTimeout" $ do
+        let upd = ValidUpdate 1118 (AttachMsg AttachNotMatter) :: ValidUpdate AttachNotMatter
+        evalStateT (evalStateT (chooseActionOfUpd handle7 upd) initialDB1) []
+          `shouldThrow` (isSendMsgException :: Selector (BotException AttachNotMatter))

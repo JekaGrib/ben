@@ -43,7 +43,7 @@ sendMsgTestEx ::
 sendMsgTestEx _ _ = throwHttpEx
 
 sendAttachMsgTestEx ::
-  UserId -> MessageId -> StateT [MockAction a] IO Response
+   a -> UserId -> StateT [MockAction a] IO Response
 sendAttachMsgTestEx _ _ = throwHttpEx
 
 sendKeybTestEx ::
@@ -64,11 +64,17 @@ handle1 =
 handle0,
   handle2,
   handle3,
-  handle4 :: Handle (StateT [MockAction a] IO) a
+  handle4,
+  handle5,
+  handle6,
+  handle7 :: Handle (StateT [MockAction a] IO) a
 handle0 = handle1 {hLog = handLogMsgDebug}
 handle2 = handle0 {sendTxtMsg    = sendMsgTest       "oops"}
 handle3 = handle0 {sendKeyb      = sendKeybTest      "oops"}
 handle4 = handle0 {sendAttachMsg = sendAttachMsgTest "oops"}
+handle5 = handle0 {sendTxtMsg    = sendMsgTestEx}
+handle6 = handle0 {sendKeyb      = sendKeybTestEx}
+handle7 = handle0 {sendAttachMsg = sendAttachMsgTestEx}
 
 {-
 
