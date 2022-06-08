@@ -146,6 +146,7 @@ confirmUpdatesAndCheckResp h upds = case reverse upds of
   [] -> return ()
   upd : _ -> do
     let nextUpdate = extractNextUpdate upd
+    checkUpdateId h nextUpdate
     logDebug
       (hLog h)
       ( "Send request to confirmOldUpdates with offset:"

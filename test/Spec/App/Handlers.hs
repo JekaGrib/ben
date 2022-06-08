@@ -2,7 +2,7 @@
 
 module Spec.App.Handlers where
 
-import Control.Monad.Catch (throwM)
+import Control.Monad.Catch (throwM,MonadThrow)
 import Control.Monad.State (StateT (..),modify)
 import Network.HTTP.Client (HttpException (InvalidUrlException))
 import Spec.Conf (config1)
@@ -35,19 +35,19 @@ isValidResponseTest ::
 isValidResponseTest "ok" = Success
 isValidResponseTest _ = NotSuccess "oops"
 
-throwHttpEx :: StateT [MockAction a] IO Response
+throwHttpEx :: (MonadThrow m) => m Response
 throwHttpEx = throwM $ InvalidUrlException "" ""
 
-sendMsgTestEx ::
-  UserId -> TextOfMsg -> StateT [MockAction a] IO Response
+sendMsgTestEx :: (MonadThrow m) =>
+  UserId -> TextOfMsg -> m Response
 sendMsgTestEx _ _ = throwHttpEx
 
-sendAttachMsgTestEx ::
-   a -> UserId -> StateT [MockAction a] IO Response
+sendAttachMsgTestEx :: (MonadThrow m) =>
+   a -> UserId -> m Response
 sendAttachMsgTestEx _ _ = throwHttpEx
 
-sendKeybTestEx ::
-  UserId -> N -> TextOfMsg -> StateT [MockAction a] IO Response
+sendKeybTestEx :: (MonadThrow m) =>
+  UserId -> N -> TextOfMsg -> m Response
 sendKeybTestEx _ _ _ = throwHttpEx
 
 handle1 :: Handle (StateT [MockAction a] IO) a
