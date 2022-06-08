@@ -23,7 +23,7 @@ data Handle m a = Handle
 chooseActionOfUpd ::
   (MonadCatch m, Attachy a) =>
   Handle m a ->
-  IsValidUpdate a ->
+  ValidUpdate a ->
   StateT MapUserN m ()
 chooseActionOfUpd h upd = do
   lift $ logInfo (hLog h) "Analysis update from the list"

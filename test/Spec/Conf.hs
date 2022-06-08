@@ -1,7 +1,9 @@
-module Spec.Vk.Conf where
+{-# LANGUAGE OverloadedStrings #-}
 
-import Vk.Conf (Config (..))
-import Vk.Logger (Priority (..))
+module Spec.Conf where
+
+import Conf (Config (..))
+import Logger (Priority (..))
 
 config1 :: Config
 config1 =
@@ -10,6 +12,5 @@ config1 =
       cBotToken = "ABC123",
       cHelpMsg = "Hello",
       cRepeatQ = "Why?",
-      cGroupId = 321,
       cPriority = DEBUG
     }

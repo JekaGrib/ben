@@ -16,7 +16,7 @@ instance Show Messenger where
   show VK = "VK"
   show TG = "telegram"
 
-data IsValidUpdate a
+data ValidUpdate a
   = ValidUpdate UserId (MsgType a)
   | InvalidUpdatePlusInfo String
   | InvalidUpdate

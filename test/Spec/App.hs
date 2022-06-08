@@ -1,109 +1,43 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Spec.Tg.App where
+module Spec.App where
 
 import Control.Monad.State (evalStateT, execStateT)
 import qualified Data.Map as Map
-import Spec.Tg.App.Handlers
-import Spec.Tg.App.ResponseExample
-import Spec.Tg.Error
-import Spec.Tg.Types
+--import Spec.Error
+import Spec.Types
 import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow)
-import Tg.App (run, startApp)
-import Tg.Error (TGBotException (..))
-import Tg.Logger (Priority (..))
-import Tg.Types
+import App (chooseActionOfUpd)
+import Error (BotException (..))
+import Logger (Priority (..))
+import Types
+import Spec.App.Handlers
 
 initialDB1, initialDB2, initialDB3 :: MapUserN
 initialDB1 = Map.empty
 initialDB2 = Map.fromList [(1118, Left (OpenRepeat 2)), (1234, Right 3), (2581, Left (OpenRepeat 4))]
 initialDB3 = Map.fromList [(1118, Right 2), (1234, Right 3), (2581, Left (OpenRepeat 4))]
 
-testTGApp :: IO ()
-testTGApp =
+
+testApp :: IO ()
+testApp =
   hspec $ do
-    describe "startApp" $ do
-      it
-        "return [LOG INFO, LOG DEBUG, GOTUPDATES , LOG INFO] when given empty update list"
-        $ do
-          state <- execStateT (startApp handle0) []
-          reverse state
-            `shouldBe` [ LOGMSG INFO "App started",
-                         LOGMSG
-                           DEBUG
-                           "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates",
-                         GOTUPDATES,
-                         LOGMSG DEBUG $ "Get response: " ++ show json1,
-                         LOGMSG INFO "No new updates"
-                       ]
-      it
-        "return [LOG DEBUG, GOTUPDATES, CONFIRMUPDATES, LOG DEBUG] when given unempty update list"
-        $ do
-          state <- execStateT (startApp handle5) []
-          reverse state
-            `shouldBe` [ LOGMSG INFO "App started",
-                         LOGMSG
-                           DEBUG
-                           "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates",
-                         GOTUPDATES,
-                         LOGMSG DEBUG $ "Get response: " ++ show json5,
-                         LOGMSG INFO "There is new updates list",
-                         LOGMSG
-                           DEBUG
-                           "Send request to confirmOldUpdates with offset:235804 https://api.telegram.org/botABC123/getUpdates",
-                         CONFIRMUPDATES 235804,
-                         LOGMSG DEBUG $ "Get response: " ++ show json1,
-                         LOGMSG INFO "Received updates confirmed"
-                       ]
-      it "throw CheckGetUpdatesResponseException on negative getUpdates response" $
-        evalStateT (startApp handle2) []
-          `shouldThrow` ( ==
-                            ( CheckGetUpdatesResponseException $
-                                "NEGATIVE RESPONSE:" ++ show json2
-                            )
-                        )
-      it "throw CheckGetUpdatesResponseException on unknown getUpdates response" $
-        evalStateT (startApp handle3) []
-          `shouldThrow` ( ==
-                            ( CheckGetUpdatesResponseException $
-                                "UNKNOWN RESPONSE:" ++ show json3
-                            )
-                        )
-      it "throw CheckGetUpdatesResponseException on unknown result getUpdates response" $
-        evalStateT (startApp handle4) []
-          `shouldThrow` (== (CheckGetUpdatesResponseException $ "UNKNOWN RESULT IN RESPONSE:" ++ show json4))
-      it "throw CheckGetUpdatesResponseException on other unknown result getUpdates response" $
-        evalStateT (startApp handle21) []
-          `shouldThrow` (== (CheckGetUpdatesResponseException $ "UNKNOWN RESULT IN RESPONSE:" ++ show json14))
-    describe "run" $ do
-      it "work with singleton update list with text msg" $ do
-        state <- execStateT (evalStateT (run handle0) initialDB1) []
-        reverse state
-          `shouldBe` [ LOGMSG
-                         DEBUG
-                         "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates",
-                       GOTUPDATES,
-                       LOGMSG DEBUG $ "Get response: " ++ show json6,
-                       LOGMSG INFO "There is new updates list",
-                       LOGMSG
-                         DEBUG
-                         "Send request to confirmOldUpdates with offset:235802 https://api.telegram.org/botABC123/getUpdates",
-                       CONFIRMUPDATES 235802,
-                       LOGMSG DEBUG $ "Get response: " ++ show json1,
-                       LOGMSG INFO "Received updates confirmed",
-                       LOGMSG INFO "Analysis update from the list",
-                       LOGMSG INFO "Get msg_id: 2112 from user 1118",
-                       LOGMSG INFO "Msg_id:2112 is text: \"love\""
-                     ]
-          ++ ( concat . replicate 2 $
-                 [ LOGMSG
-                     DEBUG
-                     "Send request to send msg \"love\" to userId 1118: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118, text = \"love\"}",
-                   SENDMSG 1118 "love",
-                   LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"",
-                   LOGMSG INFO "Msg \"love\" was sent to user 1118"
-                 ]
-             )
+    describe "chooseActionOfUpd" $ do
+      it "work with update with text msg" $ do
+        state <- execStateT (evalStateT (chooseActionOfUpd handle0 (ValidUpdate 1118 (TextMsg "love"))) initialDB1) []
+        reverse (state :: [MockAction AttachNotMatter])
+          `shouldBe` 
+          [LOGMSG INFO "Analysis update from the list"
+          ,LOGMSG INFO "Get msg from user 1118"
+          ,LOGMSG INFO "Msg has text: \"love\""
+          ] ++
+            (concat . replicate 2 $ 
+              [LOGMSG DEBUG "Send request to send msg TextMsg \"love\" to userId 1118"
+              ,SENDMSG 1118 "love"
+              ,LOGMSG DEBUG "Get response: \"ok\""
+              ,LOGMSG INFO "Msg TextMsg \"love\" was sent to user 1118"
+              ])
+{-}
       it "work with text msg if user is in OpenRepeatMode " $ do
         state <- execStateT (evalStateT (run handle13) initialDB2) []
         reverse state
@@ -421,3 +355,4 @@ testTGApp =
       it "throw CopyMsgException on sendMsg ConnectionTimeout" $
         evalStateT (evalStateT (run handle54) initialDB3) []
           `shouldThrow` isCopyMsgException
+-}

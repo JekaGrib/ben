@@ -87,7 +87,7 @@ run h = do
   lift $ confirmUpdatesAndCheckResp h upds
   mapM_ (App.chooseActionOfUpd (hApp h) . isValidUpdate) upds
 
-isValidUpdate :: Update -> IsValidUpdate MessageId
+isValidUpdate :: Update -> ValidUpdate MessageId
 isValidUpdate (UnknownUpdate _) = InvalidUpdate
 isValidUpdate (Update _ msg) = case msg of
   Message _ (From usId) (Just txt) -> ValidUpdate usId (TextMsg txt)

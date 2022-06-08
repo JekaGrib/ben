@@ -122,12 +122,12 @@ getUpdAndLog h = do
   lift $ lift $ logDebug (hLog h) ("Get response: " ++ show json)
   return json
 
-isValidUpdate :: (MonadCatch m) => Handle m -> Update -> m (IsValidUpdate VkAttachMSG)
+isValidUpdate :: (MonadCatch m) => Handle m -> Update -> m (ValidUpdate VkAttachMSG)
 isValidUpdate _ (UnknownUpdate _) = return InvalidUpdate
 isValidUpdate h (Update "message_new" obj) = chooseUpdType h obj
 isValidUpdate _ _ = return InvalidUpdate
 
-chooseUpdType :: (MonadCatch m) => Handle m -> AboutObj -> m (IsValidUpdate VkAttachMSG)
+chooseUpdType :: (MonadCatch m) => Handle m -> AboutObj -> m (ValidUpdate VkAttachMSG)
 chooseUpdType _ (AboutObj usId _ _ txt [] [] Nothing) =
   return $ ValidUpdate usId $ TextMsg txt
 chooseUpdType _ (AboutObj usId _ _ "" [] [StickerAttachment (StickerInfo idSt)] Nothing) =
@@ -139,7 +139,7 @@ chooseUpdType h (AboutObj usId _ _ txt [] attachs maybeGeo) =
 chooseUpdType _ _ =
   return $ InvalidUpdatePlusInfo "There is forward message"
 
-prepareAttach :: (MonadCatch m) => Handle m -> UserId -> TextOfMsg -> [Attachment] -> Maybe Geo -> m (IsValidUpdate VkAttachMSG)
+prepareAttach :: (MonadCatch m) => Handle m -> UserId -> TextOfMsg -> [Attachment] -> Maybe Geo -> m (ValidUpdate VkAttachMSG)
 prepareAttach h usId txt attachs maybeGeo = do
   eitherAttachStrings <- runExceptT $ mapM (getAttachmentString (hPrepAttach h) usId) attachs
   case eitherAttachStrings of
@@ -338,7 +338,7 @@ isValidResponse' json =
 chooseParamsForMsg :: VkAttachMSG -> [ParameterString]
 chooseParamsForMsg (StickerMsg idSt) =
   let paramStick = "sticker_id=" ++ show idSt
-   in [param]
+   in [paramStick]
 chooseParamsForMsg (VkAttachMsg txt attachStrings (latStr, longStr)) =
   let paramMsg    = "message=" ++ T.unpack txt
       paramAttach = "attachment=" ++ intercalate "," attachStrings
