@@ -96,7 +96,7 @@ getServInfoAndCheckResp h = do
       ++ show (cGroupId (hConf h))
       ++ "&access_token="
       ++ cBotToken (cConf (hConf h))
-      ++ "&v=5.103"
+      ++ "&v=" ++ vkApiVersion
   jsonServ <-
     getLongPollServer h `catch` handleExGetLongPollServ (hLog h)
   logDebug (hLog h) ("Get response: " ++ show jsonServ)
@@ -267,7 +267,7 @@ getLongPollServer' conf = do
         ++ show (cGroupId conf)
         ++ "&access_token="
         ++ cBotToken (cConf conf)
-        ++ "&v=5.103"
+        ++ "&v=" ++ vkApiVersion
   responseBody <$> httpLbs req manager
 
 getUpdates' :: ServerInfo -> IO Response
@@ -304,7 +304,7 @@ commonParamList conf usId =
   let param1 = "user_id=" ++ show usId
       param2 = "random_id=0"
       param3 = "access_token=" ++ cBotToken conf
-      param4 = "v=5.103"
+      param4 = "v=" ++ vkApiVersion
    in [param1, param2, param3, param4]
 
 sendKeyb' :: Config -> UserId -> N -> TextOfKeyb -> IO Response
@@ -316,7 +316,7 @@ sendKeyb' conf usId n txt = do
   let param3 = ("message", fromString (show n ++ T.unpack txt))
   let param4 = ("keyboard", LBS.toStrict . encode $ keyBoard)
   let param5 = ("access_token", fromString $ cBotToken conf)
-  let param6 = ("v", "5.103")
+  let param6 = ("v", vkApiVersion)
   let params = [param1, param2, param3, param4, param5, param6]
   let req = urlEncodedBody params initReq
   responseBody <$> httpLbs req manager
@@ -346,3 +346,5 @@ chooseParamsForMsg (VkAttachMsg txt attachStrings (latStr, longStr)) =
       param3 = "lat=" ++ latStr
       param4 = "long=" ++ longStr
    in [param1, param2, param3, param4]
+
+vkApiVersion = "5.85"

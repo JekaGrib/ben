@@ -26,6 +26,7 @@ You should create your bot in Tg or Vk.
 Necessary info for Tg: https://core.telegram.org/bots#3-how-do-i-create-a-bot
 
 Necessary info for Vk: https://vk.com/dev/bots_docs
+Long Poll API version - 5.85 (vk bot settings).
 
 When you create a bot, you will receive a token
 ## 2. Configuration
