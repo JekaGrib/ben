@@ -4,7 +4,7 @@ module Spec.App where
 
 import Control.Monad.State (evalStateT, execStateT)
 import qualified Data.Map as Map
---import Spec.Error
+import Spec.Error
 import Spec.Types
 import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow)
 import App (chooseActionOfUpd)
@@ -87,122 +87,21 @@ testApp =
         let upd = InvalidUpdatePlusInfo "oops" :: ValidUpdate AttachNotMatter
         state <- execStateT (evalStateT (chooseActionOfUpd handle1 upd) initialDB1) []
         reverse state
-          `shouldBe` [LOG WARNING]
-{-}      it "ignore unknown update " $ do
-        state <- execStateT (evalStateT (run handle24) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235801, LOG WARNING]
-      it "ignore unknown empty update " $ do
-        state <- execStateT (evalStateT (run handle25) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235801, LOG WARNING]
-      it "ignore unknown update in not single update list" $ do
-        state <- execStateT (evalStateT (run handle26) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235802, LOG WARNING, SENDMSG 1118 "love", SENDMSG 1118 "love"]
-      it "work with update with without extra data" $ do
-        state <- execStateT (evalStateT (run handle27) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235802, SENDMSG 1118 "love", SENDMSG 1118 "love"]
-      it "work with update with wrong extra data" $ do
-        state <- execStateT (evalStateT (run handle28) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235802, SENDMSG 1118 "love", SENDMSG 1118 "love"]
-      it "work with several users " $ do
-        state <- execStateT (evalStateT (run handle22) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235804, LOG WARNING, COPYMSG 1118 2110, COPYMSG 1118 2110, SENDMSG 12677 "Toni", SENDMSG 12677 "Toni", COPYMSG 12677 2112, COPYMSG 12677 2112]
-      it "work with photo update " $ do
-        state <- execStateT (evalStateT (run handle36) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2625, COPYMSG 11189 2625]
-      it "work with doc update " $ do
-        state <- execStateT (evalStateT (run handle37) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2643, COPYMSG 11189 2643]
-      it "work with audio message update " $ do
-        state <- execStateT (evalStateT (run handle38) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2646, COPYMSG 11189 2646]
-      it "work with gif update " $ do
-        state <- execStateT (evalStateT (run handle39) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2649, COPYMSG 11189 2649]
-      it "work with video update " $ do
-        state <- execStateT (evalStateT (run handle40) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2655, COPYMSG 11189 2655]
-      it "work with audio update " $ do
-        state <- execStateT (evalStateT (run handle41) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2661, COPYMSG 11189 2661]
-      it "work with forward message update " $ do
-        state <- execStateT (evalStateT (run handle42) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2664, COPYMSG 11189 2664]
-      it "throw CheckGetUpdatesResponseException on negative getUpdates response" $
-        evalStateT (evalStateT (run handle6) initialDB1) []
-          `shouldThrow` ( ==
-                            ( CheckGetUpdatesResponseException $
-                                "NEGATIVE RESPONSE:" ++ show json2
-                            )
-                        )
-      it "throw CheckGetUpdatesResponseException on unknown getUpdates response" $
-        evalStateT (evalStateT (run handle7) initialDB1) []
-          `shouldThrow` ( ==
-                            ( CheckGetUpdatesResponseException $
-                                "UNKNOWN RESPONSE:" ++ show json3
-                            )
-                        )
-      it "throw CheckGetUpdatesResponseException on other negative getUpdates response" $
-        evalStateT (evalStateT (run handle14) initialDB1) []
-          `shouldThrow` isCheckGetUpdatesResponseException
-      it "work with other ok confirmUpdates response" $ do
-        dbState <- evalStateT (execStateT (run handle9) initialDB1) []
-        dbState `shouldBe` initialDB1
-        state <- execStateT (evalStateT (run handle17) initialDB1) []
-        reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235802, SENDMSG 1118 "love", SENDMSG 1118 "love"]
-      it "throw CheckConfirmUpdatesResponseException on negative confirmUpdates response" $
-        evalStateT (evalStateT (run handle16) initialDB1) []
-          `shouldThrow` isCheckConfirmUpdatesResponseException
-      it "throw CheckConfirmUpdatesResponseException on other negative confirmUpdates response" $
-        evalStateT (evalStateT (run handle20) initialDB1) []
-          `shouldThrow` isCheckConfirmUpdatesResponseException
-      it "throw CheckConfirmUpdatesResponseException on unknown confirmUpdates response" $
-        evalStateT (evalStateT (run handle18) initialDB1) []
-          `shouldThrow` isCheckConfirmUpdatesResponseException
-      it "throw ConfirmUpdatesException on confirmUpdates where getUpdates response with negative updateId" $
-        evalStateT (evalStateT (run handle19) initialDB1) []
-          `shouldThrow` isConfirmUpdatesException
-      it "throw CheckSendMsgResponseException on unknown sendMsg response" $
-        evalStateT (evalStateT (run handle29) initialDB2) []
-          `shouldThrow` isCheckSendMsgResponseException
-      it "throw CheckSendMsgResponseException on negative sendMsg response" $
-        evalStateT (evalStateT (run handle30) initialDB2) []
-          `shouldThrow` isCheckSendMsgResponseException
-      it "throw CheckSendMsgResponseException on other negative sendMsg response" $
-        evalStateT (evalStateT (run handle31) initialDB2) []
-          `shouldThrow` isCheckSendMsgResponseException
-      it "throw CheckCopyMsgResponseException on unknown copyMsg response" $
-        evalStateT (evalStateT (run handle33) initialDB2) []
-          `shouldThrow` isCheckCopyMsgResponseException
-      it "throw CheckCopyMsgResponseException on negative copyMsg response" $
-        evalStateT (evalStateT (run handle34) initialDB2) []
-          `shouldThrow` isCheckCopyMsgResponseException
-      it "throw CheckCopyMsgResponseException on other negative copyMsg response" $
-        evalStateT (evalStateT (run handle35) initialDB2) []
-          `shouldThrow` isCheckCopyMsgResponseException
-      it "throw CheckSendKeybResponseException on unknown sendKeyboard response" $
-        evalStateT (evalStateT (run handle44) initialDB3) []
-          `shouldThrow` isCheckSendKeybResponseException
-      it "throw CheckSendKeybResponseException on negative sendKeyboard response" $
-        evalStateT (evalStateT (run handle45) initialDB3) []
-          `shouldThrow` isCheckSendKeybResponseException
-      it "throw CheckSendKeybResponseException on other negative sendKeyboard response" $
-        evalStateT (evalStateT (run handle46) initialDB3) []
-          `shouldThrow` isCheckSendKeybResponseException
-      it "throw CheckConfirmUpdatesResponseException on unknown confirmUpdates response" $
+          `shouldBe` [LOG WARNING]      
+      it "throw CheckSendMsgResponseException on unknown sendMsg response" $ do
+        let upd = ValidUpdate 1118 (TextMsg "4") :: ValidUpdate AttachNotMatter
+        evalStateT (evalStateT (chooseActionOfUpd handle2 upd) initialDB2) []
+          `shouldThrow` (isCheckSendMsgResponseException :: BotException AttachNotMatter -> Bool)
+      it "throw CheckSendMsgResponseException on unknown sendAttachMsg response" $ do
+        let upd = ValidUpdate 1118 (AttachMsg AttachNotMatter) :: ValidUpdate AttachNotMatter
+        evalStateT (evalStateT (chooseActionOfUpd handle2 upd) initialDB2) []
+          `shouldThrow` (isCheckSendMsgResponseException :: BotException AttachNotMatter -> Bool)
+      it "throw CheckSendKeybResponseException on unknown sendKeyboard response" $ do
+        let upd = ValidUpdate 1118 (TextMsg "/repeat") :: ValidUpdate AttachNotMatter
+        evalStateT (evalStateT (chooseActionOfUpd handle3 upd) initialDB1) []
+          `shouldThrow` (isCheckSendKeybResponseException :: BotException AttachNotMatter -> Bool)
+      
+{-}      it "throw CheckConfirmUpdatesResponseException on unknown confirmUpdates response" $
         evalStateT (evalStateT (run handle47) initialDB3) []
           `shouldThrow` isCheckConfirmUpdatesResponseException
       it "throw CheckConfirmUpdatesResponseException on negative confirmUpdates response" $

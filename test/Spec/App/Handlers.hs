@@ -61,8 +61,14 @@ handle1 =
       isValidResponse = isValidResponseTest
     }
 
-handle0 :: Handle (StateT [MockAction a] IO) a
+handle0,
+  handle2,
+  handle3,
+  handle4 :: Handle (StateT [MockAction a] IO) a
 handle0 = handle1 {hLog = handLogMsgDebug}
+handle2 = handle0 {sendTxtMsg    = sendMsgTest       "oops"}
+handle3 = handle0 {sendKeyb      = sendKeybTest      "oops"}
+handle4 = handle0 {sendAttachMsg = sendAttachMsgTest "oops"}
 
 {-
 

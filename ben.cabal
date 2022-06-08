@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 17c933f944b81255da4b86714af7a604bb3c990b193de8159a0d0cb7d28227f4
+-- hash: 4ac21c4bbb107e280c96357be3f1d1a198d2a3243bdfca10511593282baf0afe
 
 name:           ben
 version:        0.1.0.0
@@ -101,6 +101,7 @@ test-suite ben-test
       Spec.App
       Spec.App.Handlers
       Spec.Conf
+      Spec.Error
       Spec.Log
       Spec.Types
       Paths_ben
