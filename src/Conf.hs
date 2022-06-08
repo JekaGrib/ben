@@ -8,13 +8,13 @@ import qualified Data.Configurator as C
 import qualified Data.Configurator.Types as C
 import qualified Data.Text as T
 import Data.Time.LocalTime (getZonedTime)
-import Logger (Priority (..))
 import Error
   ( handleExGetTime,
     handleExInput,
     handleExParseConf,
     handleExPullConf,
   )
+import Logger (Priority (..))
 import Types
 
 data Config = Config

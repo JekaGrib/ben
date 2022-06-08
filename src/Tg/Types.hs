@@ -1,5 +1,8 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Tg.Types where
 
-type UpdateId = Integer
+import Data.Aeson (FromJSON, ToJSON)
 
-type Offset = Integer
+newtype UpdateId = UpdateId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)

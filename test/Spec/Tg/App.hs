@@ -10,8 +10,8 @@ import Spec.Tg.Error
 import Spec.Tg.Types
 import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow)
 import Tg.App (run, startApp)
-import Tg.Logger (Priority (..))
 import Tg.Error (TGBotException (..))
+import Tg.Logger (Priority (..))
 import Tg.Types
 
 initialDB1, initialDB2, initialDB3 :: MapUserN

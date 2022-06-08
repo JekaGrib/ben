@@ -1,7 +1,10 @@
+{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE ExistentialQuantification #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Types where
 
+import Data.Aeson (FromJSON, ToJSON)
 import qualified Data.ByteString.Lazy as LBS
 import Data.Map (Map)
 import qualified Data.Text as T
@@ -36,13 +39,17 @@ data Result = Success | NotSuccess String
 
 type N = Int
 
-type UserId = Integer
-
 type NState = Either OpenRepeat N
 
 type MapUserN = Map UserId NState
 
-type MessageId = Integer
+newtype OpenRepeat
+  = OpenRepeat N
+  deriving (Eq, Show)
+
+newtype UserId = UserId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)
+
+newtype MessageId = MessageId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num, Attachy)
 
 type Response = LBS.ByteString
 
@@ -51,15 +58,3 @@ type TextOfMsg = T.Text
 type TextOfKeyb = T.Text
 
 type TextOfButton = T.Text
-
-newtype OpenRepeat
-  = OpenRepeat N
-  deriving (Eq, Show)
-
-newtype ToUserId
-  = ToUserId UserId
-  deriving (Eq, Show)
-
-newtype MsgId
-  = MsgId MessageId
-  deriving (Eq, Show)

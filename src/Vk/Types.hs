@@ -1,16 +1,20 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Vk.Types where
 
+import Data.Aeson (FromJSON, ToJSON)
 import qualified Data.ByteString as BS
+import Data.Configurator ()
+import Data.Configurator.Types (Configured)
 import qualified Data.Text as T
 import Types
 
-type UpdateId = Integer
+newtype UpdateId = UpdateId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)
 
-type Offset = Integer
+newtype StickerId = StickerId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)
 
-type StickerId = Integer
-
-type GroupId = Integer
+newtype GroupId = GroupId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num, Read, Configured)
 
 type ResponseS = BS.ByteString
 
@@ -36,15 +40,9 @@ type ParameterString = String
 
 type SomethingWrong = String
 
-type Counter = Int
-
 data VkAttachMSG
   = VkAttachMsg TextOfMsg [AttachmentString] LatLong
   | StickerMsg StickerId
   deriving (Eq, Show)
 
 instance Attachy VkAttachMSG
-
-newtype ToUserId
-  = ToUserId UserId
-  deriving (Eq, Show)

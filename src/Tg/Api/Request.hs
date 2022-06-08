@@ -16,7 +16,7 @@ import Tg.Types
 import Types
 
 newtype JSONBodyOffset = JSONBodyOffset
-  { offset :: Offset
+  { offset :: UpdateId
   }
   deriving (Generic, Show)
 

@@ -49,6 +49,8 @@ import Data.Aeson ((.:), (.:?), FromJSON (parseJSON), Object, Value (..), withOb
 import Data.Aeson.Types (Parser)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
+import Types
+import Vk.Types
 
 data Answer
   = AnswerOk
@@ -101,7 +103,7 @@ instance FromJSON Update where
       (fmap UnknownUpdate . parseJSON)
 
 data AboutObj = AboutObj
-  { from_id :: Integer,
+  { from_id :: UserId,
     id :: Integer,
     peer_id :: Maybe Integer,
     text :: T.Text,
@@ -235,7 +237,7 @@ instance FromJSON AudioMesInfo where
       AudioMesInfo <$> v .: "id" <*> v .: "owner_id" <*> v .: "access_key"
 
 newtype StickerInfo = StickerInfo
-  { sticker_id :: Integer
+  { sticker_id :: StickerId
   }
   deriving (Generic, Eq, Show)
 

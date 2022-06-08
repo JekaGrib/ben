@@ -165,7 +165,7 @@ checkUpdateId h updId =
 checkConfirmUpdatesResponse ::
   (MonadCatch m) =>
   Handle m ->
-  Offset ->
+  UpdateId ->
   [Update] ->
   Response ->
   m ()

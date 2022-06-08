@@ -2,7 +2,6 @@
 
 module Vk.App where
 
-
 import qualified App
 import Conf (Config (..))
 import Control.Applicative (empty)
@@ -94,7 +93,8 @@ getServInfoAndCheckResp h = do
       ++ show (cGroupId (hConf h))
       ++ "&access_token="
       ++ cBotToken (cConf (hConf h))
-      ++ "&v=" ++ vkApiVersion
+      ++ "&v="
+      ++ vkApiVersion
   jsonServ <-
     getLongPollServer h `catch` handleExGetLongPollServ (hLog h)
   logDebug (hLog h) ("Get response: " ++ show jsonServ)
@@ -265,7 +265,8 @@ getLongPollServer' conf = do
         ++ show (cGroupId conf)
         ++ "&access_token="
         ++ cBotToken (cConf conf)
-        ++ "&v=" ++ vkApiVersion
+        ++ "&v="
+        ++ vkApiVersion
   responseBody <$> httpLbs req manager
 
 getUpdates' :: ServerInfo -> IO Response
@@ -344,7 +345,6 @@ chooseParamsForMsg (VkAttachMsg txt attachStrings (latStr, longStr)) =
       param3 = "lat=" ++ latStr
       param4 = "long=" ++ longStr
    in [param1, param2, param3, param4]
-
 
 vkApiVersion :: String
 vkApiVersion = "5.85"

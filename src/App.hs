@@ -7,8 +7,8 @@ import Control.Monad.Catch (MonadCatch, catch)
 import Control.Monad.State (StateT, get, lift, modify, replicateM_)
 import qualified Data.Map as Map (insert, lookup)
 import qualified Data.Text as T
-import Logger (LogHandle (..), logDebug, logInfo, logWarning)
 import Error
+import Logger (LogHandle (..), logDebug, logInfo, logWarning)
 import Types
 
 data Handle m a = Handle
@@ -189,7 +189,7 @@ checkSendMsgResponse h usId msgType res =
   case res of
     NotSuccess str ->
       throwAndLogEx (hLog h) $
-        CheckSendMsgResponseException msgType (ToUserId usId) str
+        CheckSendMsgResponseException msgType usId str
     Success ->
       logInfo
         (hLog h)
@@ -206,7 +206,7 @@ checkSendKeybResponse ::
 checkSendKeybResponse h usId n txt res =
   case res of
     NotSuccess str ->
-      throwAndLogEx (hLog h) (CheckSendKeybResponseException (ToUserId usId) str :: BotException AttachNotMatter)
+      throwAndLogEx (hLog h) (CheckSendKeybResponseException usId str :: BotException AttachNotMatter)
     Success ->
       logInfo
         (hLog h)

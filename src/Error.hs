@@ -10,10 +10,10 @@ import Logger (LogHandle (..), logError)
 import Types
 
 data BotException a
-  = SendMsgException (MsgType a) ToUserId String
-  | CheckSendMsgResponseException (MsgType a) ToUserId String
-  | SendKeybException ToUserId String
-  | CheckSendKeybResponseException ToUserId String
+  = SendMsgException (MsgType a) UserId String
+  | CheckSendMsgResponseException (MsgType a) UserId String
+  | SendKeybException UserId String
+  | CheckSendKeybResponseException UserId String
   | ConfigException ConfigException
   deriving (Eq, Show)
 
@@ -44,7 +44,7 @@ handleExSendMsg ::
   SomeException ->
   m LBS.ByteString
 handleExSendMsg logH usId msgType e = do
-  let ex = SendMsgException msgType (ToUserId usId) $ show e
+  let ex = SendMsgException msgType usId $ show e
   throwAndLogEx logH ex
 
 handleExSendKeyb ::
@@ -54,7 +54,7 @@ handleExSendKeyb ::
   SomeException ->
   m LBS.ByteString
 handleExSendKeyb logH usId e = do
-  let ex = SendKeybException (ToUserId usId) $ show e :: BotException AttachNotMatter
+  let ex = SendKeybException usId $ show e :: BotException AttachNotMatter
   throwAndLogEx logH ex
 
 -- handles to catch exceptions in IO configuration functions:
