@@ -285,8 +285,8 @@ getUpdates' (ServerInfo key server ts) = do
 sendMsg' :: Config -> UserId -> TextOfMsg -> IO Response
 sendMsg' conf usId txt = do
   manager <- newTlsManager
-  let param = "message=" ++ T.unpack txt
-  let params = intercalate "&" $ param : commonParamList conf usId
+  let paramMsg = "message=" ++ T.unpack txt
+  let params = intercalate "&" $ paramMsg : commonParamList conf usId
   req <- parseRequest $ "https://api.vk.com/method/messages.send?" ++ params
   responseBody <$> httpLbs req manager
 
@@ -300,23 +300,23 @@ sendAttachMsg' conf msg usId = do
 
 commonParamList :: Config -> UserId -> [String]
 commonParamList conf usId =
-  let param1 = "user_id=" ++ show usId
-      param2 = "random_id=0"
-      param3 = "access_token=" ++ cBotToken conf
-      param4 = "v=" ++ vkApiVersion
-   in [param1, param2, param3, param4]
+  let paramUsId   = "user_id=" ++ show usId
+      paramRandom = "random_id=0"
+      paramToken  = "access_token=" ++ cBotToken conf
+      paramVers   = "v=" ++ vkApiVersion
+   in [paramUsId, paramRandom, paramToken, paramVers]
 
 sendKeyb' :: Config -> UserId -> N -> TextOfKeyb -> IO Response
 sendKeyb' conf usId n txt = do
   manager <- newTlsManager
   initReq <- parseRequest "https://api.vk.com/method/messages.send"
-  let param1 = ("user_id", fromString . show $ usId)
-  let param2 = ("random_id", "0")
-  let param3 = ("message", fromString (show n ++ T.unpack txt))
-  let param4 = ("keyboard", LBS.toStrict . encode $ keyBoard)
-  let param5 = ("access_token", fromString $ cBotToken conf)
-  let param6 = ("v", fromString vkApiVersion)
-  let params = [param1, param2, param3, param4, param5, param6]
+  let paramUsId   = ("user_id", fromString . show $ usId)
+  let paramRandom = ("random_id", "0")
+  let paramMsg    = ("message", fromString (show n ++ T.unpack txt))
+  let paramKeyb   = ("keyboard", LBS.toStrict . encode $ keyBoard)
+  let paramToken  = ("access_token", fromString $ cBotToken conf)
+  let paramVers   = ("v", fromString vkApiVersion)
+  let params = [paramUsId, paramRandom, paramMsg, paramKeyb, paramToken, paramVers]
   let req = urlEncodedBody params initReq
   responseBody <$> httpLbs req manager
 
@@ -337,14 +337,14 @@ isValidResponse' json =
 
 chooseParamsForMsg :: VkAttachMSG -> [ParameterString]
 chooseParamsForMsg (StickerMsg idSt) =
-  let param = "sticker_id=" ++ show idSt
+  let paramStick = "sticker_id=" ++ show idSt
    in [param]
 chooseParamsForMsg (VkAttachMsg txt attachStrings (latStr, longStr)) =
-  let param1 = "message=" ++ T.unpack txt
-      param2 = "attachment=" ++ intercalate "," attachStrings
-      param3 = "lat=" ++ latStr
-      param4 = "long=" ++ longStr
-   in [param1, param2, param3, param4]
+  let paramMsg    = "message=" ++ T.unpack txt
+      paramAttach = "attachment=" ++ intercalate "," attachStrings
+      paramLat    = "lat=" ++ latStr
+      paramLong   = "long=" ++ longStr
+   in [paramMsg, paramAttach, paramLat, paramLong]
 
 vkApiVersion :: String
 vkApiVersion = "5.85"
