@@ -66,124 +66,29 @@ testApp =
         state <- execStateT (evalStateT (chooseActionOfUpd handle1 upd) initialDB1) []
         reverse state
           `shouldBe` [SENDKEYB 1118 2 " : Current number of repeats your message.\nWhy?"]
-{-}      it "work with sticker update" $ do
-        state <- execStateT (evalStateT (run handle11) initialDB1) []
+      it "work with attachment msg" $ do
+        let upd = ValidUpdate 1118 (AttachMsg AttachNotMatter) :: ValidUpdate AttachNotMatter
+        state <- execStateT (evalStateT (chooseActionOfUpd handle1 upd) initialDB1) []
         reverse state
-          `shouldBe` [ LOG DEBUG,
-                       GOTUPDATES,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG DEBUG,
-                       CONFIRMUPDATES 235808,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG DEBUG,
-                       COPYMSG 12677 2140,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG DEBUG,
-                       COPYMSG 12677 2140,
-                       LOG DEBUG,
-                       LOG INFO
-                     ]
-      it "work with msg:4 after /repeat" $ do
-        dbState <-
-          evalStateT (execStateT (run handle10 >> run handle12) initialDB1) []
-        dbState `shouldBe` Map.fromList [(1118, Right 4)]
-        state <-
-          execStateT (evalStateT (run handle10 >> run handle12) initialDB1) []
+          `shouldBe` [SENDAttachMSG 1118 AttachNotMatter,SENDAttachMSG 1118 AttachNotMatter]
+      it "work with msg 4 if user is in OpenRepeatMode " $ do
+        let upd = ValidUpdate 1118 (TextMsg "4") :: ValidUpdate AttachNotMatter
+        dbState <- evalStateT (execStateT (chooseActionOfUpd handle1 upd) initialDB2) []
+        dbState `shouldBe` Map.fromList [(1118,Right 4),(1234,Right 3),(2581,Left (OpenRepeat 4))]
+        state <- execStateT (evalStateT (chooseActionOfUpd handle1 upd) initialDB2) []
         reverse state
-          `shouldBe` [ LOG DEBUG,
-                       GOTUPDATES,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG DEBUG,
-                       CONFIRMUPDATES 235801,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG DEBUG,
-                       SENDKEYB
-                         1118
-                         2
-                         " : Current number of repeats your message.\nWhy?",
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG DEBUG,
-                       GOTUPDATES,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG DEBUG,
-                       CONFIRMUPDATES 235802,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG DEBUG,
-                       SENDMSG
-                         1118
-                         "Number of repeats successfully changed from 2 to 4",
-                       LOG DEBUG,
-                       LOG INFO
-                     ]
-      it "warning with msg:love after /repeat" $ do
-        dbState <-
-          evalStateT (execStateT (run handle10 >> run handle1) initialDB1) []
-        dbState `shouldBe` Map.fromList [(1118, Right 2)]
-        state <-
-          execStateT (evalStateT (run handle10 >> run handle1) initialDB1) []
+          `shouldBe` [SENDMSG 1118 "Number of repeats successfully changed from 2 to 4"]
+      it "ignore invalid update " $ do
+        let upd = InvalidUpdate :: ValidUpdate AttachNotMatter
+        state <- execStateT (evalStateT (chooseActionOfUpd handle1 upd) initialDB1) []
         reverse state
-          `shouldBe` [ LOG DEBUG,
-                       GOTUPDATES,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG DEBUG,
-                       CONFIRMUPDATES 235801,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG DEBUG,
-                       SENDKEYB
-                         1118
-                         2
-                         " : Current number of repeats your message.\nWhy?",
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG DEBUG,
-                       GOTUPDATES,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG DEBUG,
-                       CONFIRMUPDATES 235802,
-                       LOG DEBUG,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG INFO,
-                       LOG WARNING,
-                       LOG DEBUG,
-                       SENDMSG
-                         1118
-                         "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still 2\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later",
-                       LOG DEBUG,
-                       LOG INFO
-                     ]
-      it "ignore unknown update (edited_message) " $ do
-        state <- execStateT (evalStateT (run handle23) initialDB1) []
+          `shouldBe` [LOG WARNING]
+      it "ignore invalid update (plus info) " $ do
+        let upd = InvalidUpdatePlusInfo "oops" :: ValidUpdate AttachNotMatter
+        state <- execStateT (evalStateT (chooseActionOfUpd handle1 upd) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235801, LOG WARNING]
-      it "ignore unknown update " $ do
+          `shouldBe` [LOG WARNING]
+{-}      it "ignore unknown update " $ do
         state <- execStateT (evalStateT (run handle24) initialDB1) []
         reverse state
           `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235801, LOG WARNING]
