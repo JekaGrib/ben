@@ -10,10 +10,17 @@ import Data.Aeson
     genericToEncoding,
     object,
     pairs,
+    Options,
+    defaultOptions,
+    genericToJSON,
+    genericToEncoding,
+    fieldLabelModifier
   )
 import GHC.Generics (Generic)
 import Tg.Types
 import Types
+import Data.Char (isUpper,toLower)
+import Data.List (isSuffixOf)
 
 newtype JSONBodyOffset = JSONBodyOffset
   { offset :: UpdateId
@@ -41,17 +48,28 @@ instance ToJSON SendMsgJSONBody where
   toEncoding = genericToEncoding defaultOptions
 
 data CopyMsgJSONBody = CopyMsgJSONBody
-  { chat_idCM :: UserId,
-    from_chat_idCM :: UserId,
-    msg_idCM :: MessageId
+  { chatIdCM :: UserId,
+    fromChatIdCM :: UserId,
+    messageIdCM :: MessageId
   }
   deriving (Generic, Show)
 
 instance ToJSON CopyMsgJSONBody where
-  toJSON (CopyMsgJSONBody a b c) =
-    object ["chat_id" .= a, "from_chat_id" .= b, "message_id" .= c]
-  toEncoding (CopyMsgJSONBody a b c) =
-    pairs ("chat_id" .= a <> "from_chat_id" .= b <> "message_id" .= c)
+  toJSON     = genericToJSON     (optionsSnakeCasePreEraseSuffix "CM")
+  toEncoding = genericToEncoding (optionsSnakeCasePreEraseSuffix "CM")
+
+optionsSnakeCasePreEraseSuffix :: String -> Options
+optionsSnakeCasePreEraseSuffix suffix = 
+  defaultOptions
+    { fieldLabelModifier = fromCamelToSnake . eraseSuffix suffix
+    }
+
+fromCamelToSnake :: String -> String
+fromCamelToSnake = foldr (\x acc -> if isUpper x then '_':(toLower x):acc else x:acc) []
+
+eraseSuffix :: String -> String -> String
+eraseSuffix suffix str = if isSuffixOf suffix str then take (length str - length suffix) str else str
+
 
 data KeybJSONBody = KeybJSONBody
   { chat_idKeyb :: UserId,

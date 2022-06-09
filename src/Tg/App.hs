@@ -235,9 +235,9 @@ copyMsg' conf msgId usId = do
   let msgBody =
         encode
           ( CopyMsgJSONBody
-              { chat_idCM = usId,
-                from_chat_idCM = usId,
-                msg_idCM = msgId
+              { chatIdCM = usId,
+                fromChatIdCM = usId,
+                messageIdCM = msgId
               }
           )
   manager <- newTlsManager
