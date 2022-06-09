@@ -22,11 +22,11 @@ type AttachmentString = String
 
 type Url = T.Text
 
-type ServerUrl = T.Text
+type ServerUrl = Url
 
-type DocUrl = T.Text
+type DocUrl = Url
 
-type PicUrl = T.Text
+type PicUrl = Url
 
 type TypeInGetServerReq = String
 
