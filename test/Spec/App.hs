@@ -61,9 +61,9 @@ testApp =
                      ]
       it "work with /repeat msg" $ do
         let upd = ValidUpdate 1118 (TextMsg "/repeat") :: ValidUpdate AttachNotMatter
-        dbState <- evalStateT (execStateT (chooseActionOfUpd handle1 upd) initialDB1) []
-        dbState `shouldBe` Map.fromList [(1118, Left (OpenRepeat 2))]
-        state <- execStateT (evalStateT (chooseActionOfUpd handle1 upd) initialDB1) []
+        dbState <- evalStateT (execStateT (chooseActionOfUpd handle1 upd) initialDB3) []
+        dbState `shouldBe` Map.fromList [(1118, Left (OpenRepeat 2)), (1234, Right 3), (2581, Left (OpenRepeat 4))]
+        state <- execStateT (evalStateT (chooseActionOfUpd handle1 upd) initialDB3) []
         reverse state
           `shouldBe` [SENDKEYB 1118 2 " : Current number of repeats your message.\nWhy?"]
       it "work with attachment msg" $ do
