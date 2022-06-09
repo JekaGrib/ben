@@ -25,7 +25,7 @@ import Network.HTTP.Client.TLS (newTlsManager)
 import Types
 import Vk.Api.Request (keyBoard)
 import Vk.Api.Response
-import Vk.App.PrepareAttachment (getAttachmentString)
+import Vk.App.PrepareAttachment (getAttachmentString, vkApiVersion)
 import qualified Vk.App.PrepareAttachment (Handle, makeH)
 import Vk.AppT (AppT, TryServer (..), changeServInfo, changeTs, firstTry, nextTry, resetTry)
 import Vk.Conf (VkConfig (..))
@@ -345,6 +345,3 @@ chooseParamsForMsg (VkAttachMsg txt attachStrings (latStr, longStr)) =
       paramLat = "lat=" ++ latStr
       paramLong = "long=" ++ longStr
    in [paramMsg, paramAttach, paramLat, paramLong]
-
-vkApiVersion :: String
-vkApiVersion = "5.85"

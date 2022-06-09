@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 344a53b9d68343c2d9be486d0af5feccf2c5f275b47f5e665c7aba5a6c420693
+-- hash: ca66effdbfa82df536881e9c44090e4f3f8035bfde60a6fa0876db6a44166a3e
 
 name:           ben
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 
 library
   exposed-modules:
+      Api
       App
       Conf
       Error

@@ -3,49 +3,40 @@
 
 module Tg.Api.Request where
 
+import Api (optionsEraseSuffix, optionsSnakeCase, optionsSnakeCasePreEraseSuffix)
 import Data.Aeson
-  ( (.=),
-    ToJSON (toEncoding, toJSON),
-    defaultOptions,
+  ( ToJSON (toEncoding, toJSON),
     genericToEncoding,
-    object,
-    pairs,
-    Options,
-    defaultOptions,
+    genericToEncoding,
     genericToJSON,
-    genericToEncoding,
-    fieldLabelModifier
   )
 import GHC.Generics (Generic)
 import Tg.Types
 import Types
-import Data.Char (isUpper,toLower)
-import Data.List (isSuffixOf)
 
 newtype JSONBodyOffset = JSONBodyOffset
   { offset :: UpdateId
   }
   deriving (Generic, Show)
 
-instance ToJSON JSONBodyOffset where
-  toEncoding = genericToEncoding defaultOptions
+instance ToJSON JSONBodyOffset
 
 newtype JSONBodyTimeOut = JSONBodyTimeOut
   { timeout :: Integer
   }
   deriving (Generic, Show)
 
-instance ToJSON JSONBodyTimeOut where
-  toEncoding = genericToEncoding defaultOptions
+instance ToJSON JSONBodyTimeOut
 
 data SendMsgJSONBody = SendMsgJSONBody
-  { chat_id :: UserId,
+  { chatId :: UserId,
     text :: TextOfMsg
   }
   deriving (Generic, Show)
 
 instance ToJSON SendMsgJSONBody where
-  toEncoding = genericToEncoding defaultOptions
+  toJSON = genericToJSON optionsSnakeCase
+  toEncoding = genericToEncoding optionsSnakeCase
 
 data CopyMsgJSONBody = CopyMsgJSONBody
   { chatIdCM :: UserId,
@@ -55,45 +46,29 @@ data CopyMsgJSONBody = CopyMsgJSONBody
   deriving (Generic, Show)
 
 instance ToJSON CopyMsgJSONBody where
-  toJSON     = genericToJSON     (optionsSnakeCasePreEraseSuffix "CM")
+  toJSON = genericToJSON (optionsSnakeCasePreEraseSuffix "CM")
   toEncoding = genericToEncoding (optionsSnakeCasePreEraseSuffix "CM")
 
-optionsSnakeCasePreEraseSuffix :: String -> Options
-optionsSnakeCasePreEraseSuffix suffix = 
-  defaultOptions
-    { fieldLabelModifier = fromCamelToSnake . eraseSuffix suffix
-    }
-
-fromCamelToSnake :: String -> String
-fromCamelToSnake = foldr (\x acc -> if isUpper x then '_':(toLower x):acc else x:acc) []
-
-eraseSuffix :: String -> String -> String
-eraseSuffix suffix str = if isSuffixOf suffix str then take (length str - length suffix) str else str
-
-
 data KeybJSONBody = KeybJSONBody
-  { chat_idKeyb :: UserId,
+  { chatIdKeyb :: UserId,
     textKeyb :: TextOfKeyb,
-    reply_markup :: KeyBoard
+    replyMarkupKeyb :: KeyBoard
   }
   deriving (Generic, Show)
 
 instance ToJSON KeybJSONBody where
-  toJSON (KeybJSONBody a b c) =
-    object ["chat_id" .= a, "text" .= b, "reply_markup" .= c]
-  toEncoding (KeybJSONBody a b c) =
-    pairs ("chat_id" .= a <> "text" .= b <> "reply_markup" .= c)
+  toJSON = genericToJSON (optionsSnakeCasePreEraseSuffix "Keyb")
+  toEncoding = genericToEncoding (optionsSnakeCasePreEraseSuffix "Keyb")
 
 data KeyBoard = KeyBoard
   { keyboard :: [[KeyButton]],
-    one_time_keyboard :: Bool
+    oneTimeKeyboard :: Bool
   }
   deriving (Generic, Show)
 
 instance ToJSON KeyBoard where
-  toJSON (KeyBoard a b) = object ["keyboard" .= a, "one_time_keyboard" .= b]
-  toEncoding (KeyBoard a b) =
-    pairs ("keyboard" .= a <> "one_time_keyboard" .= b)
+  toJSON = genericToJSON optionsSnakeCase
+  toEncoding = genericToEncoding optionsSnakeCase
 
 newtype KeyButton = KeyButton
   { textBtn :: TextOfButton
@@ -101,5 +76,5 @@ newtype KeyButton = KeyButton
   deriving (Generic, Show)
 
 instance ToJSON KeyButton where
-  toJSON (KeyButton a) = object ["text" .= a]
-  toEncoding (KeyButton a) = pairs ("text" .= a)
+  toJSON = genericToJSON (optionsEraseSuffix "Btn")
+  toEncoding = genericToEncoding (optionsEraseSuffix "Btn")

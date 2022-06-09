@@ -262,11 +262,11 @@ saveDocOnServ' :: Config -> LoadDocResp -> Title -> IO Response
 saveDocOnServ' conf (LoadDocResp file) title = do
   manager <- newTlsManager
   initReq <- parseRequest "https://api.vk.com/method/docs.save"
-  let param1 = ("file", fromString file)
-  let param2 = ("title", fromString title)
-  let param3 = ("access_token", fromString $ cBotToken conf)
-  let param4 = ("v", "5.103")
-  let params = [param1, param2, param3, param4]
+  let paramFile = ("file", fromString file)
+  let paramTitle = ("title", fromString title)
+  let paramToken = ("access_token", fromString $ cBotToken conf)
+  let paramVers = ("v", fromString vkApiVersion)
+  let params = [paramFile, paramTitle, paramToken, paramVers]
   let req = urlEncodedBody params initReq
   responseBody <$> httpLbs req manager
 
@@ -298,12 +298,12 @@ savePhotoOnServ' :: Config -> LoadPhotoResp -> IO Response
 savePhotoOnServ' conf (LoadPhotoResp server hash photo) = do
   manager <- newTlsManager
   initReq <- parseRequest "https://api.vk.com/method/photos.saveMessagesPhoto"
-  let param1 = ("server", fromString . show $ server)
-  let param2 = ("hash", fromString hash)
-  let param3 = ("photo", fromString photo)
-  let param4 = ("access_token", fromString $ cBotToken conf)
-  let param5 = ("v", "5.103")
-  let params = [param1, param2, param3, param4, param5]
+  let paramServ = ("server", fromString . show $ server)
+  let paramHash = ("hash", fromString hash)
+  let paramPhoto = ("photo", fromString photo)
+  let paramToken = ("access_token", fromString $ cBotToken conf)
+  let paramVers = ("v", fromString vkApiVersion)
+  let params = [paramServ, paramHash, paramPhoto, paramToken, paramVers]
   let req = urlEncodedBody params initReq
   res <- httpLbs req manager
   return (responseBody res)
@@ -315,3 +315,6 @@ goToUrl' urlTxt = do
   res <- httpLbs req manager
   let bs = LBS.toStrict . responseBody $ res
   return bs
+
+vkApiVersion :: String
+vkApiVersion = "5.85"

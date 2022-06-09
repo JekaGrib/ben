@@ -222,7 +222,7 @@ confirmUpdates' conf nextUpdate = do
 
 sendMsg' :: Config -> UserId -> TextOfMsg -> IO Response
 sendMsg' conf usId msg = do
-  let msgBody = encode (SendMsgJSONBody {chat_id = usId, text = msg})
+  let msgBody = encode (SendMsgJSONBody {chatId = usId, text = msg})
   manager <- newTlsManager
   initReq <-
     parseRequest
@@ -289,12 +289,12 @@ addBodyToReq initReq reqBody =
 makeKeybBody :: UserId -> TextOfKeyb -> N -> KeybJSONBody
 makeKeybBody usId msg n =
   KeybJSONBody
-    { chat_idKeyb = usId,
+    { chatIdKeyb = usId,
       textKeyb = T.concat [T.pack . show $ n, msg],
-      reply_markup =
+      replyMarkupKeyb =
         KeyBoard
-          { keyboard = [button "1",button "2",button "3",button "4",button "5"],
-            one_time_keyboard = True
+          { keyboard = [button "1", button "2", button "3", button "4", button "5"],
+            oneTimeKeyboard = True
           }
     }
 

@@ -85,4 +85,3 @@ handle4 = handle0 {sendAttachMsg = sendAttachMsgTest "oops"}
 handle5 = handle0 {sendTxtMsg = sendMsgTestEx}
 handle6 = handle0 {sendKeyb = sendKeybTestEx}
 handle7 = handle0 {sendAttachMsg = sendAttachMsgTestEx}
-

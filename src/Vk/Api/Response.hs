@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
@@ -9,7 +10,7 @@ module Vk.Api.Response
         ErrorAnswer
       ),
     Update (Update, UnknownUpdate),
-    AboutObj (AboutObj, from_id, text),
+    AboutObj (AboutObj, fromId, text),
     Attachment (..),
     Doc (Doc),
     Audio (Audio),
@@ -38,8 +39,9 @@ module Vk.Api.Response
   )
 where
 
+import Api (optionsEraseSuffix, optionsSnakeCase, optionsSnakeCasePreEraseSuffix)
 import Control.Applicative ((<|>), empty, liftA2)
-import Data.Aeson ((.:), (.:?), FromJSON (parseJSON), Object, Value (..), withObject)
+import Data.Aeson ((.:), (.:?), FromJSON (parseJSON), Object, Value (..), genericParseJSON, withObject)
 import Data.Aeson.Types (Parser)
 import qualified Data.Text as T
 import GHC.Generics (Generic)
@@ -84,17 +86,18 @@ instance FromJSON Update where
       (fmap UnknownUpdate . parseJSON)
 
 data AboutObj = AboutObj
-  { from_id :: UserId,
+  { fromId :: UserId,
     id :: Integer,
-    peer_id :: Maybe Integer,
+    peerId :: Maybe Integer,
     text :: T.Text,
-    fwd_messages :: [Value],
+    fwdMessages :: [Value],
     attachments :: [Attachment],
     geo :: Maybe Geo
   }
   deriving (Generic, Show)
 
-instance FromJSON AboutObj
+instance FromJSON AboutObj where
+  parseJSON = genericParseJSON optionsSnakeCase
 
 data Attachment
   = PhotoAttachment Photo
@@ -130,50 +133,42 @@ data Doc = Doc
     extD :: String,
     titleD :: String
   }
-  deriving (Eq, Show)
+  deriving (Eq, Show, Generic)
 
 instance FromJSON Doc where
-  parseJSON =
-    withObject "Doc" $ \v -> Doc <$> v .: "url" <*> v .: "ext" <*> v .: "title"
+  parseJSON = genericParseJSON (optionsEraseSuffix "D")
 
 newtype Audio = Audio
-  { link_ogg :: T.Text
+  { linkOgg :: T.Text
   }
   deriving (Generic, Eq, Show)
 
-instance FromJSON Audio
+instance FromJSON Audio where
+  parseJSON = genericParseJSON optionsSnakeCase
 
 newtype Photo = Photo
   { sizes :: [Size]
   }
-  deriving (Generic, Eq, Show)
-
-instance FromJSON Photo
+  deriving (Generic, Eq, Show, FromJSON)
 
 data Size = Size
   { height :: Integer,
     width :: Integer,
     url :: T.Text
   }
-  deriving (Generic, Eq, Show)
-
-instance FromJSON Size
+  deriving (Generic, Eq, Show, FromJSON)
 
 newtype LoadDocResp = LoadDocResp
   { file :: String
   }
-  deriving (Generic, Show, Eq)
-
-instance FromJSON LoadDocResp
+  deriving (Generic, Show, Eq, FromJSON)
 
 data LoadPhotoResp = LoadPhotoResp
   { server :: Integer,
     hash :: String,
     photo :: String
   }
-  deriving (Generic, Show, Eq)
-
-instance FromJSON LoadPhotoResp
+  deriving (Generic, Show, Eq, FromJSON)
 
 newtype SavePhotoResp = SavePhotoResp
   { responseSPR :: [DocInfo]
@@ -181,39 +176,35 @@ newtype SavePhotoResp = SavePhotoResp
   deriving (Generic, Show)
 
 instance FromJSON SavePhotoResp where
-  parseJSON =
-    withObject "SavePhotoResp" $ \v -> SavePhotoResp <$> v .: "response"
+  parseJSON = genericParseJSON (optionsEraseSuffix "SPR")
 
 data PhotoInfo = PhotoInfo
   { idPI :: Integer,
-    owner_id :: Integer,
-    access_key :: String
+    ownerIdPI :: Integer,
+    accessKeyPI :: String
   }
   deriving (Generic, Show)
 
 instance FromJSON PhotoInfo where
-  parseJSON =
-    withObject "PhotoInfo" $ \v ->
-      PhotoInfo <$> v .: "id" <*> v .: "owner_id" <*> v .: "access_key"
+  parseJSON = genericParseJSON (optionsSnakeCasePreEraseSuffix "PI")
 
 data AudioMesInfo = AudioMesInfo
   { idAMI :: Integer,
-    owner_idAMI :: Integer,
-    access_keyAMI :: String
+    ownerIdAMI :: Integer,
+    accessKeyAMI :: String
   }
   deriving (Generic, Show)
 
 instance FromJSON AudioMesInfo where
-  parseJSON =
-    withObject "AudioMesInfo" $ \v ->
-      AudioMesInfo <$> v .: "id" <*> v .: "owner_id" <*> v .: "access_key"
+  parseJSON = genericParseJSON (optionsSnakeCasePreEraseSuffix "AMI")
 
 newtype StickerInfo = StickerInfo
-  { sticker_id :: StickerId
+  { stickerId :: StickerId
   }
   deriving (Generic, Eq, Show)
 
-instance FromJSON StickerInfo
+instance FromJSON StickerInfo where
+  parseJSON = genericParseJSON optionsSnakeCase
 
 newtype SaveDocResp = SaveDocResp
   { responseSDR :: ResponseSDR
@@ -221,7 +212,7 @@ newtype SaveDocResp = SaveDocResp
   deriving (Generic, Show)
 
 instance FromJSON SaveDocResp where
-  parseJSON = withObject "SaveDocResp" $ \v -> SaveDocResp <$> v .: "response"
+  parseJSON = genericParseJSON (optionsEraseSuffix "SDR")
 
 data ResponseSDR = ResponseSDR
   { typeRSDR :: T.Text,
@@ -230,28 +221,25 @@ data ResponseSDR = ResponseSDR
   deriving (Generic, Show)
 
 instance FromJSON ResponseSDR where
-  parseJSON =
-    withObject "ResponseSDR" $ \v -> ResponseSDR <$> v .: "type" <*> v .: "doc"
+  parseJSON = genericParseJSON (optionsEraseSuffix "RSDR")
 
 data DocInfo = DocInfo
   { idDI :: Integer,
-    owner_idDI :: Integer
+    ownerIdDI :: Integer
   }
   deriving (Generic, Eq, Show)
 
 instance FromJSON DocInfo where
-  parseJSON =
-    withObject "DocInfo" $ \v -> DocInfo <$> v .: "id" <*> v .: "owner_id"
+  parseJSON = genericParseJSON (optionsSnakeCasePreEraseSuffix "DI")
 
 data WallInfo = WallInfo
   { idWI :: Integer,
-    from_idWI :: Integer
+    fromIdWI :: Integer
   }
   deriving (Generic, Eq, Show)
 
 instance FromJSON WallInfo where
-  parseJSON =
-    withObject "WallInfo" $ \v -> WallInfo <$> v .: "id" <*> v .: "from_id"
+  parseJSON = genericParseJSON (optionsSnakeCasePreEraseSuffix "WI")
 
 newtype SaveDocAuMesResp = SaveDocAuMesResp
   { responseSDAMR :: ResponseSDAMR
@@ -259,19 +247,16 @@ newtype SaveDocAuMesResp = SaveDocAuMesResp
   deriving (Generic, Show)
 
 instance FromJSON SaveDocAuMesResp where
-  parseJSON =
-    withObject "SaveDocAuMesResp" $ \v -> SaveDocAuMesResp <$> v .: "response"
+  parseJSON = genericParseJSON (optionsEraseSuffix "SDAMR")
 
 data ResponseSDAMR = ResponseSDAMR
   { typeSDAMR :: T.Text,
-    docSDAMR :: DocInfo
+    audioMessageSDAMR :: DocInfo
   }
   deriving (Generic, Show)
 
 instance FromJSON ResponseSDAMR where
-  parseJSON =
-    withObject "ResponseSDAMR" $ \v ->
-      ResponseSDAMR <$> v .: "type" <*> v .: "audio_message"
+  parseJSON = genericParseJSON (optionsSnakeCasePreEraseSuffix "SDAMR")
 
 data GetPollServerJSONBody
   = GetPollServerJSONBody ServerInfo
@@ -312,11 +297,12 @@ instance FromJSON ResponseOk where
       (withObject "ErrorAnswerMsg" $ \v -> ErrorAnswerMsg <$> v .: "error")
 
 newtype ErrorInfo = ErrorInfo
-  { error_code :: Integer
+  { errorCode :: Integer
   }
   deriving (Generic, Show)
 
-instance FromJSON ErrorInfo
+instance FromJSON ErrorInfo where
+  parseJSON = genericParseJSON optionsSnakeCase
 
 newtype UploadServerResponse = UploadServerResponse
   { responsePSR :: UploadUrl
@@ -324,34 +310,30 @@ newtype UploadServerResponse = UploadServerResponse
   deriving (Generic, Show)
 
 instance FromJSON UploadServerResponse where
-  parseJSON =
-    withObject "UploadServerResponse" $ \v ->
-      UploadServerResponse <$> v .: "response"
+  parseJSON = genericParseJSON (optionsEraseSuffix "PSR")
 
 newtype UploadUrl = UploadUrl
-  { upload_url :: T.Text
+  { uploadUrl :: T.Text
   }
   deriving (Generic, Show)
 
-instance FromJSON UploadUrl
+instance FromJSON UploadUrl where
+  parseJSON = genericParseJSON optionsSnakeCase
 
 data Geo = Geo
   { typeG :: T.Text,
-    coordinates :: Coordinates
+    coordinatesG :: Coordinates
   }
   deriving (Eq, Generic, Show)
 
 instance FromJSON Geo where
-  parseJSON =
-    withObject "Geo" $ \v -> Geo <$> v .: "type" <*> v .: "coordinates"
+  parseJSON = genericParseJSON (optionsEraseSuffix "G")
 
 data Coordinates = Coordinates
   { latitude :: Double,
     longitude :: Double
   }
-  deriving (Eq, Generic, Show)
-
-instance FromJSON Coordinates
+  deriving (Eq, Generic, Show, FromJSON)
 
 tryReadNum :: T.Text -> Parser Integer
 tryReadNum "" = empty
