@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Vk.App.PrepareAttachment where
 
 import Conf (Config (..))

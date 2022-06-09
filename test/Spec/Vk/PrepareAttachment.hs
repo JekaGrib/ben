@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.Vk.PrepareAttachment where
 
 import Control.Monad.Except (runExceptT)

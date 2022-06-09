@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.Vk.PrepareAttachment.Handlers where
 
 import Control.Monad.State (StateT (..))

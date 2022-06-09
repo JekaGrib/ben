@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.Conf where
 
 import Conf (Config (..))

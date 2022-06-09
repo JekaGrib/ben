@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.Tg.App.ResponseExample where
 
 import Types (Response)

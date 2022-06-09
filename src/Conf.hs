@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Conf where
 
 import qualified Control.Exception as E

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.App.Handlers where
 
 import App (Handle (..))

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.Vk.App.ResponseExample where
 
 import Types (Response)

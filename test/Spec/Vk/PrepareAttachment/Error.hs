@@ -1,6 +1,3 @@
-{-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Werror #-}
-
 module Spec.Vk.PrepareAttachment.Error where
 
 import Vk.Error (PrependAttachmetException (..), VKBotException (PrependAttachmetToSendException))

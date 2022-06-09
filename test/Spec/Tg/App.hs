@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.Tg.App where
 
 import Control.Monad.State (evalStateT, execStateT)

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Vk.Main where
 
 import Conf (Config (..), getTime)

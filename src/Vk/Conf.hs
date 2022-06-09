@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Vk.Conf where
 
 import Conf (Config (..), parseConf, pullConfig)

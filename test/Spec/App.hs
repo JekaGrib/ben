@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.App where
 
 import App (chooseActionOfUpd)
