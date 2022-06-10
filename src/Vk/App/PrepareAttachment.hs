@@ -69,24 +69,24 @@ getAttachmentString _ _ (PhotoAttachment (Photo [])) =
   throwError "Unknown photo attachment, empty sizes"
 getAttachmentString h usId (PhotoAttachment (Photo sizes)) = do
   let picUrl = url . head . sortOn (Down . height) $ sizes
-  (DocInfo idDoc owner_id) <- lift $ getPhotoDocInfo h usId picUrl
-  return $ "photo" ++ show owner_id ++ "_" ++ show idDoc
+  (DocInfo idDoc ownerId) <- lift $ getPhotoDocInfo h usId picUrl
+  return $ "photo" ++ show ownerId ++ "_" ++ show idDoc
 getAttachmentString h usId (DocAttachment doc) = do
-  (DocInfo idDoc owner_id) <- lift $ getDocInfo h usId doc
-  return $ "doc" ++ show owner_id ++ "_" ++ show idDoc
+  (DocInfo idDoc ownerId) <- lift $ getDocInfo h usId doc
+  return $ "doc" ++ show ownerId ++ "_" ++ show idDoc
 getAttachmentString h usId (AudioMesAttachment aud) = do
-  (DocInfo idDoc owner_id) <- lift $ getAudioMsgDocInfo h usId aud
-  return $ "doc" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (VideoAttachment (DocInfo idDoc owner_id)) =
-  return $ "video" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (AudioAttachment (DocInfo idDoc owner_id)) =
-  return $ "audio" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (MarketAttachment (DocInfo idDoc owner_id)) =
-  return $ "market" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (WallAttachment (WallInfo idWall owner_id)) =
-  return $ "wall" ++ show owner_id ++ "_" ++ show idWall
-getAttachmentString _ _ (PollAttachment (DocInfo idDoc owner_id)) =
-  return $ "poll" ++ show owner_id ++ "_" ++ show idDoc
+  (DocInfo idDoc ownerId) <- lift $ getAudioMsgDocInfo h usId aud
+  return $ "doc" ++ show ownerId ++ "_" ++ show idDoc
+getAttachmentString _ _ (VideoAttachment (DocInfo idDoc ownerId)) =
+  return $ "video" ++ show ownerId ++ "_" ++ show idDoc
+getAttachmentString _ _ (AudioAttachment (DocInfo idDoc ownerId)) =
+  return $ "audio" ++ show ownerId ++ "_" ++ show idDoc
+getAttachmentString _ _ (MarketAttachment (DocInfo idDoc ownerId)) =
+  return $ "market" ++ show ownerId ++ "_" ++ show idDoc
+getAttachmentString _ _ (WallAttachment (WallInfo idWall ownerId)) =
+  return $ "wall" ++ show ownerId ++ "_" ++ show idWall
+getAttachmentString _ _ (PollAttachment (DocInfo idDoc ownerId)) =
+  return $ "poll" ++ show ownerId ++ "_" ++ show idDoc
 getAttachmentString _ usId (StickerAttachment _) =
   throwError $
     "Wrong sticker attachment from user: "
