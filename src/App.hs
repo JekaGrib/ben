@@ -7,6 +7,7 @@ import qualified Data.Map as Map (insert, lookup)
 import qualified Data.Text as T
 import Error
 import Logger (LogHandle (..), logDebug, logInfo, logWarning)
+import Text.Read (readMaybe)
 import Types
 
 data Handle m a = Handle
@@ -228,10 +229,6 @@ checkButton _ = Nothing
 
 checkTextButton :: TextOfButton -> Maybe N
 checkTextButton txt =
-  case txt of
-    "1" -> Just 1
-    "2" -> Just 2
-    "3" -> Just 3
-    "4" -> Just 4
-    "5" -> Just 5
+  case readMaybe (T.unpack txt) of
+    Just n | n `elem` [1 .. 5] -> Just n
     _ -> Nothing

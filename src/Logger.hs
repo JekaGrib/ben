@@ -17,7 +17,7 @@ data Priority
   | INFO
   | WARNING
   | ERROR
-  deriving (Ord, Eq, Show)
+  deriving (Ord, Eq, Show, Read)
 
 logger :: String -> Priority -> String -> IO ()
 logger logPath currP str = do

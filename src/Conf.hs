@@ -13,6 +13,7 @@ import Error
     handleExPullConf,
   )
 import Logger (Priority (..))
+import Text.Read (readMaybe)
 import Types
 
 data Config = Config
@@ -58,13 +59,8 @@ parseConfStartN msngr conf = do
       `E.catch` ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe N))
       `E.catch` ((\_ -> return Nothing) :: E.IOException -> IO (Maybe N))
   case str of
-    Nothing -> inputStartN `E.catch` handleExInput "startN"
-    Just 1 -> return 1
-    Just 2 -> return 2
-    Just 3 -> return 3
-    Just 4 -> return 4
-    Just 5 -> return 5
-    Just _ -> inputStartN `E.catch` handleExInput "startN"
+    Just n | n `elem` [1 .. 5] -> pure n
+    _ -> inputStartN `E.catch` handleExInput "startN"
 
 parseConfBotToken :: Messenger -> C.Config -> IO String
 parseConfBotToken msngr conf = do
@@ -80,13 +76,9 @@ parseConfPrio msngr conf = do
     (C.lookup conf (addPrefix msngr ".logLevel") :: IO (Maybe String))
       `E.catch` ((\_ -> return Nothing) :: C.KeyError -> IO (Maybe String))
       `E.catch` ((\_ -> return Nothing) :: E.IOException -> IO (Maybe String))
-  case str of
-    Nothing -> inputLogLevel `E.catch` handleExInput "logLevel"
-    Just "DEBUG" -> return DEBUG
-    Just "INFO" -> return INFO
-    Just "WARNING" -> return WARNING
-    Just "ERROR" -> return ERROR
-    Just _ -> inputLogLevel `E.catch` handleExInput "logLevel"
+  case fmap (map toUpper) str >>= readMaybe of
+    Just p -> pure p
+    _ -> inputLogLevel `E.catch` handleExInput "logLevel"
 
 parseConfHelpMsg :: Messenger -> C.Config -> IO String
 parseConfHelpMsg msngr conf = do
@@ -114,13 +106,9 @@ inputStartN = do
   putStrLn
     "Can`t parse value \"startN\" from configuration file or command line\nPlease, enter start number of repeats. Number from 1 to 5"
   input <- getLine
-  case input of
-    "1" -> return 1
-    "2" -> return 2
-    "3" -> return 3
-    "4" -> return 4
-    "5" -> return 5
-    _ -> inputStartN `E.catch` handleExInput "startN"
+  case readMaybe input of
+    Just n | n `elem` [1 .. 5] -> pure n
+    _ -> inputStartN
 
 inputBotToken :: IO String
 inputBotToken = do
@@ -133,11 +121,8 @@ inputLogLevel = do
   putStrLn
     "Can`t parse value \"logLevel\" from configuration file or command line\nPlease, enter logging level (logs of this level and higher will be recorded)\nAvailable levels: DEBUG ; INFO ; WARNING ; ERROR (without quotes)"
   input <- getLine
-  case map toUpper input of
-    "DEBUG" -> return DEBUG
-    "INFO" -> return INFO
-    "WARNING" -> return WARNING
-    "ERROR" -> return ERROR
+  case readMaybe (map toUpper input) of
+    Just p -> pure p
     _ -> inputLogLevel
 
 inputHelpMsg :: IO String
