@@ -241,7 +241,7 @@ getDocServer' conf usId type' = do
         ++ show usId
         ++ "&access_token="
         ++ cBotToken conf
-        ++ "&v=5.103"
+        ++ "&v=" ++ vkApiVersion
   responseBody <$> httpLbs req manager
 
 loadDocToServ' :: ServerUrl -> DocUrl -> ResponseS -> Extention -> IO Response
@@ -277,7 +277,7 @@ getPhotoServer' conf usId = do
         ++ show usId
         ++ "&access_token="
         ++ cBotToken conf
-        ++ "&v=5.103"
+        ++ "&v=" ++ vkApiVersion
   res <- httpLbs req manager
   return (responseBody res)
 
