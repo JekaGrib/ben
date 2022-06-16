@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module Vk.App where
 
@@ -26,7 +27,7 @@ import Types
 import Vk.Api.Request (keyBoard)
 import Vk.Api.Response
 import Vk.App.PrepareAttachment (getAttachmentString, vkApiVersion)
-import qualified Vk.App.PrepareAttachment (Handle, makeH)
+import qualified Vk.App.PrepareAttachment (Handle, makeH, liftHandle)
 import Vk.AppT (AppT, TryServer (..), changeServInfo, changeTs, firstTry, nextTry, resetTry)
 import Vk.Conf (VkConfig (..))
 import Vk.Error
@@ -65,6 +66,15 @@ makeAppH conf logH =
     (sendKeyb' conf)
     (sendAttachMsg' conf)
     isValidResponse'
+
+liftHandle :: (Monad m, MonadTrans t) => Handle m a -> Handle (t m) a
+liftHandle Handle {..} = Handle hConf hLog'' getLongPollServer'' getUpdates'' hApp'' hPrepAttach''
+    where
+      hLog'' = App.liftLogHandle hLog
+      getLongPollServer'' = lift getLongPollServer
+      getUpdates'' serverInfo = lift $ getUpdates serverInfo
+      hApp'' = App.liftHandle hApp
+      hPrepAttach'' = Vk.App.PrepareAttachment.liftHandle hPrepAttach
 
 -- logic functions:
 run :: (MonadCatch m) => Handle m -> MapUserN -> m ()

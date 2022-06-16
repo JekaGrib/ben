@@ -1,10 +1,22 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 module Vk.AppT where
 
-import Control.Monad.State (StateT)
+import Control.Monad.State (StateT, MonadState(get,put), gets)
 import Types (MapUserN)
 import Vk.Api.Response (ServerInfo (..))
 
-type AppT m = StateT TryServer (StateT MapUserN m)
+type AppT m = StateT AppState m
+
+instance (Monad m) => MonadState MapUserN (StateT AppState m) where
+  get = gets mapUserN
+  put map = modify (\AppState server _ -> AppState server map)
+
+data AppState = AppState
+  { tryServer :: TryServer,
+    mapUserN :: MapUserN
+  }  
 
 data TryServer = TryServer {tryNum :: Int, servInf :: ServerInfo}
   deriving (Eq, Show)

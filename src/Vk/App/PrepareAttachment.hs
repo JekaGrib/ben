@@ -57,6 +57,28 @@ makeH conf logH =
     (saveDocOnServ' conf)
     goToUrl'
 
+liftHandle :: (Monad m, MonadTrans t) => Handle m a -> Handle (t m) a
+liftHandle Handle {..} = Handle 
+  hConf 
+  hLog'' 
+  getPhotoServer'' 
+  loadPhotoToServ'' 
+  savePhotoOnServ''
+  getDocServer''
+  loadDocToServ''
+  saveDocOnServ''
+  goToUrl''
+    where
+      hLog'' = App.liftLogHandle hLog
+      getPhotoServer'' = lift . getLongPollServer
+      loadPhotoToServ'' serverUrl picUrl = lift . loadPhotoToServ serverUrl picUrl
+      savePhotoOnServ'' = lift . savePhotoOnServ
+      getDocServer'' userId = lift . getDocServer userId
+      loadDocToServ'' serverUrl docUrl response = lift . getDocServer serverUrl docUrl response
+      saveDocOnServ'' loadDocResp =  lift . saveDocOnServ loadDocResp
+      goToUrl'' = lift . goToUrl
+
+
 -- logic functions:
 
 getAttachmentString ::
