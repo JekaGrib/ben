@@ -1,4 +1,5 @@
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 module Tg.App where
 
@@ -6,7 +7,7 @@ import qualified App
 import Conf (Config (..))
 import Control.Monad (when)
 import Control.Monad.Catch (MonadCatch (catch))
-import Control.Monad.State (StateT, lift)
+import Control.Monad.State ( StateT, lift)
 import Data.Aeson (decode, encode)
 import qualified Data.Text as T
 import Logger (LogHandle (..), logDebug, logInfo)
@@ -84,7 +85,7 @@ run ::
 run h = do
   upds <- lift $ getUpdatesAndCheckResp h
   lift $ confirmUpdatesAndCheckResp h upds
-  mapM_ (App.chooseActionOfUpd (hApp h) . isValidUpdate) upds
+  mapM_ (App.chooseActionOfUpd (App.liftHandle . hApp $ h) . isValidUpdate) upds
 
 isValidUpdate :: Update -> ValidUpdate MessageId
 isValidUpdate (UnknownUpdate _) = InvalidUpdate

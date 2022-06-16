@@ -1,14 +1,19 @@
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE RecordWildCards #-}
+
 module App where
 
 import Conf (Config (..))
 import Control.Monad.Catch (MonadCatch, catch)
-import Control.Monad.State (StateT, get, lift, modify, replicateM_)
+import Control.Monad.State (get, modify, replicateM_, MonadState, lift)
 import qualified Data.Map as Map (insert, lookup)
 import qualified Data.Text as T
 import Error
 import Logger (LogHandle (..), logDebug, logInfo, logWarning)
 import Text.Read (readMaybe)
 import Types
+import Prelude hiding (log)
+import Control.Monad.Trans.Class (MonadTrans)
 
 data Handle m a = Handle
   { hConf :: Config,
@@ -19,38 +24,49 @@ data Handle m a = Handle
     isValidResponse :: Response -> Result
   }
 
+liftHandle :: (Monad m, MonadTrans t) => Handle m a -> Handle (t m) a
+liftHandle Handle {..} = Handle hConf hLog'' sendTxtMsg'' sendKeyb'' sendAttachMsg'' isValidResponse
+    where
+      hLog'' = liftLogHandle hLog
+      sendTxtMsg'' usId txt = lift $ sendTxtMsg usId txt 
+      sendKeyb'' usId n txt = lift $ sendKeyb usId n txt
+      sendAttachMsg'' attach usId = lift $ sendAttachMsg attach usId
+
+liftLogHandle :: (Monad m, MonadTrans t) => LogHandle m -> LogHandle (t m) 
+liftLogHandle LogHandle {..} = LogHandle hLogConf log''
+    where
+      log'' prio str = lift $ log prio str
+
 chooseActionOfUpd ::
-  (MonadCatch m, Attachy a) =>
+  (MonadCatch m, Attachy a, MonadState MapUserN m) =>
   Handle m a ->
   ValidUpdate a ->
-  StateT MapUserN m ()
+  m ()
 chooseActionOfUpd h upd = do
-  lift $ logInfo (hLog h) "Analysis update from the list"
+  logInfo (hLog h) "Analysis update from the list"
   case upd of
     InvalidUpdate ->
-      lift $ logWarning (hLog h) "There is UNKNOWN UPDATE. Bot will ignore it"
+      logWarning (hLog h) "There is UNKNOWN UPDATE. Bot will ignore it"
     InvalidUpdatePlusInfo str ->
-      lift $ logWarning (hLog h) $ "There is UNKNOWN UPDATE. Bot will ignore it" ++ str
+      logWarning (hLog h) $ "There is UNKNOWN UPDATE. Bot will ignore it" ++ str
     ValidUpdate usId msgType -> do
-      lift $
-        logInfo
-          (hLog h)
-          ("Get msg from user " ++ show usId)
+      logInfo
+        (hLog h)
+        ("Get msg from user " ++ show usId)
       chooseActionOfMapUserN h usId msgType
 
 chooseActionOfMapUserN ::
-  (MonadCatch m, Attachy a) =>
+  (MonadCatch m, Attachy a, MonadState MapUserN m) =>
   Handle m a ->
   UserId ->
   MsgType a ->
-  StateT MapUserN m ()
+  m ()
 chooseActionOfMapUserN h usId msgType = do
   mapUN <- get
   let nState = Map.lookup usId mapUN
   case nState of
     Just (Left (OpenRepeat oldN)) -> do
-      lift $
-        logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode")
+      logInfo (hLog h) ("User " ++ show usId ++ " is in OpenRepeat mode")
       chooseActionOfButton h usId msgType oldN
     Just (Right n) -> do
       let currN = n
@@ -60,42 +76,40 @@ chooseActionOfMapUserN h usId msgType = do
       chooseActionOfMsgType h usId msgType currN
 
 chooseActionOfMsgType ::
-  (MonadCatch m, Attachy a) =>
+  (MonadCatch m, Attachy a, MonadState MapUserN m) =>
   Handle m a ->
   UserId ->
   MsgType a ->
   N ->
-  StateT MapUserN m ()
+  m ()
 chooseActionOfMsgType h usId msgType currN =
   case msgType of
     TextMsg txt -> do
-      lift $
-        logInfo
-          (hLog h)
-          ("Msg has text: " ++ show txt)
+      logInfo
+        (hLog h)
+        ("Msg has text: " ++ show txt)
       chooseActionOfTxt h currN usId txt
     AttachMsg _ -> do
-      lift $ logInfo (hLog h) "Msg is attachment"
-      lift $ replicateM_ currN $ sendMsgAndCheckResp h usId msgType
+      logInfo (hLog h) "Msg is attachment"
+      replicateM_ currN $ sendMsgAndCheckResp h usId msgType
 
 chooseActionOfButton ::
-  (MonadCatch m, Attachy a) =>
+  (MonadCatch m, Attachy a, MonadState MapUserN m) =>
   Handle m a ->
   UserId ->
   MsgType a ->
   N ->
-  StateT MapUserN m ()
+  m ()
 chooseActionOfButton h usId msgType oldN =
   case checkButton msgType of
     Just newN -> do
-      lift $
-        logInfo
-          (hLog h)
-          ( "Change number of repeats to "
-              ++ show newN
-              ++ " for user "
-              ++ show usId
-          )
+      logInfo
+        (hLog h)
+        ( "Change number of repeats to "
+            ++ show newN
+            ++ " for user "
+            ++ show usId
+        )
       modify (changeMapUserN usId (Right newN))
       let infoMsg =
             T.pack $
@@ -103,42 +117,40 @@ chooseActionOfButton h usId msgType oldN =
                 ++ show oldN
                 ++ " to "
                 ++ show newN
-      lift $ sendMsgAndCheckResp h usId (TextMsg infoMsg)
+      sendMsgAndCheckResp h usId (TextMsg infoMsg)
     Nothing -> do
-      lift $
-        logWarning
-          (hLog h)
-          ( "User "
-              ++ show usId
-              ++ " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: "
-              ++ show oldN
-          )
+      logWarning
+        (hLog h)
+        ( "User "
+            ++ show usId
+            ++ " press UNKNOWN BUTTON, close OpenRepeat mode, leave old number of repeats: "
+            ++ show oldN
+        )
       modify (changeMapUserN usId (Right oldN))
       let infoMsg =
             T.pack $
               "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still "
                 ++ show oldN
                 ++ "\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later"
-      lift $ sendMsgAndCheckResp h usId (TextMsg infoMsg)
+      sendMsgAndCheckResp h usId (TextMsg infoMsg)
 
 chooseActionOfTxt ::
-  (MonadCatch m, Attachy a) =>
+  (MonadCatch m, Attachy a, MonadState MapUserN m) =>
   Handle m a ->
   N ->
   UserId ->
   TextOfMsg ->
-  StateT MapUserN m ()
+  m ()
 chooseActionOfTxt h currN usId txt =
   case filter (' ' /=) . T.unpack $ txt of
     "/help" -> do
       let infoMsg = T.pack $ cHelpMsg (hConf h)
-      lift $ sendMsgAndCheckResp h usId (TextMsg infoMsg)
+      sendMsgAndCheckResp h usId (TextMsg infoMsg)
     "/repeat" -> do
-      lift $ sendKeybAndCheckResp h usId currN
-      lift $
-        logInfo (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode")
+      sendKeybAndCheckResp h usId currN
+      logInfo (hLog h) ("Put user " ++ show usId ++ " to OpenRepeat mode")
       modify (changeMapUserN usId (Left $ OpenRepeat currN))
-    _ -> lift $ replicateM_ currN $ sendMsgAndCheckResp h usId (TextMsg txt)
+    _ -> replicateM_ currN $ sendMsgAndCheckResp h usId (TextMsg txt)
 
 sendMsgAndCheckResp ::
   (MonadCatch m, Attachy a) => Handle m a -> UserId -> MsgType a -> m ()
