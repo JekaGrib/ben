@@ -1,14 +1,9 @@
 module Spec.Tg.Types where
 
-import Tg.Logger (Priority (..))
 import Tg.Types
+import Types
 
-data MockAction
+data TgMockAction
   = GOTUPDATES
-  | SENDMSG UserId TextOfMsg
-  | COPYMSG UserId MessageId
-  | CONFIRMUPDATES Offset
-  | SENDKEYB UserId N TextOfKeyb
-  | LOG Priority
-  | LOGMSG Priority String
+  | CONFIRMUPDATES UpdateId
   deriving (Eq, Show)

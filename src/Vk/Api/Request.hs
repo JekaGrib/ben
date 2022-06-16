@@ -1,47 +1,43 @@
+{-# LANGUAGE DeriveAnyClass #-}
 {-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE OverloadedStrings #-}
 
 module Vk.Api.Request where
 
+import Api (optionsEraseSuffix, optionsSnakeCase)
 import Data.Aeson
-  ( (.=),
-    ToJSON (toEncoding, toJSON),
-    defaultOptions,
+  ( ToJSON (toEncoding, toJSON),
     genericToEncoding,
-    object,
-    pairs,
+    genericToJSON,
   )
 import qualified Data.Text as T
 import GHC.Generics (Generic)
 
 data KeyBoard = KeyBoard
-  { one_time :: Bool,
+  { oneTime :: Bool,
     buttons :: [[Button]],
     inline :: Bool
   }
   deriving (Generic, Show)
 
 instance ToJSON KeyBoard where
-  toEncoding = genericToEncoding defaultOptions
+  toJSON = genericToJSON optionsSnakeCase
+  toEncoding = genericToEncoding optionsSnakeCase
 
 data Button = Button
   { action :: Action,
     color :: T.Text
   }
-  deriving (Generic, Show)
-
-instance ToJSON Button where
-  toEncoding = genericToEncoding defaultOptions
+  deriving (Generic, Show, ToJSON)
 
 data Action = Action
   { typeA :: T.Text,
-    label :: T.Text
+    labelA :: T.Text
   }
   deriving (Generic, Show)
 
 instance ToJSON Action where
-  toJSON (Action a b) = object ["type" .= a, "label" .= b]
-  toEncoding (Action a b) = pairs ("type" .= a <> "label" .= b)
+  toJSON = genericToJSON $ optionsEraseSuffix "A"
+  toEncoding = genericToEncoding $ optionsEraseSuffix "A"
 
 keyBoard :: KeyBoard
 keyBoard =

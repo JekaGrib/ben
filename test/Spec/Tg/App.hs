@@ -1,18 +1,20 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.Tg.App where
 
 import Control.Monad.State (evalStateT, execStateT)
 import qualified Data.Map as Map
+import Error (BotException (..))
+import Logger (Priority (..))
+import Spec.Error
 import Spec.Tg.App.Handlers
 import Spec.Tg.App.ResponseExample
-import Spec.Tg.Oops
+import Spec.Tg.Error
 import Spec.Tg.Types
-import Test.Hspec (describe, hspec, it, shouldBe, shouldThrow)
+import Spec.Types
+import Test.Hspec (Selector, describe, hspec, it, shouldBe, shouldThrow)
 import Tg.App (run, startApp)
-import Tg.Logger (Priority (..))
-import Tg.Oops (TGBotException (..))
+import Tg.Error (TGBotException (..))
 import Tg.Types
+import Types
 
 initialDB1, initialDB2, initialDB3 :: MapUserN
 initialDB1 = Map.empty
@@ -24,7 +26,7 @@ testTGApp =
   hspec $ do
     describe "startApp" $ do
       it
-        "return [LOG INFO, LOG DEBUG, GOTUPDATES , LOG INFO] when given empty update list"
+        "return [LOG INFO, LOG DEBUG, TgMock GOTUPDATES , LOG INFO] when given empty update list"
         $ do
           state <- execStateT (startApp handle0) []
           reverse state
@@ -32,12 +34,12 @@ testTGApp =
                          LOGMSG
                            DEBUG
                            "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates",
-                         GOTUPDATES,
-                         LOGMSG DEBUG $ "Get response: " ++ show json1 ,
+                         TgMock GOTUPDATES,
+                         LOGMSG DEBUG $ "Get response: " ++ show json1,
                          LOGMSG INFO "No new updates"
                        ]
       it
-        "return [LOG DEBUG, GOTUPDATES, CONFIRMUPDATES, LOG DEBUG] when given unempty update list"
+        "return [LOG DEBUG, TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES, LOG DEBUG] when given unempty update list"
         $ do
           state <- execStateT (startApp handle5) []
           reverse state
@@ -45,13 +47,13 @@ testTGApp =
                          LOGMSG
                            DEBUG
                            "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates",
-                         GOTUPDATES,
-                         LOGMSG DEBUG $ "Get response: " ++ show json5 ,
+                         TgMock GOTUPDATES,
+                         LOGMSG DEBUG $ "Get response: " ++ show json5,
                          LOGMSG INFO "There is new updates list",
                          LOGMSG
                            DEBUG
                            "Send request to confirmOldUpdates with offset:235804 https://api.telegram.org/botABC123/getUpdates",
-                         CONFIRMUPDATES 235804,
+                         TgMock $ CONFIRMUPDATES 235804,
                          LOGMSG DEBUG $ "Get response: " ++ show json1,
                          LOGMSG INFO "Received updates confirmed"
                        ]
@@ -82,33 +84,33 @@ testTGApp =
           `shouldBe` [ LOGMSG
                          DEBUG
                          "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates",
-                       GOTUPDATES,
+                       TgMock GOTUPDATES,
                        LOGMSG DEBUG $ "Get response: " ++ show json6,
                        LOGMSG INFO "There is new updates list",
                        LOGMSG
                          DEBUG
                          "Send request to confirmOldUpdates with offset:235802 https://api.telegram.org/botABC123/getUpdates",
-                       CONFIRMUPDATES 235802,
-                       LOGMSG DEBUG $ "Get response: " ++ show json1 ,
+                       TgMock $ CONFIRMUPDATES 235802,
+                       LOGMSG DEBUG $ "Get response: " ++ show json1,
                        LOGMSG INFO "Received updates confirmed",
                        LOGMSG INFO "Analysis update from the list",
-                       LOGMSG INFO "Get msg_id: 2112 from user 1118",
-                       LOGMSG INFO "Msg_id:2112 is text: \"love\""
+                       LOGMSG INFO "Get msg from user 1118",
+                       LOGMSG INFO "Msg has text: \"love\""
                      ]
           ++ ( concat . replicate 2 $
                  [ LOGMSG
                      DEBUG
-                     "Send request to send msg \"love\" to userId 1118: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118, text = \"love\"}",
+                     "Send request to send msg TextMsg \"love\" to userId 1118",
                    SENDMSG 1118 "love",
                    LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"",
-                   LOGMSG INFO "Msg \"love\" was sent to user 1118"
+                   LOGMSG INFO "Msg TextMsg \"love\" was sent to user 1118"
                  ]
              )
       it "work with text msg if user is in OpenRepeatMode " $ do
         state <- execStateT (evalStateT (run handle13) initialDB2) []
         reverse state
-          `shouldBe` [ GOTUPDATES,
-                       CONFIRMUPDATES 235802,
+          `shouldBe` [ TgMock GOTUPDATES,
+                       TgMock $ CONFIRMUPDATES 235802,
                        LOG WARNING,
                        SENDMSG 1118 "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still 2\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later"
                      ]
@@ -120,26 +122,26 @@ testTGApp =
           `shouldBe` [ LOGMSG
                          DEBUG
                          "Send request to getUpdates: https://api.telegram.org/botABC123/getUpdates",
-                       GOTUPDATES,
+                       TgMock GOTUPDATES,
                        LOGMSG DEBUG $ "Get response: " ++ show json7,
                        LOGMSG INFO "There is new updates list",
                        LOGMSG
                          DEBUG
                          "Send request to confirmOldUpdates with offset:235802 https://api.telegram.org/botABC123/getUpdates",
-                       CONFIRMUPDATES 235802,
+                       TgMock $ CONFIRMUPDATES 235802,
                        LOGMSG
                          DEBUG
                          "Get response: \"{\\\"ok\\\":true,\\\"result\\\":[]}\"",
                        LOGMSG INFO "Received updates confirmed",
                        LOGMSG INFO "Analysis update from the list",
-                       LOGMSG INFO "Get msg_id: 2113 from user 1118",
-                       LOGMSG INFO "Msg_id:2113 is text: \"/help\"",
+                       LOGMSG INFO "Get msg from user 1118",
+                       LOGMSG INFO "Msg has text: \"/help\"",
                        LOGMSG
                          DEBUG
-                         "Send request to send msg \"Hello\" to userId 1118: https://api.telegram.org/botABC123/sendMessage   JSON body : {chat_id = 1118, text = \"Hello\"}",
+                         "Send request to send msg TextMsg \"Hello\" to userId 1118",
                        SENDMSG 1118 "Hello",
                        LOGMSG DEBUG "Get response: \"{\\\"ok\\\":true}\"",
-                       LOGMSG INFO "Msg \"Hello\" was sent to user 1118"
+                       LOGMSG INFO "Msg TextMsg \"Hello\" was sent to user 1118"
                      ]
       it "work with singleton update list with /repeat msg" $ do
         dbState <- evalStateT (execStateT (run handle10) initialDB1) []
@@ -147,11 +149,11 @@ testTGApp =
         state <- execStateT (evalStateT (run handle10) initialDB1) []
         reverse state
           `shouldBe` [ LOG DEBUG,
-                       GOTUPDATES,
+                       TgMock GOTUPDATES,
                        LOG DEBUG,
                        LOG INFO,
                        LOG DEBUG,
-                       CONFIRMUPDATES 235801,
+                       TgMock $ CONFIRMUPDATES 235801,
                        LOG DEBUG,
                        LOG INFO,
                        LOG INFO,
@@ -170,22 +172,22 @@ testTGApp =
         state <- execStateT (evalStateT (run handle11) initialDB1) []
         reverse state
           `shouldBe` [ LOG DEBUG,
-                       GOTUPDATES,
+                       TgMock GOTUPDATES,
                        LOG DEBUG,
                        LOG INFO,
                        LOG DEBUG,
-                       CONFIRMUPDATES 235808,
+                       TgMock $ CONFIRMUPDATES 235808,
                        LOG DEBUG,
                        LOG INFO,
                        LOG INFO,
                        LOG INFO,
                        LOG INFO,
                        LOG DEBUG,
-                       COPYMSG 12677 2140,
+                       SENDAttachMSG 12677 2140,
                        LOG DEBUG,
                        LOG INFO,
                        LOG DEBUG,
-                       COPYMSG 12677 2140,
+                       SENDAttachMSG 12677 2140,
                        LOG DEBUG,
                        LOG INFO
                      ]
@@ -197,11 +199,11 @@ testTGApp =
           execStateT (evalStateT (run handle10 >> run handle12) initialDB1) []
         reverse state
           `shouldBe` [ LOG DEBUG,
-                       GOTUPDATES,
+                       TgMock GOTUPDATES,
                        LOG DEBUG,
                        LOG INFO,
                        LOG DEBUG,
-                       CONFIRMUPDATES 235801,
+                       TgMock $ CONFIRMUPDATES 235801,
                        LOG DEBUG,
                        LOG INFO,
                        LOG INFO,
@@ -216,11 +218,11 @@ testTGApp =
                        LOG INFO,
                        LOG INFO,
                        LOG DEBUG,
-                       GOTUPDATES,
+                       TgMock GOTUPDATES,
                        LOG DEBUG,
                        LOG INFO,
                        LOG DEBUG,
-                       CONFIRMUPDATES 235802,
+                       TgMock $ CONFIRMUPDATES 235802,
                        LOG DEBUG,
                        LOG INFO,
                        LOG INFO,
@@ -242,11 +244,11 @@ testTGApp =
           execStateT (evalStateT (run handle10 >> run handle1) initialDB1) []
         reverse state
           `shouldBe` [ LOG DEBUG,
-                       GOTUPDATES,
+                       TgMock GOTUPDATES,
                        LOG DEBUG,
                        LOG INFO,
                        LOG DEBUG,
-                       CONFIRMUPDATES 235801,
+                       TgMock $ CONFIRMUPDATES 235801,
                        LOG DEBUG,
                        LOG INFO,
                        LOG INFO,
@@ -261,11 +263,11 @@ testTGApp =
                        LOG INFO,
                        LOG INFO,
                        LOG DEBUG,
-                       GOTUPDATES,
+                       TgMock GOTUPDATES,
                        LOG DEBUG,
                        LOG INFO,
                        LOG DEBUG,
-                       CONFIRMUPDATES 235802,
+                       TgMock $ CONFIRMUPDATES 235802,
                        LOG DEBUG,
                        LOG INFO,
                        LOG INFO,
@@ -282,59 +284,59 @@ testTGApp =
       it "ignore unknown update (edited_message) " $ do
         state <- execStateT (evalStateT (run handle23) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235801, LOG WARNING]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 235801, LOG WARNING]
       it "ignore unknown update " $ do
         state <- execStateT (evalStateT (run handle24) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235801, LOG WARNING]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 235801, LOG WARNING]
       it "ignore unknown empty update " $ do
         state <- execStateT (evalStateT (run handle25) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235801, LOG WARNING]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 235801, LOG WARNING]
       it "ignore unknown update in not single update list" $ do
         state <- execStateT (evalStateT (run handle26) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235802, LOG WARNING, SENDMSG 1118 "love", SENDMSG 1118 "love"]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 235802, LOG WARNING, SENDMSG 1118 "love", SENDMSG 1118 "love"]
       it "work with update with without extra data" $ do
         state <- execStateT (evalStateT (run handle27) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235802, SENDMSG 1118 "love", SENDMSG 1118 "love"]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 235802, SENDMSG 1118 "love", SENDMSG 1118 "love"]
       it "work with update with wrong extra data" $ do
         state <- execStateT (evalStateT (run handle28) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235802, SENDMSG 1118 "love", SENDMSG 1118 "love"]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 235802, SENDMSG 1118 "love", SENDMSG 1118 "love"]
       it "work with several users " $ do
         state <- execStateT (evalStateT (run handle22) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235804, LOG WARNING, COPYMSG 1118 2110, COPYMSG 1118 2110, SENDMSG 12677 "Toni", SENDMSG 12677 "Toni", COPYMSG 12677 2112, COPYMSG 12677 2112]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 235804, LOG WARNING, SENDAttachMSG 1118 2110, SENDAttachMSG 1118 2110, SENDMSG 12677 "Toni", SENDMSG 12677 "Toni", SENDAttachMSG 12677 2112, SENDAttachMSG 12677 2112]
       it "work with photo update " $ do
         state <- execStateT (evalStateT (run handle36) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2625, COPYMSG 11189 2625]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 17107, SENDAttachMSG 11189 2625, SENDAttachMSG 11189 2625]
       it "work with doc update " $ do
         state <- execStateT (evalStateT (run handle37) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2643, COPYMSG 11189 2643]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 17107, SENDAttachMSG 11189 2643, SENDAttachMSG 11189 2643]
       it "work with audio message update " $ do
         state <- execStateT (evalStateT (run handle38) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2646, COPYMSG 11189 2646]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 17107, SENDAttachMSG 11189 2646, SENDAttachMSG 11189 2646]
       it "work with gif update " $ do
         state <- execStateT (evalStateT (run handle39) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2649, COPYMSG 11189 2649]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 17107, SENDAttachMSG 11189 2649, SENDAttachMSG 11189 2649]
       it "work with video update " $ do
         state <- execStateT (evalStateT (run handle40) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2655, COPYMSG 11189 2655]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 17107, SENDAttachMSG 11189 2655, SENDAttachMSG 11189 2655]
       it "work with audio update " $ do
         state <- execStateT (evalStateT (run handle41) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2661, COPYMSG 11189 2661]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 17107, SENDAttachMSG 11189 2661, SENDAttachMSG 11189 2661]
       it "work with forward message update " $ do
         state <- execStateT (evalStateT (run handle42) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 17107, COPYMSG 11189 2664, COPYMSG 11189 2664]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 17107, SENDAttachMSG 11189 2664, SENDAttachMSG 11189 2664]
       it "throw CheckGetUpdatesResponseException on negative getUpdates response" $
         evalStateT (evalStateT (run handle6) initialDB1) []
           `shouldThrow` ( ==
@@ -357,7 +359,7 @@ testTGApp =
         dbState `shouldBe` initialDB1
         state <- execStateT (evalStateT (run handle17) initialDB1) []
         reverse state
-          `shouldBe` [GOTUPDATES, CONFIRMUPDATES 235802, SENDMSG 1118 "love", SENDMSG 1118 "love"]
+          `shouldBe` [TgMock GOTUPDATES, TgMock $ CONFIRMUPDATES 235802, SENDMSG 1118 "love", SENDMSG 1118 "love"]
       it "throw CheckConfirmUpdatesResponseException on negative confirmUpdates response" $
         evalStateT (evalStateT (run handle16) initialDB1) []
           `shouldThrow` isCheckConfirmUpdatesResponseException
@@ -372,31 +374,31 @@ testTGApp =
           `shouldThrow` isConfirmUpdatesException
       it "throw CheckSendMsgResponseException on unknown sendMsg response" $
         evalStateT (evalStateT (run handle29) initialDB2) []
-          `shouldThrow` isCheckSendMsgResponseException
+          `shouldThrow` (isCheckSendMsgResponseException :: Selector (BotException MessageId))
       it "throw CheckSendMsgResponseException on negative sendMsg response" $
         evalStateT (evalStateT (run handle30) initialDB2) []
-          `shouldThrow` isCheckSendMsgResponseException
+          `shouldThrow` (isCheckSendMsgResponseException :: Selector (BotException MessageId))
       it "throw CheckSendMsgResponseException on other negative sendMsg response" $
         evalStateT (evalStateT (run handle31) initialDB2) []
-          `shouldThrow` isCheckSendMsgResponseException
-      it "throw CheckCopyMsgResponseException on unknown copyMsg response" $
+          `shouldThrow` (isCheckSendMsgResponseException :: Selector (BotException MessageId))
+      it "throw CheckSendMsgResponseException on unknown sendAttachMsg response" $
         evalStateT (evalStateT (run handle33) initialDB2) []
-          `shouldThrow` isCheckCopyMsgResponseException
-      it "throw CheckCopyMsgResponseException on negative copyMsg response" $
+          `shouldThrow` (isCheckSendMsgResponseException :: Selector (BotException MessageId))
+      it "throw CheckSendMsgResponseException on negative sendAttachMsg response" $
         evalStateT (evalStateT (run handle34) initialDB2) []
-          `shouldThrow` isCheckCopyMsgResponseException
-      it "throw CheckCopyMsgResponseException on other negative copyMsg response" $
+          `shouldThrow` (isCheckSendMsgResponseException :: Selector (BotException MessageId))
+      it "throw CheckSendMsgResponseException on other negative sendAttachMsg response" $
         evalStateT (evalStateT (run handle35) initialDB2) []
-          `shouldThrow` isCheckCopyMsgResponseException
+          `shouldThrow` (isCheckSendMsgResponseException :: Selector (BotException MessageId))
       it "throw CheckSendKeybResponseException on unknown sendKeyboard response" $
         evalStateT (evalStateT (run handle44) initialDB3) []
-          `shouldThrow` isCheckSendKeybResponseException
+          `shouldThrow` (isCheckSendKeybResponseException :: Selector (BotException AttachNotMatter))
       it "throw CheckSendKeybResponseException on negative sendKeyboard response" $
         evalStateT (evalStateT (run handle45) initialDB3) []
-          `shouldThrow` isCheckSendKeybResponseException
+          `shouldThrow` (isCheckSendKeybResponseException :: Selector (BotException AttachNotMatter))
       it "throw CheckSendKeybResponseException on other negative sendKeyboard response" $
         evalStateT (evalStateT (run handle46) initialDB3) []
-          `shouldThrow` isCheckSendKeybResponseException
+          `shouldThrow` (isCheckSendKeybResponseException :: Selector (BotException AttachNotMatter))
       it "throw CheckConfirmUpdatesResponseException on unknown confirmUpdates response" $
         evalStateT (evalStateT (run handle47) initialDB3) []
           `shouldThrow` isCheckConfirmUpdatesResponseException
@@ -408,7 +410,7 @@ testTGApp =
           `shouldThrow` isCheckConfirmUpdatesResponseException
       it "throw SendMsgException on sendMsg ConnectionTimeout" $
         evalStateT (evalStateT (run handle50) initialDB3) []
-          `shouldThrow` isSendMsgException
+          `shouldThrow` (isSendMsgException :: Selector (BotException MessageId))
       it "throw GetUpdatesException on sendMsg ConnectionTimeout" $
         evalStateT (evalStateT (run handle51) initialDB3) []
           `shouldThrow` isGetUpdatesException
@@ -417,7 +419,7 @@ testTGApp =
           `shouldThrow` isConfirmUpdatesException
       it "throw SendKeybException on sendMsg ConnectionTimeout" $
         evalStateT (evalStateT (run handle53) initialDB3) []
-          `shouldThrow` isSendKeybException
-      it "throw CopyMsgException on sendMsg ConnectionTimeout" $
+          `shouldThrow` (isSendKeybException :: Selector (BotException AttachNotMatter))
+      it "throw SendMsgException on sendMsg ConnectionTimeout" $
         evalStateT (evalStateT (run handle54) initialDB3) []
-          `shouldThrow` isCopyMsgException
+          `shouldThrow` (isSendMsgException :: Selector (BotException MessageId))

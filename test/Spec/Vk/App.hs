@@ -1,19 +1,21 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.Vk.App where
 
 import Control.Monad.State (evalStateT, execStateT, runStateT)
 import qualified Data.Map as Map
+import Error (BotException (..))
+import Logger (Priority (..))
+import Spec.Error
+import Spec.Types
+import Spec.Vk.App.Error
 import Spec.Vk.App.Handlers
-import Spec.Vk.App.Oops
 import Spec.Vk.App.ResponseExample
 import Spec.Vk.Types
-import Test.Hspec (describe, hspec, it, shouldBe, shouldNotBe, shouldThrow)
+import Test.Hspec (Selector, describe, hspec, it, shouldBe, shouldNotBe, shouldThrow)
+import Types
 import Vk.Api.Response (LoadDocResp (..), LoadPhotoResp (..), ServerInfo (..))
 import Vk.App (getServInfoAndCheckResp, run, runServ, startApp)
 import Vk.AppT (TryServer (..), firstTry, nextTry, secondTry, thirdTry)
-import Vk.Logger (Priority (..))
-import Vk.Oops (VKBotException (..))
+import Vk.Error (VKBotException (..))
 import Vk.Types
 
 initialDB1, initialDB2, initialDB3 :: MapUserN
@@ -28,7 +30,7 @@ emptyTryServInf :: TryServer
 emptyTryServInf = firstTry emptyServInf
 
 testVkApp :: IO ()
-testVkApp = 
+testVkApp =
   hspec $ do
     describe "getServInfoAndCheckResp" $ do
       it "throw Exception with error answer" $
@@ -58,471 +60,472 @@ testVkApp =
       it "work with empty update list" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle10) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle10) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
                        LOGMSG INFO "No new updates"
                      ]
       it "work with singleton update list with \"love\" text msg" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle11) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle11) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 123 (TextMsg "love"),
-                       SENDMSG 123 (TextMsg "love")
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDMSG 123 "love",
+                       SENDMSG 123 "love"
                      ]
       it "work with /repeat text msg(send Keyb,put user in OpenRepeat mode)" $ do
         (st, actions) <-
           runStateT
-            (execStateT (runServ handle43) (emptyTryServInf, initialDB3))
+            (execStateT (evalStateT (runServ handle43) emptyTryServInf) initialDB3)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
                        SENDKEYB 123 3 " : Current number of repeats your message.\nWhy?"
                      ]
-        snd st `shouldBe` Map.insert 123 (Left (OpenRepeat 3)) initialDB3
+        st `shouldBe` Map.insert 123 (Left (OpenRepeat 3)) initialDB3
       it "work with /help text msg(send infoMsg)" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle44) (emptyTryServInf, initialDB3))
+            (evalStateT (evalStateT (runServ handle44) emptyTryServInf) initialDB3)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 123 (TextMsg "Hello")
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDMSG 123 "Hello"
                      ]
       it "work with text msg \"love\" if user is in OpenRepeat mode (send warning info msg)" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle11) (emptyTryServInf, initialDB2))
+            (evalStateT (evalStateT (runServ handle11) emptyTryServInf) initialDB2)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
                        LOG WARNING,
-                       SENDMSG 123 (TextMsg "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still 4\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later")
+                       SENDMSG 123 "UNKNOWN NUMBER\nI,m ssory, number of repeats has not changed, it is still 4\nTo change it you may sent me command \"/repeat\" and then choose number from 1 to 5 on keyboard\nPlease, try again later"
                      ]
       it "work with text msg \"3\" if user is in (OpenRepeat 4) mode (change N to 3, send info msg)" $ do
         (st, actions) <-
           runStateT
-            (execStateT (runServ handle41) (emptyTryServInf, initialDB2))
+            (execStateT (evalStateT (runServ handle41) emptyTryServInf) initialDB2)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 123 (TextMsg "Number of repeats successfully changed from 4 to 3")
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDMSG 123 "Number of repeats successfully changed from 4 to 3"
                      ]
-        snd st `shouldBe` Map.insert 123 (Right 3) initialDB2
+        st `shouldBe` Map.insert 123 (Right 3) initialDB2
       it "work with text msg \"love\" after text msg \"3\" if user is in (OpenRepeat 4) mode (change N to 3, send info msg,send \"love\" 3 times)" $ do
         (st, actions) <-
           runStateT
-            (execStateT (runServ handle42) (emptyTryServInf, initialDB2))
+            (execStateT (evalStateT (runServ handle42) emptyTryServInf) initialDB2)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 123 (TextMsg "Number of repeats successfully changed from 4 to 3"),
-                       SENDMSG 123 (TextMsg "love"),
-                       SENDMSG 123 (TextMsg "love"),
-                       SENDMSG 123 (TextMsg "love")
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDMSG 123 "Number of repeats successfully changed from 4 to 3",
+                       SENDMSG 123 "love",
+                       SENDMSG 123 "love",
+                       SENDMSG 123 "love"
                      ]
-        snd st `shouldBe` Map.insert 123 (Right 3) initialDB2
+        st `shouldBe` Map.insert 123 (Right 3) initialDB2
       it "work with singleton update list with sticker msg " $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle12) (emptyTryServInf, initialDB3))
+            (evalStateT (evalStateT (runServ handle12) emptyTryServInf) initialDB3)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (StickerMsg 9014),
-                       SENDMSG 1606 (StickerMsg 9014)
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (StickerMsg 9014),
+                       SENDAttachMSG 1606 (StickerMsg 9014)
                      ]
       it "work with singleton update list with photo attachment msg " $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle8) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle8) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       GOTPhotoSERVER 1606,
-                       GOTOURL "https:photo",
-                       LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
-                       SAVEPhotoONSERV $
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       VkMock $ GOTPhotoSERVER 1606,
+                       VkMock $ GOTOURL "https:photo",
+                       VkMock $ LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
+                       VkMock $ SAVEPhotoONSERV $
                          LoadPhotoResp 24 "anyHash" "anyPhotoSring",
-                       SENDMSG 1606 (AttachmentMsg "" ["photo50_25"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "" ["photo50_25"] ("", ""))
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["photo50_25"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["photo50_25"] ("", ""))
                      ]
       it "work with singleton update list with doc attachment msg " $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle9) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle9) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       GOTDocSERVER 1606 "doc",
-                       GOTOURL "https:doc",
-                       LOADDocTOSERV "http://toLoadDoc" "https:doc" "anyDoc" "sql",
-                       SAVEDocONSERV (LoadDocResp "anyFile") "car.sql",
-                       SENDMSG 1606 (AttachmentMsg "" ["doc50_25"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "" ["doc50_25"] ("", ""))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       VkMock $ GOTDocSERVER 1606 "doc",
+                       VkMock $ GOTOURL "https:doc",
+                       VkMock $ LOADDocTOSERV "http://toLoadDoc" "https:doc" "anyDoc" "sql",
+                       VkMock $ SAVEDocONSERV (LoadDocResp "anyFile") "car.sql",
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["doc50_25"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["doc50_25"] ("", ""))
                      ]
       it "work with singleton update list with audio message attachment msg" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle13) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle13) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       GOTDocSERVER 1606 "audio_message",
-                       GOTOURL "https:audiomsg.ogg",
-                       LOADDocTOSERV "http://toLoadDoc" "https:audiomsg.ogg" "anyDoc" "ogg",
-                       SAVEDocONSERV (LoadDocResp "anyFile") "audio_message",
-                       SENDMSG 1606 (AttachmentMsg "" ["doc50_25"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "" ["doc50_25"] ("", ""))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       VkMock $ GOTDocSERVER 1606 "audio_message",
+                       VkMock $ GOTOURL "https:audiomsg.ogg",
+                       VkMock $ LOADDocTOSERV "http://toLoadDoc" "https:audiomsg.ogg" "anyDoc" "ogg",
+                       VkMock $ SAVEDocONSERV (LoadDocResp "anyFile") "audio_message",
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["doc50_25"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["doc50_25"] ("", ""))
                      ]
       it "work with singleton update list with video attachment msg" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle14) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle14) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (AttachmentMsg "" ["video-4144_1714"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "" ["video-4144_1714"] ("", ""))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["video-4144_1714"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["video-4144_1714"] ("", ""))
                      ]
       it "work with singleton update list with audio attachment msg" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle15) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle15) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("", ""))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["audio1606_3483"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["audio1606_3483"] ("", ""))
                      ]
       it "work with singleton update list with market attachment msg" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle16) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle16) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (AttachmentMsg "" ["market-1196_3822"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "" ["market-1196_3822"] ("", ""))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["market-1196_3822"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["market-1196_3822"] ("", ""))
                      ]
       it "work with singleton update list with wall attachment msg" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle17) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle17) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (AttachmentMsg "" ["wall-6799_4584"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "" ["wall-6799_4584"] ("", ""))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["wall-6799_4584"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["wall-6799_4584"] ("", ""))
                      ]
       it "work with singleton update list with poll attachment msg" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle18) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle18) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (AttachmentMsg "" ["poll-6799_3839"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "" ["poll-6799_3839"] ("", ""))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["poll-6799_3839"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["poll-6799_3839"] ("", ""))
                      ]
       it "work with singleton update list with audio attachment msg with text" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle19) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle19) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("", ""))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["audio1606_3483"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["audio1606_3483"] ("", ""))
                      ]
       it "work with singleton update list with market attachment msg with text" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle20) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle20) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (AttachmentMsg "hello" ["market-1196_3822"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "hello" ["market-1196_3822"] ("", ""))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["market-1196_3822"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["market-1196_3822"] ("", ""))
                      ]
       it "work with forward msg (IGNORE)" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle21) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle21) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       LOG WARNING,
-                       SENDMSG 1606 (TextMsg "I`m sorry, I can`t work with forward messages, so I will ignore this message")
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       LOG WARNING
                      ]
       it "work with singleton update list with GEO msg" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle22) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle22) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (AttachmentMsg "" [] ("69.409", "32.456")),
-                       SENDMSG 1606 (AttachmentMsg "" [] ("69.409", "32.456"))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (VkAttachMsg "" [] ("69.409", "32.456")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" [] ("69.409", "32.456"))
                      ]
       it "work with singleton update list with GEO msg with text" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle23) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle23) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (AttachmentMsg "hello" [] ("69.409", "32.456")),
-                       SENDMSG 1606 (AttachmentMsg "hello" [] ("69.409", "32.456"))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" [] ("69.409", "32.456")),
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" [] ("69.409", "32.456"))
                      ]
       it "work with singleton update list with GEO msg with audio attachment" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle24) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle24) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("69.409", "32.456")),
-                       SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("69.409", "32.456"))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["audio1606_3483"] ("69.409", "32.456")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["audio1606_3483"] ("69.409", "32.456"))
                      ]
       it "work with singleton update list with GEO msg with audio attachment with text" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle25) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle25) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("69.409", "32.456")),
-                       SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483"] ("69.409", "32.456"))
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["audio1606_3483"] ("69.409", "32.456")),
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["audio1606_3483"] ("69.409", "32.456"))
                      ]
       it "work with singleton update list with GEO msg with photo attachment with text" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle26) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle26) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       GOTPhotoSERVER 1606,
-                       GOTOURL "https:photo",
-                       LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
-                       SAVEPhotoONSERV $
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       VkMock $ GOTPhotoSERVER 1606,
+                       VkMock $ GOTOURL "https:photo",
+                       VkMock $ LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
+                       VkMock $ SAVEPhotoONSERV $
                          LoadPhotoResp 24 "anyHash" "anyPhotoSring",
-                       SENDMSG 1606 (AttachmentMsg "hello" ["photo50_25"] ("69.409", "32.456")),
-                       SENDMSG 1606 (AttachmentMsg "hello" ["photo50_25"] ("69.409", "32.456"))
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["photo50_25"] ("69.409", "32.456")),
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["photo50_25"] ("69.409", "32.456"))
                      ]
       it "work with singleton update list with GEO forward msg (IGNORE)" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle27) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle27) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       LOG WARNING,
-                       SENDMSG 123 (TextMsg "I`m sorry, I can`t work with forward messages, so I will ignore this message")
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       LOG WARNING
                      ]
       it "work with update list with several text msgs from different users" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle28) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle28) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 123 (TextMsg "love"),
-                       SENDMSG 123 (TextMsg "love"),
-                       SENDMSG 555 (TextMsg "hello"),
-                       SENDMSG 555 (TextMsg "hello")
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDMSG 123 "love",
+                       SENDMSG 123 "love",
+                       SENDMSG 555 "hello",
+                       SENDMSG 555 "hello"
                      ]
       it "work with update list with several attachment msgs from different users" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle29) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle29) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       SENDMSG 123 (AttachmentMsg "" ["audio1606_3483"] ("", "")),
-                       SENDMSG 123 (AttachmentMsg "" ["audio1606_3483"] ("", "")),
-                       GOTPhotoSERVER 1606,
-                       GOTOURL "https:photo",
-                       LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
-                       SAVEPhotoONSERV $
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       SENDAttachMSG 123 (VkAttachMsg "" ["audio1606_3483"] ("", "")),
+                       SENDAttachMSG 123 (VkAttachMsg "" ["audio1606_3483"] ("", "")),
+                       VkMock $ GOTPhotoSERVER 1606,
+                       VkMock $ GOTOURL "https:photo",
+                       VkMock $ LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
+                       VkMock $ SAVEPhotoONSERV $
                          LoadPhotoResp 24 "anyHash" "anyPhotoSring",
-                       SENDMSG 1606 (AttachmentMsg "" ["photo50_25"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "" ["photo50_25"] ("", ""))
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["photo50_25"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["photo50_25"] ("", ""))
                      ]
       it "work with update list with several attachments in one msg" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle30) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle30) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       GOTPhotoSERVER 1606,
-                       GOTOURL "https:photo",
-                       LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
-                       SAVEPhotoONSERV $
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       VkMock $ GOTPhotoSERVER 1606,
+                       VkMock $ GOTOURL "https:photo",
+                       VkMock $ LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
+                       VkMock $ SAVEPhotoONSERV $
                          LoadPhotoResp 24 "anyHash" "anyPhotoSring",
-                       SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483", "photo50_25"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483", "photo50_25"] ("", ""))
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["audio1606_3483", "photo50_25"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["audio1606_3483", "photo50_25"] ("", ""))
                      ]
       it "work with update list with several attachments with text in one msg" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle31) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle31) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       GOTPhotoSERVER 1606,
-                       GOTOURL "https:photo",
-                       LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
-                       SAVEPhotoONSERV $
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       VkMock $ GOTPhotoSERVER 1606,
+                       VkMock $ GOTOURL "https:photo",
+                       VkMock $ LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
+                       VkMock $ SAVEPhotoONSERV $
                          LoadPhotoResp 24 "anyHash" "anyPhotoSring",
-                       SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483", "photo50_25"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483", "photo50_25"] ("", ""))
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["audio1606_3483", "photo50_25"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["audio1606_3483", "photo50_25"] ("", ""))
                      ]
       it "work with update list with several attachments with text in one GEO msg" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle32) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle32) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
-                       GOTPhotoSERVER 1606,
-                       GOTOURL "https:photo",
-                       LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
-                       SAVEPhotoONSERV $
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
+                       VkMock $ GOTPhotoSERVER 1606,
+                       VkMock $ GOTOURL "https:photo",
+                       VkMock $ LOADPhotoTOSERV "http://toLoadPic" "https:photo" "anyPhoto",
+                       VkMock $ SAVEPhotoONSERV $
                          LoadPhotoResp 24 "anyHash" "anyPhotoSring",
-                       SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483", "photo50_25"] ("69.409", "32.456")),
-                       SENDMSG 1606 (AttachmentMsg "hello" ["audio1606_3483", "photo50_25"] ("69.409", "32.456"))
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["audio1606_3483", "photo50_25"] ("69.409", "32.456")),
+                       SENDAttachMSG 1606 (VkAttachMsg "hello" ["audio1606_3483", "photo50_25"] ("69.409", "32.456"))
                      ]
       it "work with update list with Unknown update (IGNORE only unknown update)" $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle33) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle33) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
                        LOG WARNING,
-                       SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("", "")),
-                       SENDMSG 1606 (AttachmentMsg "" ["audio1606_3483"] ("", ""))
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["audio1606_3483"] ("", "")),
+                       SENDAttachMSG 1606 (VkAttachMsg "" ["audio1606_3483"] ("", ""))
                      ]
       it "work with update list with sticker msg with text (IGNORE) " $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle34) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle34) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
                        LOG WARNING
                      ]
       it "work with update list with sticker and other attachment in one msg (IGNORE) " $ do
         actions <-
           execStateT
-            (evalStateT (runServ handle35) (emptyTryServInf, initialDB1))
+            (evalStateT (evalStateT (runServ handle35) emptyTryServInf) initialDB1)
             []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
                        LOG WARNING
                      ]
       it "throw CheckGetUpdatesException with unknown getUpdates answer" $
-        runStateT (evalStateT (runServ handle36) (emptyTryServInf, initialDB1)) []
+        runStateT (evalStateT (evalStateT (runServ handle36) emptyTryServInf) initialDB1) []
           `shouldThrow` isCheckGetUpdatesResponseException
       it "throw CheckGetUpdatesException with error getUpdates answer" $
-        runStateT (evalStateT (runServ handle6) (emptyTryServInf, initialDB1)) []
+        runStateT (evalStateT (evalStateT (runServ handle6) emptyTryServInf) initialDB1) []
           `shouldThrow` isCheckGetUpdatesResponseException
       it "got new server info and send nothing if getUpdates answer=fail2 FirstTime" $ do
-        (newTryServInfo, _) <- evalStateT (execStateT (runServ handle37) (emptyTryServInf, initialDB1)) []
+        newTryServInfo <- evalStateT (evalStateT (execStateT (runServ handle37) emptyTryServInf) initialDB1) []
         newTryServInfo
           `shouldNotBe` emptyTryServInf
-        actions <- execStateT (evalStateT (runServ handle37) (emptyTryServInf, initialDB1)) []
+        actions <- execStateT (evalStateT (evalStateT (runServ handle37) emptyTryServInf) initialDB1) []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
                        LOG WARNING,
-                       GOTSERVER
+                       VkMock GOTSERVER
                      ]
       it "got new server info and send nothing if getUpdates answer=fail2 SecondTime" $ do
-        (newTryServInfo, _) <- evalStateT (execStateT (runServ handle37) (secondTry emptyServInf, initialDB1)) []
+        newTryServInfo <- evalStateT (evalStateT (execStateT (runServ handle37) $ secondTry emptyServInf) initialDB1) []
         newTryServInfo
           `shouldNotBe` emptyTryServInf
-        actions <- execStateT (evalStateT (runServ handle37) (secondTry emptyServInf, initialDB1)) []
+        actions <- execStateT (evalStateT (evalStateT (runServ handle37) $ secondTry emptyServInf) initialDB1) []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
                        LOG WARNING,
-                       GOTSERVER
+                       VkMock GOTSERVER
                      ]
       it "change FirstTry to SecondTry if getUpdates answer=fail2 FirstTime" $ do
-        (newTryServInfo, _) <- evalStateT (execStateT (runServ handle37) (emptyTryServInf, initialDB1)) []
+        newTryServInfo <- evalStateT (evalStateT (execStateT (runServ handle37) emptyTryServInf) initialDB1) []
         tryNum newTryServInfo `shouldBe` 2
       it "throw exception if getUpdates answer=fail2 ThirdTime" $
-        evalStateT (execStateT (runServ handle37) (thirdTry emptyServInf, initialDB1)) []
+        evalStateT (evalStateT (execStateT (runServ handle37) $ thirdTry emptyServInf) initialDB1) []
           `shouldThrow` isCheckGetUpdatesResponseException
       it "got new server info and send nothing if getUpdates answer=fail3 FirstTime" $ do
-        (newTryServInfo, _) <- evalStateT (execStateT (runServ handle38) (emptyTryServInf, initialDB1)) []
+        newTryServInfo <- evalStateT (evalStateT (execStateT (runServ handle38) emptyTryServInf) initialDB1) []
         newTryServInfo
           `shouldNotBe` emptyTryServInf
-        actions <- execStateT (evalStateT (runServ handle38) (emptyTryServInf, initialDB1)) []
+        actions <- execStateT (evalStateT (evalStateT (runServ handle38) emptyTryServInf) initialDB1) []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
                        LOG WARNING,
-                       GOTSERVER
+                       VkMock GOTSERVER
                      ]
       it "got new server info and send nothing if getUpdates answer=fail3 SecondTime" $ do
-        (newTryServInfo, _) <- evalStateT (execStateT (runServ handle38) (secondTry emptyServInf, initialDB1)) []
+        newTryServInfo <- evalStateT (evalStateT (execStateT (runServ handle38) $ secondTry emptyServInf) initialDB1) []
         newTryServInfo
           `shouldNotBe` emptyTryServInf
-        actions <- execStateT (evalStateT (runServ handle38) (secondTry emptyServInf, initialDB1)) []
+        actions <- execStateT (evalStateT (evalStateT (runServ handle38) $ secondTry emptyServInf) initialDB1) []
         reverse actions
-          `shouldBe` [ GOTUPDATES emptyServInf,
+          `shouldBe` [ VkMock $ GOTUPDATES emptyServInf,
                        LOG WARNING,
-                       GOTSERVER
+                       VkMock GOTSERVER
                      ]
       it "change FirstTry to SecondTry if getUpdates answer=fail3 FirstTime" $ do
-        (newTryServInfo, _) <- evalStateT (execStateT (runServ handle38) (emptyTryServInf, initialDB1)) []
+        newTryServInfo <- evalStateT (evalStateT (execStateT (runServ handle38) emptyTryServInf) initialDB1) []
         tryNum newTryServInfo `shouldBe` 2
       it "throw exception if getUpdates answer=fail3 ThirdTime" $
-        evalStateT (execStateT (runServ handle38) (thirdTry emptyServInf, initialDB1)) []
+        evalStateT (evalStateT (execStateT (runServ handle38) $ thirdTry emptyServInf) initialDB1) []
           `shouldThrow` isCheckGetUpdatesResponseException
       it "change ts in serverInfo and FirstTry to SecondTry if getUpdates answer=FailTs(ts=25) FirstTime" $ do
-        (newTryServInfo, _) <- evalStateT (execStateT (runServ handle39) (emptyTryServInf, initialDB1)) []
+        newTryServInfo <- evalStateT (evalStateT (execStateT (runServ handle39) emptyTryServInf) initialDB1) []
         newTryServInfo `shouldBe` nextTry (emptyTryServInf {servInf = emptyServInf {tsSI = 25}})
       it "change ts in serverInfo and FirstTry to SecondTry if getUpdates answer=FailTs(ts=25,fail=1) FirstTime" $ do
-        (newTryServInfo, _) <- evalStateT (execStateT (runServ handle40) (emptyTryServInf, initialDB1)) []
+        newTryServInfo <- evalStateT (evalStateT (execStateT (runServ handle40) emptyTryServInf) initialDB1) []
         newTryServInfo `shouldBe` nextTry (emptyTryServInf {servInf = emptyServInf {tsSI = 25}})
       it "throw exception if getUpdates answer=failTs(ts=25) ThirdTime" $
-        evalStateT (execStateT (runServ handle39) (thirdTry emptyServInf, initialDB1)) []
+        evalStateT (evalStateT (execStateT (runServ handle39) $ thirdTry emptyServInf) initialDB1) []
           `shouldThrow` isCheckGetUpdatesResponseException
       it "throw GetUpdatesException if getUpdates HttpException" $
-        runStateT (runStateT (runServ handle46) (emptyTryServInf, initialDB1)) []
+        runStateT (runStateT (runStateT (runServ handle46) emptyTryServInf) initialDB1) []
           `shouldThrow` isGetUpdatesException
       it "throw SendMsgException if sendMsg HttpException" $
-        runStateT (runStateT (runServ handle47) (emptyTryServInf, initialDB1)) []
-          `shouldThrow` isSendMsgException
+        runStateT (runStateT (runStateT (runServ handle47) emptyTryServInf) initialDB1) []
+          `shouldThrow` (isSendMsgException :: Selector (BotException VkAttachMSG))
       it "throw SendKeybException if sendKeyb HttpException" $
-        runStateT (runStateT (runServ handle48) (emptyTryServInf, initialDB1)) []
-          `shouldThrow` isSendKeybException
+        runStateT (runStateT (runStateT (runServ handle48) emptyTryServInf) initialDB1) []
+          `shouldThrow` (isSendKeybException :: Selector (BotException AttachNotMatter))
       it "throw GetLongPollServerException if getServer HttpException; getUpdates answer=Fail" $
-        runStateT (runStateT (runServ handle49) (emptyTryServInf, initialDB1)) []
+        runStateT (runStateT (runStateT (runServ handle49) emptyTryServInf) initialDB1) []
           `shouldThrow` isGetLongPollServerException
     describe "(startApp >>= runServ)" $ do
       it "work with empty update list" $ do
         actions <-
           execStateT
-            (startApp handle0 initialDB1 >>= evalStateT (runServ handle0))
+            ( do
+                tryServ <- startApp handle0
+                evalStateT (evalStateT (runServ handle0) tryServ) initialDB1
+            )
             []
         reverse actions
           `shouldBe` [ LOGMSG
                          DEBUG
-                         "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=321&access_token=ABC123&v=5.103",
-                       GOTSERVER,
+                         "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=321&access_token=ABC123&v=5.85",
+                       VkMock GOTSERVER,
                        LOGMSG DEBUG $ "Get response: " ++ show json1,
                        LOGMSG INFO "Work with received server",
                        LOGMSG
                          DEBUG
                          "Send request to getUpdates: https:anyServer?act=a_check&key=anyKey&ts=289&wait=20",
-                       GOTUPDATES $
+                       VkMock $ GOTUPDATES $
                          ServerInfo
                            "anyKey"
                            "https:anyServer"
@@ -533,13 +536,16 @@ testVkApp =
       it "work with singleton update list with text msg" $ do
         actions <-
           execStateT
-            (startApp handle2 initialDB1 >>= evalStateT (runServ handle2))
+            ( do
+                tryServ <- startApp handle2
+                evalStateT (evalStateT (runServ handle2) tryServ) initialDB1
+            )
             []
         reverse actions
           `shouldBe` [ LOGMSG
                          DEBUG
-                         "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=321&access_token=ABC123&v=5.103",
-                       GOTSERVER,
+                         "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=321&access_token=ABC123&v=5.85",
+                       VkMock GOTSERVER,
                        LOGMSG
                          DEBUG
                          "Get response: \"{\\\"response\\\":{\\\"key\\\":\\\"anyKey\\\",\\\"server\\\":\\\"https:anyServer\\\",\\\"ts\\\":\\\"289\\\"}}\"",
@@ -547,7 +553,7 @@ testVkApp =
                        LOGMSG
                          DEBUG
                          "Send request to getUpdates: https:anyServer?act=a_check&key=anyKey&ts=289&wait=20",
-                       GOTUPDATES $
+                       VkMock $ GOTUPDATES $
                          ServerInfo
                            "anyKey"
                            "https:anyServer"
@@ -557,33 +563,37 @@ testVkApp =
                          "Get response: \"{\\\"ts\\\":\\\"290\\\",\\\"updates\\\":[{\\\"type\\\":\\\"message_new\\\",\\\"object\\\":{\\\"date\\\":1594911394,\\\"from_id\\\":123,\\\"id\\\":597,\\\"out\\\":0,\\\"peer_id\\\":1606,\\\"text\\\":\\\"love\\\",\\\"conversation_message_id\\\":562,\\\"fwd_messages\\\":[],\\\"important\\\":false,\\\"random_id\\\":0,\\\"attachments\\\":[],\\\"is_hidden\\\":false},\\\"group_id\\\":19495,\\\"event_id\\\":\\\"123\\\"}]}\\r\\n\"",
                        LOGMSG INFO "There is new updates list",
                        LOGMSG INFO "Analysis update from the list",
-                       LOGMSG INFO "Get TextMsg: \"love\" from user 123"
+                       LOGMSG INFO "Get msg from user 123",
+                       LOGMSG INFO "Msg has text: \"love\""
                      ]
           ++ ( concat . replicate 2 $
                  [ LOGMSG
                      DEBUG
-                     "Send request to send to user_id:123 msg: TextMsg \"love\"",
-                   SENDMSG 123 (TextMsg "love"),
+                     "Send request to send msg TextMsg \"love\" to userId 123",
+                   SENDMSG 123 "love",
                    LOGMSG DEBUG "Get response: \"{\\\"response\\\":626}\"",
-                   LOGMSG INFO "Msg \"love\" was sent to user 123"
+                   LOGMSG INFO "Msg TextMsg \"love\" was sent to user 123"
                  ]
              )
       it "work with singleton update list with sticker msg " $ do
         actions <-
           execStateT
-            (startApp handle5 initialDB1 >>= evalStateT (runServ handle5))
+            ( do
+                tryServ <- startApp handle5
+                evalStateT (evalStateT (runServ handle5) tryServ) initialDB1
+            )
             []
         reverse actions
           `shouldBe` [ LOGMSG
                          DEBUG
-                         "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=321&access_token=ABC123&v=5.103",
-                       GOTSERVER,
+                         "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id=321&access_token=ABC123&v=5.85",
+                       VkMock GOTSERVER,
                        LOGMSG DEBUG $ "Get response: " ++ show json1,
                        LOGMSG INFO "Work with received server",
                        LOGMSG
                          DEBUG
                          "Send request to getUpdates: https:anyServer?act=a_check&key=anyKey&ts=289&wait=20",
-                       GOTUPDATES $
+                       VkMock $ GOTUPDATES $
                          ServerInfo
                            "anyKey"
                            "https:anyServer"
@@ -591,22 +601,22 @@ testVkApp =
                        LOGMSG DEBUG $ "Get response: " ++ show json7,
                        LOGMSG INFO "There is new updates list",
                        LOGMSG INFO "Analysis update from the list",
-                       LOGMSG
-                         INFO
-                         "Get AttachmentMsg: [StickerAttachment {sticker = StickerInfo {sticker_id = 9014}}] from user 1606"
+                       LOGMSG INFO "Get msg from user 1606",
+                       LOGMSG INFO "Msg is attachment"
                      ]
           ++ ( concat . replicate 2 $
-                 [ LOGMSG
-                     DEBUG
-                     "Send request to send to user_id:1606 msg: StickerMsg 9014",
-                   SENDMSG 1606 (StickerMsg 9014),
+                 [ LOGMSG DEBUG "Send request to send msg AttachMsg (StickerMsg 9014) to userId 1606",
+                   SENDAttachMSG 1606 (StickerMsg 9014),
                    LOGMSG DEBUG "Get response: \"{\\\"response\\\":626}\"",
-                   LOGMSG INFO "Sticker_id 9014 was sent to user 1606"
+                   LOGMSG INFO "Msg AttachMsg (StickerMsg 9014) was sent to user 1606"
                  ]
              )
       it "throw CheckGetUpdatesException with error getUpdates answer" $
         evalStateT
-          (startApp handle6 initialDB1 >>= evalStateT (runServ handle6))
+          ( do
+              tryServ <- startApp handle6
+              evalStateT (evalStateT (runServ handle6) tryServ) initialDB1
+          )
           []
           `shouldThrow` ( ==
                             ( CheckGetUpdatesResponseException $
@@ -615,7 +625,10 @@ testVkApp =
                         )
       it "throw CheckGetUpdatesException with unknown getUpdates answer" $
         evalStateT
-          (startApp handle7 initialDB1 >>= evalStateT (runServ handle7))
+          ( do
+              tryServ <- startApp handle7
+              evalStateT (evalStateT (runServ handle7) tryServ) initialDB1
+          )
           []
           `shouldThrow` ( ==
                             ( CheckGetUpdatesResponseException $

@@ -1,15 +1,11 @@
 module Spec.Vk.Conf where
 
-import Vk.Conf (Config (..))
-import Vk.Logger (Priority (..))
+import qualified Spec.Conf as C
+import Vk.Conf (VkConfig (..))
 
-config1 :: Config
+config1 :: VkConfig
 config1 =
-  Config
-    { cStartN = 2,
-      cBotToken = "ABC123",
-      cHelpMsg = "Hello",
-      cRepeatQ = "Why?",
-      cGroupId = 321,
-      cPriority = DEBUG
+  VkConfig
+    { cConf = C.config1,
+      cGroupId = 321
     }

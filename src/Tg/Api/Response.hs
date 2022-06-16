@@ -1,18 +1,18 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Tg.Api.Response where
 
+import Api (optionsEraseSuffix, optionsSnakeCasePreEraseSuffix)
 import Control.Applicative ((<|>), liftA2)
-import Data.Aeson ((.:), (.:?), FromJSON (parseJSON), withObject)
+import Data.Aeson ((.:), FromJSON (parseJSON), genericParseJSON, withObject)
 import qualified Data.Text as T
+import GHC.Generics (Generic)
 import Tg.Types
+import Types
 
 data GetUpdResp
-  = GetUpdResp
-      { ok :: Bool,
-        result :: [Update]
-      }
-  | OkAnswer {okOA :: Bool}
+  = GetUpdResp Bool [Update]
+  | OkAnswer Bool
 
 instance FromJSON GetUpdResp where
   parseJSON =
@@ -24,18 +24,14 @@ instance FromJSON GetUpdResp where
 newtype Answer = Answer
   { okA :: Bool
   }
+  deriving (Generic)
 
 instance FromJSON Answer where
-  parseJSON = withObject "Answer" (\v -> Answer <$> v .: "ok")
+  parseJSON = genericParseJSON (optionsEraseSuffix "A")
 
 data Update
-  = Update
-      { update_id :: UpdateId,
-        message :: Message
-      }
-  | UnknownUpdate
-      { update_id :: UpdateId
-      }
+  = Update UpdateId Message
+  | UnknownUpdate UpdateId
   deriving (Eq, Show)
 
 instance FromJSON Update where
@@ -49,27 +45,19 @@ instance FromJSON Update where
       (withObject "UnknownUpdate" (\v -> UnknownUpdate <$> v .: "update_id"))
 
 data Message = Message
-  { message_id :: MessageId,
-    fromUser :: From,
+  { messageIdMsg :: MessageId,
+    fromMsg :: From,
     textMsg :: Maybe T.Text
   }
-  deriving (Eq, Show)
+  deriving (Generic, Eq, Show)
 
 instance FromJSON Message where
-  parseJSON =
-    withObject
-      "Message"
-      ( \v ->
-          Message <$> v .: "message_id" <*> v .: "from"
-            <*> v .:? "text"
-      )
+  parseJSON = genericParseJSON (optionsSnakeCasePreEraseSuffix "Msg")
 
 newtype From = From
   { idUser :: UserId
   }
-  deriving (Eq, Show)
+  deriving (Generic, Eq, Show)
 
 instance FromJSON From where
-  parseJSON =
-    withObject "From" $ \v ->
-      From <$> v .: "id"
+  parseJSON = genericParseJSON (optionsEraseSuffix "User")

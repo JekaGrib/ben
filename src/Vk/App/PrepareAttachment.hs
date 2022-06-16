@@ -1,7 +1,6 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Vk.App.PrepareAttachment where
 
+import Conf (Config (..))
 import Control.Monad.Catch (MonadCatch (catch))
 import Control.Monad.Except (ExceptT, lift, throwError)
 import Data.Aeson (decode)
@@ -11,6 +10,7 @@ import Data.List (sortOn)
 import Data.Ord (Down (Down))
 import Data.String (fromString)
 import qualified Data.Text as T
+import Logger (LogHandle (..), logDebug)
 import Network.HTTP.Client
   ( RequestBody (..),
     httpLbs,
@@ -20,10 +20,9 @@ import Network.HTTP.Client
   )
 import Network.HTTP.Client.MultipartFormData (formDataBody, partFileRequestBody)
 import Network.HTTP.Client.TLS (newTlsManager)
+import Types
 import Vk.Api.Response
-import Vk.Conf (Config (..))
-import Vk.Logger (LogHandle (..), logDebug)
-import Vk.Oops
+import Vk.Error
   ( PrependAttachmetException (..),
     handleExGetUploadServ,
     handleExGoToUrl,
@@ -70,24 +69,24 @@ getAttachmentString _ _ (PhotoAttachment (Photo [])) =
   throwError "Unknown photo attachment, empty sizes"
 getAttachmentString h usId (PhotoAttachment (Photo sizes)) = do
   let picUrl = url . head . sortOn (Down . height) $ sizes
-  (DocInfo idDoc owner_id) <- lift $ getPhotoDocInfo h usId picUrl
-  return $ "photo" ++ show owner_id ++ "_" ++ show idDoc
+  (DocInfo idDoc ownerId) <- lift $ getPhotoDocInfo h usId picUrl
+  return $ "photo" ++ show ownerId ++ "_" ++ show idDoc
 getAttachmentString h usId (DocAttachment doc) = do
-  (DocInfo idDoc owner_id) <- lift $ getDocInfo h usId doc
-  return $ "doc" ++ show owner_id ++ "_" ++ show idDoc
+  (DocInfo idDoc ownerId) <- lift $ getDocInfo h usId doc
+  return $ "doc" ++ show ownerId ++ "_" ++ show idDoc
 getAttachmentString h usId (AudioMesAttachment aud) = do
-  (DocInfo idDoc owner_id) <- lift $ getAudioMsgDocInfo h usId aud
-  return $ "doc" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (VideoAttachment (DocInfo idDoc owner_id)) =
-  return $ "video" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (AudioAttachment (DocInfo idDoc owner_id)) =
-  return $ "audio" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (MarketAttachment (DocInfo idDoc owner_id)) =
-  return $ "market" ++ show owner_id ++ "_" ++ show idDoc
-getAttachmentString _ _ (WallAttachment (WallInfo idWall owner_id)) =
-  return $ "wall" ++ show owner_id ++ "_" ++ show idWall
-getAttachmentString _ _ (PollAttachment (DocInfo idDoc owner_id)) =
-  return $ "poll" ++ show owner_id ++ "_" ++ show idDoc
+  (DocInfo idDoc ownerId) <- lift $ getAudioMsgDocInfo h usId aud
+  return $ "doc" ++ show ownerId ++ "_" ++ show idDoc
+getAttachmentString _ _ (VideoAttachment (DocInfo idDoc ownerId)) =
+  return $ "video" ++ show ownerId ++ "_" ++ show idDoc
+getAttachmentString _ _ (AudioAttachment (DocInfo idDoc ownerId)) =
+  return $ "audio" ++ show ownerId ++ "_" ++ show idDoc
+getAttachmentString _ _ (MarketAttachment (DocInfo idDoc ownerId)) =
+  return $ "market" ++ show ownerId ++ "_" ++ show idDoc
+getAttachmentString _ _ (WallAttachment (WallInfo idWall ownerId)) =
+  return $ "wall" ++ show ownerId ++ "_" ++ show idWall
+getAttachmentString _ _ (PollAttachment (DocInfo idDoc ownerId)) =
+  return $ "poll" ++ show ownerId ++ "_" ++ show idDoc
 getAttachmentString _ usId (StickerAttachment _) =
   throwError $
     "Wrong sticker attachment from user: "
@@ -242,7 +241,7 @@ getDocServer' conf usId type' = do
         ++ show usId
         ++ "&access_token="
         ++ cBotToken conf
-        ++ "&v=5.103"
+        ++ "&v=" ++ vkApiVersion
   responseBody <$> httpLbs req manager
 
 loadDocToServ' :: ServerUrl -> DocUrl -> ResponseS -> Extention -> IO Response
@@ -261,11 +260,11 @@ saveDocOnServ' :: Config -> LoadDocResp -> Title -> IO Response
 saveDocOnServ' conf (LoadDocResp file) title = do
   manager <- newTlsManager
   initReq <- parseRequest "https://api.vk.com/method/docs.save"
-  let param1 = ("file", fromString file)
-  let param2 = ("title", fromString title)
-  let param3 = ("access_token", fromString $ cBotToken conf)
-  let param4 = ("v", "5.103")
-  let params = [param1, param2, param3, param4]
+  let paramFile = ("file", fromString file)
+  let paramTitle = ("title", fromString title)
+  let paramToken = ("access_token", fromString $ cBotToken conf)
+  let paramVers = ("v", fromString vkApiVersion)
+  let params = [paramFile, paramTitle, paramToken, paramVers]
   let req = urlEncodedBody params initReq
   responseBody <$> httpLbs req manager
 
@@ -278,7 +277,7 @@ getPhotoServer' conf usId = do
         ++ show usId
         ++ "&access_token="
         ++ cBotToken conf
-        ++ "&v=5.103"
+        ++ "&v=" ++ vkApiVersion
   res <- httpLbs req manager
   return (responseBody res)
 
@@ -297,12 +296,12 @@ savePhotoOnServ' :: Config -> LoadPhotoResp -> IO Response
 savePhotoOnServ' conf (LoadPhotoResp server hash photo) = do
   manager <- newTlsManager
   initReq <- parseRequest "https://api.vk.com/method/photos.saveMessagesPhoto"
-  let param1 = ("server", fromString . show $ server)
-  let param2 = ("hash", fromString hash)
-  let param3 = ("photo", fromString photo)
-  let param4 = ("access_token", fromString $ cBotToken conf)
-  let param5 = ("v", "5.103")
-  let params = [param1, param2, param3, param4, param5]
+  let paramServ = ("server", fromString . show $ server)
+  let paramHash = ("hash", fromString hash)
+  let paramPhoto = ("photo", fromString photo)
+  let paramToken = ("access_token", fromString $ cBotToken conf)
+  let paramVers = ("v", fromString vkApiVersion)
+  let params = [paramServ, paramHash, paramPhoto, paramToken, paramVers]
   let req = urlEncodedBody params initReq
   res <- httpLbs req manager
   return (responseBody res)
@@ -314,3 +313,6 @@ goToUrl' urlTxt = do
   res <- httpLbs req manager
   let bs = LBS.toStrict . responseBody $ res
   return bs
+
+vkApiVersion :: String
+vkApiVersion = "5.85"

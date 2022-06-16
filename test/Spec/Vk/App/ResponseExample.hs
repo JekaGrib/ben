@@ -1,8 +1,6 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.Vk.App.ResponseExample where
 
-import Vk.Types (Response)
+import Types (Response)
 
 json1, json2, json3, json4, json5, json6, json7, json8, json9, json10 :: Response
 json1 =

@@ -1,9 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
+module Spec.Conf where
 
-module Spec.Tg.Conf where
-
-import Tg.Conf (Config (..))
-import Tg.Logger (Priority (..))
+import Conf (Config (..))
+import Logger (Priority (..))
 
 config1 :: Config
 config1 =

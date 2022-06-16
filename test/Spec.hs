@@ -1,9 +1,13 @@
+import Spec.App (testApp)
 import Spec.Tg.App (testTGApp)
 import Spec.Vk.App (testVkApp)
 import Spec.Vk.PrepareAttachment (testVkPrAtt)
 
 main :: IO ()
 main = do
+  putStrLn "Test common logic"
+  putStrLn "Test App.hs"
+  testApp
   putStrLn "Test TELEGRAM"
   putStrLn "Test Tg.App.hs"
   testTGApp

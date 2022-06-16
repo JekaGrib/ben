@@ -1,11 +1,11 @@
-{-# LANGUAGE OverloadedStrings #-}
-
 module Spec.Vk.PrepareAttachment where
 
 import Control.Monad.Except (runExceptT)
 import Control.Monad.State (evalStateT, runStateT)
+import Logger (Priority (..))
+import Spec.Types
+import Spec.Vk.PrepareAttachment.Error
 import Spec.Vk.PrepareAttachment.Handlers
-import Spec.Vk.PrepareAttachment.Oops
 import Spec.Vk.Types
 import Test.Hspec (describe, hspec, it, shouldBe, shouldSatisfy, shouldThrow)
 import Vk.Api.Response
@@ -20,7 +20,6 @@ import Vk.Api.Response
     StickerInfo (..),
   )
 import Vk.App.PrepareAttachment
-import Vk.Logger (Priority (..))
 
 testVkPrAtt :: IO ()
 testVkPrAtt =
@@ -32,12 +31,12 @@ testVkPrAtt =
             (getPhotoDocInfo handle1 5 "http://pic.jpg")
             []
         reverse actions
-          `shouldBe` [ GOTPhotoSERVER 5,
+          `shouldBe` [ VkMock $ GOTPhotoSERVER 5,
                        LOG DEBUG,
-                       GOTOURL "http://pic.jpg",
-                       LOADPhotoTOSERV "http://toLoadPic" "http://pic.jpg" "anyPhoto",
+                       VkMock $ GOTOURL "http://pic.jpg",
+                       VkMock $ LOADPhotoTOSERV "http://toLoadPic" "http://pic.jpg" "anyPhoto",
                        LOG DEBUG,
-                       SAVEPhotoONSERV (LoadPhotoResp 24 "anyHash" "anyPhotoSring"),
+                       VkMock $ SAVEPhotoONSERV (LoadPhotoResp 24 "anyHash" "anyPhotoSring"),
                        LOG DEBUG
                      ]
         docInfo
@@ -48,12 +47,12 @@ testVkPrAtt =
             (getPhotoDocInfo handle4 5 "http://pic.jpg")
             []
         reverse actions
-          `shouldBe` [ GOTPhotoSERVER 5,
+          `shouldBe` [ VkMock $ GOTPhotoSERVER 5,
                        LOG DEBUG,
-                       GOTOURL "http://pic.jpg",
-                       LOADPhotoTOSERV "http://toLoadPic" "http://pic.jpg" "anyPhoto",
+                       VkMock $ GOTOURL "http://pic.jpg",
+                       VkMock $ LOADPhotoTOSERV "http://toLoadPic" "http://pic.jpg" "anyPhoto",
                        LOG DEBUG,
-                       SAVEPhotoONSERV (LoadPhotoResp 24 "anyHash" "anyPhotoSring"),
+                       VkMock $ SAVEPhotoONSERV (LoadPhotoResp 24 "anyHash" "anyPhotoSring"),
                        LOG DEBUG
                      ]
         docInfo
@@ -64,12 +63,12 @@ testVkPrAtt =
             (getPhotoDocInfo handle5 5 "http://pic.jpg")
             []
         reverse actions
-          `shouldBe` [ GOTPhotoSERVER 5,
+          `shouldBe` [ VkMock $ GOTPhotoSERVER 5,
                        LOG DEBUG,
-                       GOTOURL "http://pic.jpg",
-                       LOADPhotoTOSERV "http://toLoadPic" "http://pic.jpg" "anyPhoto",
+                       VkMock $ GOTOURL "http://pic.jpg",
+                       VkMock $ LOADPhotoTOSERV "http://toLoadPic" "http://pic.jpg" "anyPhoto",
                        LOG DEBUG,
-                       SAVEPhotoONSERV (LoadPhotoResp 24 "anyHash" "anyPhotoSring"),
+                       VkMock $ SAVEPhotoONSERV (LoadPhotoResp 24 "anyHash" "anyPhotoSring"),
                        LOG DEBUG
                      ]
         docInfo
@@ -102,12 +101,12 @@ testVkPrAtt =
             (getDocInfo handle2 6 (Doc "http://doc" "hs" "MyDoc"))
             []
         reverse actions
-          `shouldBe` [ GOTDocSERVER 6 "doc",
+          `shouldBe` [ VkMock $ GOTDocSERVER 6 "doc",
                        LOG DEBUG,
-                       GOTOURL "http://doc",
-                       LOADDocTOSERV "http://toLoadDoc" "http://doc" "anyDoc" "hs",
+                       VkMock $ GOTOURL "http://doc",
+                       VkMock $ LOADDocTOSERV "http://toLoadDoc" "http://doc" "anyDoc" "hs",
                        LOG DEBUG,
-                       SAVEDocONSERV (LoadDocResp "anyFile") "MyDoc",
+                       VkMock $ SAVEDocONSERV (LoadDocResp "anyFile") "MyDoc",
                        LOG DEBUG
                      ]
         docInfo
@@ -140,12 +139,12 @@ testVkPrAtt =
             (getAudioMsgDocInfo handle3 4 (Audio "http://doc"))
             []
         reverse actions
-          `shouldBe` [ GOTDocSERVER 4 "audio_message",
+          `shouldBe` [ VkMock $ GOTDocSERVER 4 "audio_message",
                        LOG DEBUG,
-                       GOTOURL "http://doc",
-                       LOADDocTOSERV "http://toLoadDoc" "http://doc" "anyDoc" "ogg",
+                       VkMock $ GOTOURL "http://doc",
+                       VkMock $ LOADDocTOSERV "http://toLoadDoc" "http://doc" "anyDoc" "ogg",
                        LOG DEBUG,
-                       SAVEDocONSERV (LoadDocResp "anyFile") "audio_message",
+                       VkMock $ SAVEDocONSERV (LoadDocResp "anyFile") "audio_message",
                        LOG DEBUG
                      ]
         docInfo

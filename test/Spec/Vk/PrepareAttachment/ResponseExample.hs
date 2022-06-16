@@ -1,11 +1,7 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# OPTIONS_GHC -Wall #-}
-{-# OPTIONS_GHC -Werror #-}
-
 module Spec.Vk.PrepareAttachment.ResponseExample where
 
 import Data.String (fromString)
-import Vk.Types (Response)
+import Types (Response)
 
 picUploadUrl, docUploadUrl :: String
 picUploadUrl = "http://toLoadPic"

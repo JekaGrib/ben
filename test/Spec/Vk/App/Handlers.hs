@@ -1,56 +1,59 @@
 module Spec.Vk.App.Handlers where
 
+import qualified App
 import Control.Monad.Catch (throwM)
 import Control.Monad.State (StateT (..))
 import Network.HTTP.Client (HttpException (InvalidUrlException))
+import qualified Spec.App.Handlers as App
+import qualified Spec.Conf as C
+import Spec.Types
 import Spec.Vk.App.ResponseExample
 import Spec.Vk.Conf
 import Spec.Vk.Log
 import qualified Spec.Vk.PrepareAttachment.Handlers as PrAtt
 import Spec.Vk.Types
+import Types
 import Vk.Api.Response (ServerInfo (..))
-import Vk.App (Handle (..))
+import Vk.App (Handle (..), isValidResponse')
 import Vk.Types
 
-handle1 :: Handle (StateT [MockAction] IO)
+appHandle1 :: App.Handle (StateT [MockAction VkAttachMSG] IO) VkAttachMSG
+appHandle1 =
+  App.Handle
+    { App.hConf = C.config1,
+      App.hLog = handLogWarn,
+      App.sendTxtMsg = App.sendMsgTest json4,
+      App.sendKeyb = App.sendKeybTest json4,
+      App.sendAttachMsg = App.sendAttachMsgTest json4,
+      App.isValidResponse = isValidResponse'
+    }
+
+appHandle0, appHandle2 :: App.Handle (StateT [MockAction VkAttachMSG] IO) VkAttachMSG
+appHandle0 = appHandle1 {App.hLog = handLogMsgDebug}
+appHandle2 = appHandle1 {App.hLog = handLogMsgInfo}
+
+handle1 :: Handle (StateT [MockAction VkAttachMSG] IO)
 handle1 =
   Handle
     { hConf = config1,
       hLog = handLogWarn,
       getLongPollServer = getServerTest json1,
       getUpdates = getUpdatesTest json2,
-      sendMsg = sendMsgTest json4,
-      sendKeyb = sendKeybTest json4,
+      hApp = appHandle1,
       hPrepAttach = PrAtt.handle0
     }
 
-getServerTest :: Response -> StateT [MockAction] IO Response
-getServerTest json = StateT $ \s -> return (json, GOTSERVER : s)
+getServerTest :: Response -> StateT [MockAction VkAttachMSG] IO Response
+getServerTest json = StateT $ \s -> return (json, VkMock GOTSERVER : s)
 
-getUpdatesTest :: Response -> ServerInfo -> StateT [MockAction] IO Response
-getUpdatesTest json sI = StateT $ \s -> return (json, GOTUPDATES sI : s)
+getUpdatesTest :: Response -> ServerInfo -> StateT [MockAction VkAttachMSG] IO Response
+getUpdatesTest json sI = StateT $ \s -> return (json, VkMock (GOTUPDATES sI) : s)
 
-sendMsgTest :: Response -> UserId -> MSG -> StateT [MockAction] IO Response
-sendMsgTest json usId msg = StateT $ \s -> return (json, SENDMSG usId msg : s)
+getServerTestEx :: StateT [MockAction VkAttachMSG] IO Response
+getServerTestEx = App.throwHttpEx
 
-sendKeybTest :: Response -> UserId -> N -> TextOfMsg -> StateT [MockAction] IO Response
-sendKeybTest json usId currN msg =
-  StateT $ \s -> return (json, SENDKEYB usId currN msg : s)
-
-throwHttpEx :: StateT [MockAction] IO a
-throwHttpEx = throwM $ InvalidUrlException "" ""
-
-getServerTestEx :: StateT [MockAction] IO Response
-getServerTestEx = throwHttpEx
-
-getUpdatesTestEx :: ServerInfo -> StateT [MockAction] IO Response
-getUpdatesTestEx _ = throwHttpEx
-
-sendMsgTestEx :: UserId -> MSG -> StateT [MockAction] IO Response
-sendMsgTestEx _ _ = throwHttpEx
-
-sendKeybTestEx :: UserId -> N -> TextOfMsg -> StateT [MockAction] IO Response
-sendKeybTestEx _ _ _ = throwHttpEx
+getUpdatesTestEx :: ServerInfo -> StateT [MockAction VkAttachMSG] IO Response
+getUpdatesTestEx _ = App.throwHttpEx
 
 handle0,
   handle2,
@@ -61,12 +64,12 @@ handle0,
   handle7,
   handle8,
   handle9 ::
-    Handle (StateT [MockAction] IO)
-handle0 = handle1 {hLog = handLogMsgDebug}
-handle2 = handle1 {getUpdates = getUpdatesTest json3, hLog = handLogMsgDebug}
+    Handle (StateT [MockAction VkAttachMSG] IO)
+handle0 = handle1 {hLog = handLogMsgDebug, hApp = appHandle0}
+handle2 = handle1 {getUpdates = getUpdatesTest json3, hLog = handLogMsgDebug, hApp = appHandle0}
 handle3 = handle1 {getLongPollServer = getServerTest json5}
 handle4 = handle1 {getLongPollServer = getServerTest json6}
-handle5 = handle1 {getUpdates = getUpdatesTest json7, hLog = handLogMsgDebug}
+handle5 = handle1 {getUpdates = getUpdatesTest json7, hLog = handLogMsgDebug, hApp = appHandle0}
 handle6 = handle1 {getUpdates = getUpdatesTest json5}
 handle7 = handle1 {getUpdates = getUpdatesTest json6}
 handle8 = handle1 {getUpdates = getUpdatesTest json8}
@@ -82,8 +85,8 @@ handle10,
   handle17,
   handle18,
   handle19 ::
-    Handle (StateT [MockAction] IO)
-handle10 = handle1 {hLog = handLogMsgInfo}
+    Handle (StateT [MockAction VkAttachMSG] IO)
+handle10 = handle1 {hLog = handLogMsgInfo, hApp = appHandle2}
 handle11 = handle1 {getUpdates = getUpdatesTest json3}
 handle12 = handle1 {getUpdates = getUpdatesTest json7}
 handle13 = handle1 {getUpdates = getUpdatesTest json10, hPrepAttach = PrAtt.handle20}
@@ -104,7 +107,7 @@ handle20,
   handle27,
   handle28,
   handle29 ::
-    Handle (StateT [MockAction] IO)
+    Handle (StateT [MockAction VkAttachMSG] IO)
 handle20 = handle1 {getUpdates = getUpdatesTest json17}
 handle21 = handle1 {getUpdates = getUpdatesTest json18}
 handle22 = handle1 {getUpdates = getUpdatesTest json19}
@@ -126,7 +129,7 @@ handle30,
   handle37,
   handle38,
   handle39 ::
-    Handle (StateT [MockAction] IO)
+    Handle (StateT [MockAction VkAttachMSG] IO)
 handle30 = handle1 {getUpdates = getUpdatesTest json27}
 handle31 = handle1 {getUpdates = getUpdatesTest json28}
 handle32 = handle1 {getUpdates = getUpdatesTest json29}
@@ -148,7 +151,7 @@ handle40,
   handle47,
   handle48,
   handle49 ::
-    Handle (StateT [MockAction] IO)
+    Handle (StateT [MockAction VkAttachMSG] IO)
 handle40 = handle1 {getUpdates = getUpdatesTest json37}
 handle41 = handle1 {getUpdates = getUpdatesTest json38}
 handle42 = handle1 {getUpdates = getUpdatesTest json39}
@@ -156,6 +159,6 @@ handle43 = handle1 {getUpdates = getUpdatesTest json40}
 handle44 = handle1 {getUpdates = getUpdatesTest json41}
 handle45 = handle1 {getLongPollServer = getServerTestEx}
 handle46 = handle1 {getUpdates = getUpdatesTestEx}
-handle47 = handle1 {sendMsg = sendMsgTestEx, getUpdates = getUpdatesTest json3}
-handle48 = handle1 {sendKeyb = sendKeybTestEx, getUpdates = getUpdatesTest json40}
+handle47 = handle1 {getUpdates = getUpdatesTest json3, hApp = appHandle0 {App.sendTxtMsg = App.sendMsgTestEx}}
+handle48 = handle1 {getUpdates = getUpdatesTest json40, hApp = appHandle0 {App.sendKeyb = App.sendKeybTestEx}}
 handle49 = handle1 {getLongPollServer = getServerTestEx, getUpdates = getUpdatesTest json35}

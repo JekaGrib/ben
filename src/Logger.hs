@@ -1,4 +1,4 @@
-module Vk.Logger where
+module Logger where
 
 import Control.Monad (when)
 import Prelude hiding (log)
@@ -17,11 +17,11 @@ data Priority
   | INFO
   | WARNING
   | ERROR
-  deriving (Ord, Eq, Show)
+  deriving (Ord, Eq, Show, Read)
 
 logger :: String -> Priority -> String -> IO ()
 logger logPath currP str = do
-  putStrLn (show currP ++ ": " ++ str )
+  putStrLn (show currP ++ ": " ++ str)
   appendFile logPath (show currP ++ ": " ++ str ++ "\n")
 
 checkPrioAndLog :: (Applicative m) => LogHandle m -> Priority -> String -> m ()

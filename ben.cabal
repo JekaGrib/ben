@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 33abb0d347b4a70e651a568d81a42cfc83230f132e25daa3caa0b118c1c8d040
+-- hash: 5eb46f7aab329bfb296c9dbce83d471fd70a955c9402d5fe37c8679c276acb90
 
 name:           ben
 version:        0.1.0.0
@@ -27,28 +27,32 @@ source-repository head
 
 library
   exposed-modules:
+      Api
+      App
+      Conf
+      Error
+      Logger
       Tg.Api.Request
       Tg.Api.Response
       Tg.App
-      Tg.Conf
-      Tg.Logger
-      Tg.MainTg
-      Tg.Oops
+      Tg.Error
+      Tg.Main
       Tg.Types
+      Types
       Vk.Api.Request
       Vk.Api.Response
       Vk.App
       Vk.App.PrepareAttachment
       Vk.AppT
       Vk.Conf
-      Vk.Logger
-      Vk.MainVk
-      Vk.Oops
+      Vk.Error
+      Vk.Main
       Vk.Types
   other-modules:
       Paths_ben
   hs-source-dirs:
       src
+  default-extensions: OverloadedStrings
   ghc-options: -Wall -Werror
   build-depends:
       aeson
@@ -73,6 +77,7 @@ executable ben-exe
       Paths_ben
   hs-source-dirs:
       app
+  default-extensions: OverloadedStrings
   ghc-options: -Wall -Werror -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
@@ -96,27 +101,32 @@ test-suite ben-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Spec.App
+      Spec.App.Handlers
+      Spec.Conf
+      Spec.Error
+      Spec.Log
       Spec.Tg.App
       Spec.Tg.App.Handlers
       Spec.Tg.App.ResponseExample
-      Spec.Tg.Conf
-      Spec.Tg.Log
-      Spec.Tg.Oops
+      Spec.Tg.Error
       Spec.Tg.Types
+      Spec.Types
       Spec.Vk.App
+      Spec.Vk.App.Error
       Spec.Vk.App.Handlers
-      Spec.Vk.App.Oops
       Spec.Vk.App.ResponseExample
       Spec.Vk.Conf
       Spec.Vk.Log
       Spec.Vk.PrepareAttachment
+      Spec.Vk.PrepareAttachment.Error
       Spec.Vk.PrepareAttachment.Handlers
-      Spec.Vk.PrepareAttachment.Oops
       Spec.Vk.PrepareAttachment.ResponseExample
       Spec.Vk.Types
       Paths_ben
   hs-source-dirs:
       test
+  default-extensions: OverloadedStrings
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson

@@ -1,45 +1,32 @@
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 module Vk.Types where
 
+import Data.Aeson (FromJSON, ToJSON)
 import qualified Data.ByteString as BS
-import qualified Data.ByteString.Lazy as LBS
-import Data.Map (Map)
+import Data.Configurator ()
+import Data.Configurator.Types (Configured)
 import qualified Data.Text as T
+import Types
 
-type N = Int
+newtype UpdateId = UpdateId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)
 
-type UserId = Integer
+newtype StickerId = StickerId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)
 
-type NState = Either OpenRepeat N
-
-type MapUserN = Map UserId NState
-
-type MessageId = Integer
-
-type UpdateId = Integer
-
-type Offset = Integer
-
-type StickerId = Integer
-
-type GroupId = Integer
-
-type Response = LBS.ByteString
+newtype GroupId = GroupId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num, Read, Configured)
 
 type ResponseS = BS.ByteString
-
-type TextOfMsg = T.Text
-
-type TextOfKeyb = T.Text
 
 type AttachmentString = String
 
 type Url = T.Text
 
-type ServerUrl = T.Text
+type ServerUrl = Url
 
-type DocUrl = T.Text
+type DocUrl = Url
 
-type PicUrl = T.Text
+type PicUrl = Url
 
 type TypeInGetServerReq = String
 
@@ -53,18 +40,9 @@ type ParameterString = String
 
 type SomethingWrong = String
 
-type Counter = Int
-
-newtype OpenRepeat
-  = OpenRepeat N
-  deriving (Eq, Show)
-
-data MSG
-  = TextMsg TextOfMsg
-  | AttachmentMsg TextOfMsg [AttachmentString] LatLong
+data VkAttachMSG
+  = VkAttachMsg TextOfMsg [AttachmentString] LatLong
   | StickerMsg StickerId
   deriving (Eq, Show)
 
-newtype ToUserId
-  = ToUserId UserId
-  deriving (Eq, Show)
+instance Attachy VkAttachMSG
