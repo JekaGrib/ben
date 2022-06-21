@@ -10,11 +10,17 @@ import Data.Configurator.Types (Configured)
 import qualified Data.Text as T
 import Types
 
-newtype UpdateId = UpdateId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)
+newtype UpdateId
+  = UpdateId Integer
+  deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)
 
-newtype StickerId = StickerId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)
+newtype StickerId
+  = StickerId Integer
+  deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)
 
-newtype GroupId = GroupId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num, Read, Configured)
+newtype GroupId
+  = GroupId Integer
+  deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num, Read, Configured)
 
 type ResponseS = BS.ByteString
 

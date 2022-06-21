@@ -1,6 +1,3 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE RecordWildCards #-}
-
 module Vk.App where
 
 import qualified App
@@ -9,7 +6,7 @@ import Control.Applicative (empty)
 import Control.Monad (when)
 import Control.Monad.Catch (MonadCatch (catch))
 import Control.Monad.Except (runExceptT)
-import Control.Monad.State (evalStateT, forever, get, gets, lift, modify)
+import Control.Monad.State (evalStateT, forever, lift)
 import Data.Aeson (decode, encode)
 import qualified Data.ByteString.Lazy as LBS
 import Data.List (intercalate)
@@ -27,8 +24,19 @@ import Types
 import Vk.Api.Request (keyBoard)
 import Vk.Api.Response
 import Vk.App.PrepareAttachment (getAttachmentString, vkApiVersion)
-import qualified Vk.App.PrepareAttachment (Handle, makeH, liftHandle)
-import Vk.AppT (AppT, TryServer (..), changeServInfo, changeTs, firstTry, nextTry, resetTry)
+import qualified Vk.App.PrepareAttachment (Handle, makeH)
+import Vk.AppT
+  ( AppState (..),
+    AppT,
+    TryServer (..),
+    changeServInfo,
+    changeTs,
+    firstTry,
+    getTryServer,
+    modifyTryServer,
+    nextTry,
+    resetTry,
+  )
 import Vk.Conf (VkConfig (..))
 import Vk.Error
   ( VKBotException (..),
@@ -67,20 +75,11 @@ makeAppH conf logH =
     (sendAttachMsg' conf)
     isValidResponse'
 
-liftHandle :: (Monad m, MonadTrans t) => Handle m a -> Handle (t m) a
-liftHandle Handle {..} = Handle hConf hLog'' getLongPollServer'' getUpdates'' hApp'' hPrepAttach''
-    where
-      hLog'' = App.liftLogHandle hLog
-      getLongPollServer'' = lift getLongPollServer
-      getUpdates'' serverInfo = lift $ getUpdates serverInfo
-      hApp'' = App.liftHandle hApp
-      hPrepAttach'' = Vk.App.PrepareAttachment.liftHandle hPrepAttach
-
 -- logic functions:
 run :: (MonadCatch m) => Handle m -> MapUserN -> m ()
 run h initialDB = do
   servInfo <- startApp h
-  evalStateT (evalStateT (foreverRunServ h) servInfo) initialDB
+  evalStateT (foreverRunServ h) $ AppState servInfo initialDB
 
 startApp :: (MonadCatch m) => Handle m -> m TryServer
 startApp h = do
@@ -93,13 +92,19 @@ foreverRunServ h = forever (runServ h)
 runServ :: (MonadCatch m) => Handle m -> AppT m ()
 runServ h = do
   upds <- getUpdAndCheckResp h
-  lift $ mapM_ (\upd -> lift (isValidUpdate h upd) >>= App.chooseActionOfUpd (hApp h)) upds
+  mapM_
+    ( \upd ->
+        lift (isValidUpdate h upd)
+          >>= App.chooseActionOfUpd (App.liftHandle . hApp $ h)
+    )
+    upds
 
 getServInfoAndCheckResp ::
   (MonadCatch m) => Handle m -> m ServerInfo
 getServInfoAndCheckResp h = do
   logDebug (hLog h) $
-    "Send request to getLongPollServer: https://api.vk.com/method/groups.getLongPollServer?group_id="
+    "Send request to getLongPollServer:\
+    \ https://api.vk.com/method/groups.getLongPollServer?group_id="
       ++ show (cGroupId (hConf h))
       ++ "&access_token="
       ++ cBotToken (cConf (hConf h))
@@ -119,8 +124,8 @@ getUpdAndCheckResp h = do
 getUpdAndLog ::
   (MonadCatch m) => Handle m -> AppT m Response
 getUpdAndLog h = do
-  sI@(ServerInfo key server ts) <- gets servInf
-  lift $ lift $ logDebug (hLog h) $
+  sI@(ServerInfo key server ts) <- servInf <$> getTryServer
+  lift $ logDebug (hLog h) $
     "Send request to getUpdates: "
       ++ T.unpack server
       ++ "?act=a_check&key="
@@ -128,8 +133,8 @@ getUpdAndLog h = do
       ++ "&ts="
       ++ show ts
       ++ "&wait=20"
-  json <- lift $ lift $ getUpdates h sI `catch` handleExGetUpd (hLog h)
-  lift $ lift $ logDebug (hLog h) ("Get response: " ++ show json)
+  json <- lift $ getUpdates h sI `catch` handleExGetUpd (hLog h)
+  lift $ logDebug (hLog h) ("Get response: " ++ show json)
   return json
 
 isValidUpdate :: (MonadCatch m) => Handle m -> Update -> m (ValidUpdate VkAttachMSG)
@@ -143,20 +148,34 @@ chooseUpdType _ (AboutObj usId _ _ txt [] [] Nothing) =
 chooseUpdType _ (AboutObj usId _ _ "" [] [StickerAttachment (StickerInfo idSt)] Nothing) =
   return $ ValidUpdate usId $ AttachMsg (StickerMsg idSt)
 chooseUpdType _ (AboutObj _ _ _ _ [] [StickerAttachment _] _) =
-  return $ InvalidUpdatePlusInfo "There is unknown sticker message. Sticker can`t have text or geo."
+  return $
+    InvalidUpdatePlusInfo
+      "There is unknown sticker message.\
+      \ Sticker can`t have text or geo."
 chooseUpdType h (AboutObj usId _ _ txt [] attachs maybeGeo) =
   prepareAttach h usId txt attachs maybeGeo
 chooseUpdType _ _ =
   return $ InvalidUpdatePlusInfo "There is forward message"
 
-prepareAttach :: (MonadCatch m) => Handle m -> UserId -> TextOfMsg -> [Attachment] -> Maybe Geo -> m (ValidUpdate VkAttachMSG)
+prepareAttach ::
+  (MonadCatch m) =>
+  Handle m ->
+  UserId ->
+  TextOfMsg ->
+  [Attachment] ->
+  Maybe Geo ->
+  m (ValidUpdate VkAttachMSG)
 prepareAttach h usId txt attachs maybeGeo = do
   eitherAttachStrings <- runExceptT $ mapM (getAttachmentString (hPrepAttach h) usId) attachs
   case eitherAttachStrings of
     Right attachStrings -> do
       let eitherLatLong = checkAndPullLatLong maybeGeo
       case eitherLatLong of
-        Right latLong -> return $ ValidUpdate usId $ AttachMsg $ VkAttachMsg txt attachStrings latLong
+        Right latLong ->
+          return
+            $ ValidUpdate usId
+            $ AttachMsg
+            $ VkAttachMsg txt attachStrings latLong
         Left str ->
           return $ InvalidUpdatePlusInfo $ "UNKNOWN ATTACMENT in updateList." ++ str
     Left str ->
@@ -172,27 +191,30 @@ checkAndPullLatLong maybeGeo =
 putNextTryWithNewServer :: (MonadCatch m) => Handle m -> AppT m [Update]
 putNextTryWithNewServer h = do
   checkTry h
-  modify nextTry
+  modifyTryServer nextTry
   putNewServerInfo h
   return empty
 
 putNextTryWithNewTS :: (MonadCatch m) => Handle m -> Integer -> AppT m [Update]
 putNextTryWithNewTS h ts = do
   checkTry h
-  modify (nextTry . changeTs ts)
+  modifyTryServer (nextTry . changeTs ts)
   return empty
 
 putNewServerInfo :: (MonadCatch m) => Handle m -> AppT m ()
 putNewServerInfo h = do
-  servInfo <- lift $ lift $ getServInfoAndCheckResp h
-  modify (changeServInfo servInfo)
+  servInfo <- lift $ getServInfoAndCheckResp h
+  modifyTryServer (changeServInfo servInfo)
 
 checkTry :: (MonadCatch m) => Handle m -> AppT m ()
 checkTry h = do
-  TryServer num servInfo <- get
+  TryServer num servInfo <- getTryServer
   when (num >= 3) $ do
-    let ex = CheckGetUpdatesResponseException $ "More then two times getUpdates fail. ServerInfo:" ++ show servInfo
-    lift $ lift $ throwAndLogEx (hLog h) ex
+    let ex =
+          CheckGetUpdatesResponseException $
+            "More then two times getUpdates fail. ServerInfo:"
+              ++ show servInfo
+    lift $ throwAndLogEx (hLog h) ex
 
 checkGetServResponse :: (MonadCatch m) => Handle m -> Response -> m ServerInfo
 checkGetServResponse h json =
@@ -221,32 +243,33 @@ checkAndPullUpdates h json =
       let ex =
             CheckGetUpdatesResponseException $
               "UNKNOWN RESPONSE:" ++ show json
-      lift $ lift $ throwAndLogEx (hLog h) ex
+      lift $ throwAndLogEx (hLog h) ex
     Just ErrorAnswer {} -> do
       let ex =
             CheckGetUpdatesResponseException $
               "NEGATIVE RESPONSE:" ++ show json
-      lift $ lift $ throwAndLogEx (hLog h) ex
+      lift $ throwAndLogEx (hLog h) ex
     Just (FailAnswer 2) -> do
-      lift $ lift $
+      lift $
         logWarning
           (hLog h)
           "FAIL. Long poll server key expired, need to request new key"
       putNextTryWithNewServer h
     Just (FailAnswer 3) -> do
-      lift $ lift $
+      lift $
         logWarning
           (hLog h)
           "FAIL. Long poll server information is lost, need to request new key and ts"
       putNextTryWithNewServer h
     Just (FailTSAnswer (Just failNum) ts) -> do
-      lift $ lift
+      lift
         $ logWarning
           (hLog h)
-        $ "FAIL number " ++ show failNum ++ ". Ts in request is wrong, need to use received ts"
+        $ "FAIL number " ++ show failNum
+          ++ ". Ts in request is wrong, need to use received ts"
       putNextTryWithNewTS h ts
     Just (FailTSAnswer _ ts) -> do
-      lift $ lift $
+      lift $
         logWarning
           (hLog h)
           "FAIL. Ts in request is wrong, need to use received ts"
@@ -255,14 +278,14 @@ checkAndPullUpdates h json =
       let ex =
             CheckGetUpdatesResponseException $
               "NEGATIVE RESPONSE:" ++ show json
-      lift $ lift $ throwAndLogEx (hLog h) ex
+      lift $ throwAndLogEx (hLog h) ex
     Just (AnswerOk _ []) -> do
-      lift $ lift $ logInfo (hLog h) "No new updates"
-      modify resetTry
+      lift $ logInfo (hLog h) "No new updates"
+      modifyTryServer resetTry
       return []
     Just (AnswerOk ts upds) -> do
-      lift $ lift $ logInfo (hLog h) "There is new updates list"
-      modify (resetTry . changeTs ts)
+      lift $ logInfo (hLog h) "There is new updates list"
+      modifyTryServer (resetTry . changeTs ts)
       return upds
 
 -- IO handle functions:

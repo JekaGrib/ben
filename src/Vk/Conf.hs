@@ -42,7 +42,10 @@ parseConfGroupId conf = do
 inputGroupId :: IO GroupId
 inputGroupId = do
   putStrLn
-    "Can`t parse value \"group id\" from configuration file or command line\nPlease, enter NUMBER of group id\nExample: 123456789"
+    "Can`t parse value \"group id\" from \
+    \configuration file or command line\
+    \\nPlease, enter NUMBER of group id\
+    \\nExample: 123456789"
   str <- getLine
   if all isNumber str
     then return (read str)

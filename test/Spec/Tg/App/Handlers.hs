@@ -17,7 +17,10 @@ import Types
 getUpdatesTest :: Response -> StateT [MockAction MessageId] IO Response
 getUpdatesTest json = StateT $ \s -> return (json, TgMock GOTUPDATES : s)
 
-confirmUpdatesTest :: Response -> UpdateId -> StateT [MockAction MessageId] IO Response
+confirmUpdatesTest ::
+  Response ->
+  UpdateId ->
+  StateT [MockAction MessageId] IO Response
 confirmUpdatesTest json offset =
   StateT $ \s -> return (json, TgMock (CONFIRMUPDATES offset) : s)
 
@@ -67,11 +70,21 @@ handle0 = handle1 {hLog = handLogMsgDebug, hApp = appHandle0}
 handle2 = handle1 {getShortUpdates = getUpdatesTest json2}
 handle3 = handle1 {getShortUpdates = getUpdatesTest json3}
 handle4 = handle1 {getShortUpdates = getUpdatesTest json4}
-handle5 = handle1 {getShortUpdates = getUpdatesTest json5, hLog = handLogMsgDebug, hApp = appHandle0}
+handle5 =
+  handle1
+    { getShortUpdates = getUpdatesTest json5,
+      hLog = handLogMsgDebug,
+      hApp = appHandle0
+    }
 handle6 = handle1 {getUpdates = getUpdatesTest json2}
 handle7 = handle1 {getUpdates = getUpdatesTest json3}
 handle8 = handle1 {getUpdates = getUpdatesTest json4}
-handle9 = handle1 {getUpdates = getUpdatesTest json7, hLog = handLogMsgDebug, hApp = appHandle0}
+handle9 =
+  handle1
+    { getUpdates = getUpdatesTest json7,
+      hLog = handLogMsgDebug,
+      hApp = appHandle0
+    }
 
 handle10,
   handle11,

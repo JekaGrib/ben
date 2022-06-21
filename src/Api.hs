@@ -31,4 +31,7 @@ fromCamelToSnake :: String -> String
 fromCamelToSnake = foldr (\x acc -> if isUpper x then '_' : toLower x : acc else x : acc) []
 
 eraseSuffix :: String -> String -> String
-eraseSuffix suffix str = if suffix `isSuffixOf` str then take (length str - length suffix) str else str
+eraseSuffix suffix str =
+  if suffix `isSuffixOf` str
+    then take (length str - length suffix) str
+    else str

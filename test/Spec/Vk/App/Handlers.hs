@@ -159,6 +159,14 @@ handle43 = handle1 {getUpdates = getUpdatesTest json40}
 handle44 = handle1 {getUpdates = getUpdatesTest json41}
 handle45 = handle1 {getLongPollServer = getServerTestEx}
 handle46 = handle1 {getUpdates = getUpdatesTestEx}
-handle47 = handle1 {getUpdates = getUpdatesTest json3, hApp = appHandle0 {App.sendTxtMsg = App.sendMsgTestEx}}
-handle48 = handle1 {getUpdates = getUpdatesTest json40, hApp = appHandle0 {App.sendKeyb = App.sendKeybTestEx}}
+handle47 =
+  handle1
+    { getUpdates = getUpdatesTest json3,
+      hApp = appHandle0 {App.sendTxtMsg = App.sendMsgTestEx}
+    }
+handle48 =
+  handle1
+    { getUpdates = getUpdatesTest json40,
+      hApp = appHandle0 {App.sendKeyb = App.sendKeybTestEx}
+    }
 handle49 = handle1 {getLongPollServer = getServerTestEx, getUpdates = getUpdatesTest json35}

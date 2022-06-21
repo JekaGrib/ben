@@ -1,6 +1,9 @@
+{-# LANGUAGE RecordWildCards #-}
+
 module Logger where
 
 import Control.Monad (when)
+import Control.Monad.Trans.Class (MonadTrans, lift)
 import Prelude hiding (log)
 
 data LogHandle m = LogHandle
@@ -11,6 +14,11 @@ data LogHandle m = LogHandle
 newtype LogConfig = LogConfig
   { cLogLevel :: Priority
   }
+
+liftLogHandle :: (Monad m, MonadTrans t) => LogHandle m -> LogHandle (t m)
+liftLogHandle LogHandle {..} = LogHandle hLogConf log''
+  where
+    log'' prio str = lift $ log prio str
 
 data Priority
   = DEBUG

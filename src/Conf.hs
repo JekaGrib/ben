@@ -104,7 +104,9 @@ parseConfRepeatQ msngr conf = do
 inputStartN :: IO N
 inputStartN = do
   putStrLn
-    "Can`t parse value \"startN\" from configuration file or command line\nPlease, enter start number of repeats. Number from 1 to 5"
+    "Can`t parse value \"startN\" from configuration file\
+    \ or command line\nPlease, enter start number of repeats.\
+    \ Number from 1 to 5"
   input <- getLine
   case readMaybe input of
     Just n | n `elem` [1 .. 5] -> pure n
@@ -113,13 +115,17 @@ inputStartN = do
 inputBotToken :: IO String
 inputBotToken = do
   putStrLn
-    "Can`t parse value \"botToken\" from configuration file or command line\nPlease, enter bot token"
+    "Can`t parse value \"botToken\" from configuration file\
+    \ or command line\nPlease, enter bot token"
   getLine
 
 inputLogLevel :: IO Priority
 inputLogLevel = do
   putStrLn
-    "Can`t parse value \"logLevel\" from configuration file or command line\nPlease, enter logging level (logs of this level and higher will be recorded)\nAvailable levels: DEBUG ; INFO ; WARNING ; ERROR (without quotes)"
+    "Can`t parse value \"logLevel\" from configuration file\
+    \ or command line\
+    \\nPlease, enter logging level (logs of this level and higher will be recorded)\
+    \\nAvailable levels: DEBUG ; INFO ; WARNING ; ERROR (without quotes)"
   input <- getLine
   case readMaybe (map toUpper input) of
     Just p -> pure p
@@ -128,24 +134,32 @@ inputLogLevel = do
 inputHelpMsg :: IO String
 inputHelpMsg = do
   putStrLn
-    "Can`t parse value \"/help Info Msg\" from configuration file or command line\nPlease, enter \"/help Info Msg\"\nExample: I`m super bot"
+    "Can`t parse value \"/help Info Msg\" from configuration file\
+    \ or command line\nPlease, enter \"/help Info Msg\"\
+    \\nExample: I`m super bot"
   getLine
 
 inputRepeatQ :: IO String
 inputRepeatQ = do
   putStrLn
-    "Can`t parse value \"/repeat Info Question\" from configuration file or command line\nPlease, enter \"/repeat Info Question\"\nExample: How many times to repeat message in the future?"
+    "Can`t parse value \"/repeat Info Question\" from configuration file\
+    \ or command line\nPlease, enter \"/repeat Info Question\"\
+    \\nExample: How many times to repeat message in the future?"
   getLine
 
 inputLocalTime :: IO String
 inputLocalTime = do
   putStrLn
-    "Local time not found\nPlease, enter your local time in any form\nExample: 06.07.2020 16:21"
+    "Local time not found\nPlease, enter your local time in any form\
+    \\nExample: 06.07.2020 16:21"
   getLine
 
 -- getTime function:
 getTime :: IO String
 getTime =
   (show <$> getZonedTime)
-    `E.catch` (\e -> print (e :: E.SomeException) >> inputLocalTime `E.catch` handleExInput "local_time")
+    `E.catch` ( \e ->
+                  print (e :: E.SomeException)
+                    >> inputLocalTime `E.catch` handleExInput "local_time"
+              )
     `E.catch` handleExGetTime

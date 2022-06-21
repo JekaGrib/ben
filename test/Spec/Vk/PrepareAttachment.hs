@@ -174,21 +174,36 @@ testVkPrAtt =
       it "work with photo attachment" $ do
         attStr <-
           evalStateT
-            (runExceptT $ getAttachmentString handle1 5 (PhotoAttachment (Photo [Size 3 3 "http://pic.jpg"])))
+            ( runExceptT $
+                getAttachmentString
+                  handle1
+                  5
+                  (PhotoAttachment (Photo [Size 3 3 "http://pic.jpg"]))
+            )
             []
         attStr
           `shouldBe` Right "photo50_25"
       it "work with doc attachment" $ do
         attStr <-
           evalStateT
-            (runExceptT $ getAttachmentString handle2 5 (DocAttachment (Doc "http://doc" "hs" "MyDoc")))
+            ( runExceptT $
+                getAttachmentString
+                  handle2
+                  5
+                  (DocAttachment (Doc "http://doc" "hs" "MyDoc"))
+            )
             []
         attStr
           `shouldBe` Right "doc50_25"
       it "work with audio message attachment" $ do
         attStr <-
           evalStateT
-            (runExceptT $ getAttachmentString handle3 5 (AudioMesAttachment (Audio "http://doc")))
+            ( runExceptT $
+                getAttachmentString
+                  handle3
+                  5
+                  (AudioMesAttachment (Audio "http://doc"))
+            )
             []
         attStr
           `shouldBe` Right "doc50_25"

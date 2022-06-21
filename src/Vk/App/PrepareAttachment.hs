@@ -57,28 +57,6 @@ makeH conf logH =
     (saveDocOnServ' conf)
     goToUrl'
 
-liftHandle :: (Monad m, MonadTrans t) => Handle m a -> Handle (t m) a
-liftHandle Handle {..} = Handle 
-  hConf 
-  hLog'' 
-  getPhotoServer'' 
-  loadPhotoToServ'' 
-  savePhotoOnServ''
-  getDocServer''
-  loadDocToServ''
-  saveDocOnServ''
-  goToUrl''
-    where
-      hLog'' = App.liftLogHandle hLog
-      getPhotoServer'' = lift . getLongPollServer
-      loadPhotoToServ'' serverUrl picUrl = lift . loadPhotoToServ serverUrl picUrl
-      savePhotoOnServ'' = lift . savePhotoOnServ
-      getDocServer'' userId = lift . getDocServer userId
-      loadDocToServ'' serverUrl docUrl response = lift . getDocServer serverUrl docUrl response
-      saveDocOnServ'' loadDocResp =  lift . saveDocOnServ loadDocResp
-      goToUrl'' = lift . goToUrl
-
-
 -- logic functions:
 
 getAttachmentString ::
@@ -216,7 +194,8 @@ checkSaveDocAuMesResponse ::
 checkSaveDocAuMesResponse h json =
   case decode json of
     Just (SaveDocAuMesResp (ResponseSDAMR "audio_message" docInf)) -> do
-      logDebug (hLog h) $ "Got save doc(audio_msg) on server response: " ++ show json
+      logDebug (hLog h) $
+        "Got save doc(audio_msg) on server response: " ++ show json
       return docInf
     _ -> do
       let ex =
@@ -263,7 +242,8 @@ getDocServer' conf usId type' = do
         ++ show usId
         ++ "&access_token="
         ++ cBotToken conf
-        ++ "&v=" ++ vkApiVersion
+        ++ "&v="
+        ++ vkApiVersion
   responseBody <$> httpLbs req manager
 
 loadDocToServ' :: ServerUrl -> DocUrl -> ResponseS -> Extention -> IO Response
@@ -299,7 +279,8 @@ getPhotoServer' conf usId = do
         ++ show usId
         ++ "&access_token="
         ++ cBotToken conf
-        ++ "&v=" ++ vkApiVersion
+        ++ "&v="
+        ++ vkApiVersion
   res <- httpLbs req manager
   return (responseBody res)
 

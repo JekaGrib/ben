@@ -1,13 +1,10 @@
-{-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
-
 module Tg.App where
 
 import qualified App
 import Conf (Config (..))
 import Control.Monad (when)
 import Control.Monad.Catch (MonadCatch (catch))
-import Control.Monad.State ( StateT, lift)
+import Control.Monad.State (StateT, lift)
 import Data.Aeson (decode, encode)
 import qualified Data.Text as T
 import Logger (LogHandle (..), logDebug, logInfo)
@@ -162,7 +159,8 @@ confirmUpdatesAndCheckResp h upds = case reverse upds of
 
 checkUpdateId :: (MonadCatch m) => Handle m -> UpdateId -> m ()
 checkUpdateId h updId =
-  when (updId <= 0) . throwAndLogEx (hLog h) $ ConfirmUpdatesException "Update id not greater then 1"
+  when (updId <= 0) . throwAndLogEx (hLog h) $
+    ConfirmUpdatesException "Update id not greater then 1"
 
 checkConfirmUpdatesResponse ::
   (MonadCatch m) =>
