@@ -1,5 +1,3 @@
-{-# LANGUAGE TypeSynonymInstances #-}
-
 module Tg.App where
 
 import qualified App
@@ -84,7 +82,7 @@ run ::
 run h = do
   upds <- lift $ getUpdatesAndCheckResp h
   lift $ confirmUpdatesAndCheckResp h upds
-  mapM_ (App.chooseActionOfUpd (hApp h) . isValidUpdate) upds
+  mapM_ (App.chooseActionOfUpd (App.liftHandle . hApp $ h) . isValidUpdate) upds
 
 isValidUpdate :: Update -> ValidUpdate MessageId
 isValidUpdate (UnknownUpdate _) = InvalidUpdate
@@ -161,7 +159,8 @@ confirmUpdatesAndCheckResp h upds = case reverse upds of
 
 checkUpdateId :: (MonadCatch m) => Handle m -> UpdateId -> m ()
 checkUpdateId h updId =
-  when (updId <= 0) . throwAndLogEx (hLog h) $ ConfirmUpdatesException "Update id not greater then 1"
+  when (updId <= 0) . throwAndLogEx (hLog h) $
+    ConfirmUpdatesException "Update id not greater then 1"
 
 checkConfirmUpdatesResponse ::
   (MonadCatch m) =>

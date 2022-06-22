@@ -1,10 +1,31 @@
+{-# LANGUAGE FlexibleInstances #-}
+
 module Vk.AppT where
 
-import Control.Monad.State (StateT)
+import qualified App
+import Control.Monad.State (StateT, gets, modify)
 import Types (MapUserN)
 import Vk.Api.Response (ServerInfo (..))
 
-type AppT m = StateT TryServer (StateT MapUserN m)
+type AppT m = StateT AppState m
+
+data AppState = AppState
+  { tryServer :: TryServer,
+    mapUserN :: MapUserN
+  }
+
+instance (Monad m) => App.HasUserMap (StateT AppState m) where
+  getUserMap = gets mapUserN
+  setUserMap mapUN = modify (\appState -> appState {mapUserN = mapUN})
+  modifyUserMap f = modify (\appState -> appState {mapUserN = f (mapUserN appState)})
+
+modifyTryServer :: Monad m => (TryServer -> TryServer) -> AppT m ()
+modifyTryServer f =
+  modify $ \appState ->
+    appState {tryServer = f (tryServer appState)}
+
+getTryServer :: Monad m => AppT m TryServer
+getTryServer = gets tryServer
 
 data TryServer = TryServer {tryNum :: Int, servInf :: ServerInfo}
   deriving (Eq, Show)

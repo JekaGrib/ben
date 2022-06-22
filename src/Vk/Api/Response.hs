@@ -40,7 +40,15 @@ where
 
 import Api (optionsEraseSuffix, optionsSnakeCase, optionsSnakeCasePreEraseSuffix)
 import Control.Applicative ((<|>), empty, liftA2)
-import Data.Aeson ((.:), (.:?), FromJSON (parseJSON), Object, Value (..), genericParseJSON, withObject)
+import Data.Aeson
+  ( (.:),
+    (.:?),
+    FromJSON (parseJSON),
+    Object,
+    Value (..),
+    genericParseJSON,
+    withObject,
+  )
 import Data.Aeson.Types (Parser)
 import qualified Data.Text as T
 import GHC.Generics (Generic)

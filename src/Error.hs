@@ -28,7 +28,11 @@ data ConfigException
 
 instance Exception ConfigException
 
-throwAndLogEx :: (Monad m, MonadCatch m, Attachy a) => LogHandle m -> BotException a -> m b
+throwAndLogEx ::
+  (Monad m, MonadCatch m, Attachy a) =>
+  LogHandle m ->
+  BotException a ->
+  m b
 throwAndLogEx logH ex = do
   let info = show ex
   logError logH info

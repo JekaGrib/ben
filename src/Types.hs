@@ -47,9 +47,13 @@ newtype OpenRepeat
   = OpenRepeat N
   deriving (Eq, Show)
 
-newtype UserId = UserId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)
+newtype UserId
+  = UserId Integer
+  deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num)
 
-newtype MessageId = MessageId Integer deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num, Attachy)
+newtype MessageId
+  = MessageId Integer
+  deriving newtype (Eq, Show, ToJSON, FromJSON, Ord, Enum, Num, Attachy)
 
 type Response = LBS.ByteString
 
