@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 164b52a9795548d450f09416991f1dd5b6ec9631b45b0d2e925a34c660f436a4
+-- hash: 2aad9d79d46c5f3a1f4f208985dfeaa79e5ef6ef7ed161a7168daa1f1424c4af
 
 name:           ben
 version:        0.1.0.0
@@ -57,7 +57,6 @@ library
   build-depends:
       aeson
     , base >=4.7 && <5
-    , binary
     , bytestring
     , configurator
     , containers
@@ -65,7 +64,6 @@ library
     , hspec
     , http-client
     , http-client-tls
-    , lens
     , mtl
     , text
     , time
@@ -84,7 +82,6 @@ executable ben-exe
       aeson
     , base >=4.7 && <5
     , ben
-    , binary
     , bytestring
     , configurator
     , containers
@@ -92,7 +89,6 @@ executable ben-exe
     , hspec
     , http-client
     , http-client-tls
-    , lens
     , mtl
     , text
     , time
@@ -134,7 +130,6 @@ test-suite ben-test
       aeson
     , base >=4.7 && <5
     , ben
-    , binary
     , bytestring
     , configurator
     , containers
@@ -142,7 +137,6 @@ test-suite ben-test
     , hspec
     , http-client
     , http-client-tls
-    , lens
     , mtl
     , text
     , time
