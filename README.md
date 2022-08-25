@@ -106,3 +106,4 @@ Modules, which has handlers, have unit-tests:
 1. Vk.App.PrepareAttachment.hs
 
 -----
+-----
