@@ -3,4 +3,5 @@ bot.config
 *bot.log
 .vscode
 .history
+myIgnoreFile.txt
 *~
